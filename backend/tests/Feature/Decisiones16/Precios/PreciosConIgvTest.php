@@ -50,6 +50,7 @@ beforeEach(function () {
     lockSeededBookings();
     Queue::fake();
     freezeBusinessToday();
+    withinTenant(tenantA(), fn () => DB::table('catalog_dynamic_price_rules')->update(['active' => false]));
 });
 
 it('O5: el servicio de impuestos desglosa desde adentro o suma encima según price_with_tax', function () {

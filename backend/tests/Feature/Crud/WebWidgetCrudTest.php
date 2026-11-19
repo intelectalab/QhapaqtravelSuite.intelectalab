@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Integrations\Contracts\DnsResolver;
+use App\Domain\Integrations\Fake\FakeDnsResolver;
 use Illuminate\Support\Facades\DB;
 
 function webWidgetDefaults(array $overrides = []): array
@@ -17,6 +19,13 @@ function webWidgetFrom(string $domain)
     $key = (string) withinTenant(tenantA(), fn () => DB::table('channel_widget_config')->value('public_key'));
 
     return withPlatformSeeingTenant(fn () => test()->getJson('/api/v1/public/products', ['X-KipuControl-Key' => $key, 'Origin' => "https://{$domain}"]));
+}
+
+function webWidgetPublishTxt(string $domain): void
+{
+    $dns = app(DnsResolver::class);
+    assert($dns instanceof FakeDnsResolver);
+    $dns->put($domain, (string) webWidgetDomain($domain)->verify_token);
 }
 
 function webWidgetAudit(string $entity, string $id, string $action): bool
@@ -69,8 +78,9 @@ it('verificar el dominio habilita el widget desde ese sitio y quitarlo lo vuelve
     actingAsSeed('U01');
     $this->postJson('/api/v1/channels/widget/domains', ['domain' => 'reservas.wayraviajes.pe'])->assertCreated();
     $id = webWidgetDomain('reservas.wayraviajes.pe')->id;
+    webWidgetPublishTxt('reservas.wayraviajes.pe');
 
-    $this->postJson("/api/v1/channels/widget/domains/{$id}/verify")->assertOk()->assertJsonPath('data.id', $id);
+    $this->postJson("/api/v1/channels/widget/domains/{$id}/verify")->assertOk()->assertJsonPath('data.id', $id)->assertJsonPath('data.status', 'verificado');
     expect(webWidgetDomain('reservas.wayraviajes.pe')->status)->toBe('verificado')
         ->and(webWidgetDomain('reservas.wayraviajes.pe')->verified_at)->not->toBeNull()
         ->and(webWidgetAudit('Dominio del widget', 'reservas.wayraviajes.pe', 'verificar'))->toBeTrue();
@@ -89,6 +99,7 @@ it('WEB-BR-02 / WEB-BR-03: no se repite un dominio ni se verifica dos veces', fu
     $id = webWidgetDomain('reservas.wayraviajes.pe')->id;
 
     expect($this->postJson('/api/v1/channels/widget/domains', ['domain' => 'RESERVAS.wayraviajes.pe']))->toBeApiError(409, 'WEB-BR-02');
+    webWidgetPublishTxt('reservas.wayraviajes.pe');
     $this->postJson("/api/v1/channels/widget/domains/{$id}/verify")->assertOk();
     expect($this->postJson("/api/v1/channels/widget/domains/{$id}/verify"))->toBeApiError(409, 'WEB-BR-03');
 });

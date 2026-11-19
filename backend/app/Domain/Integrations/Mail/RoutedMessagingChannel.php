@@ -33,7 +33,7 @@ final class RoutedMessagingChannel implements MessagingChannel
         }
 
         try {
-            return AdapterResult::success('enviado', $this->mailer->deliver($connection, $message->to, null, (string) ($message->subject ?? ''), (string) ($message->body ?? '')));
+            return AdapterResult::success('enviado', $this->mailer->deliver($connection, $message->to, null, (string) ($message->subject ?? ''), (string) ($message->body ?? ''), $message->html));
         } catch (Throwable $exception) {
             report($exception);
 

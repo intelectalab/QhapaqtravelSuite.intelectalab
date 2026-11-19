@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Admin\Http\Controllers\OAuthAppController;
+use App\Domain\Admin\Http\Controllers\OAuthController;
 use App\Domain\Admin\Http\Controllers\PlatformInvoicePdfController;
 use App\Domain\Admin\Http\Controllers\WebhookDeliveryLogController;
 use App\Domain\Channels\Http\Controllers\ReviewSourceController;
@@ -18,6 +19,8 @@ Route::name('plataforma.')->group(function (): void {
         Route::post('integrations/oauth-apps', [OAuthAppController::class, 'store'])->name('oauth-apps.store');
         Route::post('integrations/oauth-apps/{id}/secret', [OAuthAppController::class, 'rotate'])->name('oauth-apps.secret');
         Route::delete('integrations/oauth-apps/{id}', [OAuthAppController::class, 'destroy'])->name('oauth-apps.destroy');
+        Route::get('oauth/authorize', [OAuthController::class, 'show'])->name('oauth.authorize.show');
+        Route::post('oauth/authorize', [OAuthController::class, 'decide'])->middleware('throttle:30,1')->name('oauth.authorize');
         Route::get('integrations/webhook-deliveries', [WebhookDeliveryLogController::class, 'index'])->name('webhook-deliveries.index');
     });
 

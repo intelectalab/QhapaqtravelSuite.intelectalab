@@ -13,7 +13,7 @@ import { amountAttr, formatDate, formatDateTime, formatMoney } from "@/lib/forma
 import { getResource } from "@/lib/server/resource";
 import { statusLabel, statusTone } from "@/lib/tone";
 
-type InvoicePage = InvoiceDetail & { reasons: FinanceOption[]; can: { issue: boolean }; fiscal_files?: { xml: string | null; cdr: string | null } };
+type InvoicePage = InvoiceDetail & { reasons: FinanceOption[]; debit_reasons?: FinanceOption[]; can: { issue: boolean }; fiscal_files?: { xml: string | null; cdr: string | null } };
 
 const FISCAL_FILES = [
   { key: "xml", label: "XML", title: "Comprobante electrónico firmado (XML)" },
@@ -79,7 +79,7 @@ export default async function ComprobantePage({ params }: PageProps<"/finanzas/f
                 </a>
               ) : null;
             })}
-            {invoice.can.issue && <InvoiceRowActions row={invoice} reasons={invoice.reasons} />}
+            {invoice.can.issue && <InvoiceRowActions row={invoice} reasons={invoice.reasons} debitReasons={invoice.debit_reasons ?? []} />}
           </div>
         }
       />
@@ -99,7 +99,7 @@ export default async function ComprobantePage({ params }: PageProps<"/finanzas/f
         <TintTile icon={UserRound} tone="t1" label="Cliente" value={<span className="text-[16px]">{invoice.customer.name}</span>} note={`${invoice.customer.doc_type} ${invoice.customer.doc_number}`} info="Adquirente del comprobante y su documento de identidad." />
         <TintTile icon={Route} tone="t4" label="Reserva" value={<Link href={`/reservas/${invoice.reservation.code}`} className="text-[16px] hover:underline">{invoice.reservation.code}</Link>} note={invoice.receivable ?? undefined} info="Reserva facturada. La nota es la cuenta por cobrar de la que sale el comprobante." />
         <TintTile icon={CalendarDays} tone="violet" label="Emisión" value={<span className="text-[16px]">{formatDate(invoice.issue_date)}</span>} note={invoice.issued_by ?? undefined} info="Fecha de emisión y usuario que lo emitió." />
-        <TintTile icon={Wallet} tone="sun" label="Total" value={<span data-testid="invoice-total" data-amount={amountAttr(invoice.total)} className={cn("text-[16px]", credit && "text-bad")}>{credit ? "− " : ""}{formatMoney(invoice.total, invoice.currency)}</span>} note={invoice.delivered ? "Entregado al cliente" : invoice.currency !== "PEN" && invoice.fx_rate ? `TC ${invoice.fx_rate}` : undefined} info="Importe total del comprobante con IGV si es gravado. Las notas de crédito restan." />
+        <TintTile icon={Wallet} tone="sun" label="Total" value={<span data-testid="invoice-total" data-amount={amountAttr(invoice.total)} className={cn("text-[16px]", credit && "text-bad")}>{credit ? "− " : ""}{formatMoney(invoice.total, invoice.currency)}</span>} note={invoice.delivered ? "Entregado al cliente" : invoice.currency !== "PEN" && invoice.fx_rate ? `TC ${invoice.fx_rate}` : undefined} info="Importe total del comprobante con IGV si es gravado. Las notas de crédito restan y las de débito suman." />
       </section>
 
       <div className="mb-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
@@ -138,7 +138,7 @@ export default async function ComprobantePage({ params }: PageProps<"/finanzas/f
 
           {invoice.credit_notes.length > 0 && (
             <Card>
-              <TintCardTitle icon={ScrollText} title="Notas de crédito" aside={String(invoice.credit_notes.length)} />
+              <TintCardTitle icon={ScrollText} title={invoice.credit_notes.some((note) => note.doc_type === "08") ? "Notas de crédito y de débito" : "Notas de crédito"} aside={String(invoice.credit_notes.length)} />
               <ul className="flex flex-col">
                 {invoice.credit_notes.map((note) => (
                   <li key={note.number} className="flex items-center gap-3 border-t border-line-2 py-2.5 text-[13px] first:border-t-0">
@@ -148,7 +148,7 @@ export default async function ComprobantePage({ params }: PageProps<"/finanzas/f
                       </Link>
                       {note.credit_note_reason && <span className="block text-xs text-fg-3">{note.credit_note_reason}</span>}
                     </span>
-                    <span className="font-mono text-bad">− {formatMoney(note.total_amount, invoice.currency)}</span>
+                    <span className={cn("font-mono", note.doc_type === "08" ? "text-ok" : "text-bad")}>{note.doc_type === "08" ? "+" : "−"} {formatMoney(note.total_amount, invoice.currency)}</span>
                     <StatusBadge status={note.status} />
                   </li>
                 ))}

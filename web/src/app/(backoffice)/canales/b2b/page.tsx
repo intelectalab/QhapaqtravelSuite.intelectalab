@@ -57,7 +57,7 @@ export default async function B2bPage() {
       <Card padded={false}>
         <Tabs
           tabs={[
-            { id: "agencies", label: "Agencias", count: overview.items.length, content: <B2bAgenciesTable rows={overview.items} kpis={overview.kpis} catalogs={catalogs} canManage={overview.can_manage} /> },
+            { id: "agencies", label: "Agencias", count: overview.items.length, content: <B2bAgenciesTable rows={overview.items} kpis={overview.kpis} catalogs={catalogs} canManage={overview.can_manage} canInvite={overview.can_invite} /> },
             ...(rates ? [{ id: "prices", label: "Listas de precios", count: rates.products.length, content: <B2bPriceListsTable data={rates} canManage={overview.can_manage} /> }] : []),
           ]}
         />

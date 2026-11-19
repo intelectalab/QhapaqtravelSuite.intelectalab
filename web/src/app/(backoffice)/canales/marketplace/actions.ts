@@ -25,5 +25,5 @@ export async function decidePartnership(_state: StepResult, form: FormData): Pro
 }
 
 export async function sellListing(_state: StepResult, form: FormData): Promise<StepResult> {
-  return refresh(await sendStep("/marketplace/orders", "POST", { ...formValues(form, ["listing", "travel_date", "gross_amount"]), pax: Number(text(form, "pax") || "1") }, "No pudimos registrar la venta."));
+  return refresh(await sendStep("/marketplace/orders", "POST", { ...formValues(form, ["listing", "client_id", "travel_date", "gross_amount"]), pax: Number(text(form, "pax") || "1") }, "No pudimos registrar la venta."));
 }

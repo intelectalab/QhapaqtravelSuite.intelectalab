@@ -27,6 +27,12 @@ export async function saveAgency(_state: StepResult, form: FormData): Promise<St
   return result;
 }
 
+export async function inviteAgencyUser(_state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/channels/b2b/agencies/${encodeURIComponent(String(form.get("code") ?? ""))}/users`, "POST", formValues(form, ["name", "email", "phone"]), "No pudimos enviar la invitación.");
+  if (result.done) revalidatePath("/canales/b2b");
+  return result;
+}
+
 export async function b2bRateStep(_state: StepResult, form: FormData): Promise<StepResult> {
   const product = encodeURIComponent(String(form.get("product") ?? ""));
   const agency = encodeURIComponent(String(form.get("agency") ?? ""));

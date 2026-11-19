@@ -34,7 +34,7 @@ final class WebIntegrationDirectory
     public function domains(): Collection
     {
         return DB::table('channel_widget_domains as d')->leftJoin('iam_users as u', 'u.id', '=', 'd.created_by')->orderBy('d.created_at')
-            ->get(['d.id', 'd.domain', 'd.cms', 'd.status', 'd.verify_token', 'd.verified_at', 'd.created_at', 'u.name as added_by'])
+            ->get(['d.id', 'd.domain', 'd.cms', 'd.status', 'd.verify_token', 'd.verified_at', 'd.created_at', 'd.updated_at', 'u.name as added_by'])
             ->map(fn (object $row): array => [
                 'id' => $row->id,
                 'domain' => $row->domain,
@@ -42,6 +42,7 @@ final class WebIntegrationDirectory
                 'status' => $row->status,
                 'token' => $row->verify_token,
                 'verified_at' => $row->verified_at,
+                'checking_until' => $row->status === 'pendiente' ? WidgetDomainVerifier::checkingUntil($row->updated_at)?->toIso8601String() : null,
                 'added_at' => $row->created_at,
                 'added_by' => $row->added_by,
             ])->values();

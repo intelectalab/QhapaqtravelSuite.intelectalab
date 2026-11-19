@@ -27,13 +27,14 @@ final class MarketplaceController
         'pax.*' => 'Indica de 1 a 99 pasajeros.',
         'travel_date.*' => 'Elige la fecha de viaje.',
         'gross_amount.*' => 'El monto debe ser mayor a cero.',
+        'client_id.*' => 'Elige el cliente al que le vendes.',
     ];
 
     public function __construct(private readonly Marketplace $marketplace) {}
 
     public function listings(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->marketplace->listings(CursorPage::filters($request))]);
+        return response()->json(['data' => $this->marketplace->listings(CursorPage::filters($request), GrowthRules::actor($request))]);
     }
 
     public function publish(Request $request): JsonResponse
@@ -97,6 +98,7 @@ final class MarketplaceController
             'pax' => ['required', 'integer', 'between:1,99'],
             'travel_date' => ['required', 'date', 'after_or_equal:today'],
             'gross_amount' => ['nullable', 'numeric', 'gt:0', 'max:99999999'],
+            'client_id' => ['required', 'string', 'max:40'],
         ], self::MESSAGES);
 
         return response()->json(['data' => $this->marketplace->sell($data, (string) $request->header('Idempotency-Key'), GrowthRules::actor($request))], 201);

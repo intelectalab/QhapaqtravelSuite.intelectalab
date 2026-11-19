@@ -50,11 +50,14 @@ use App\Jobs\SendCorporateStatements;
 use App\Jobs\SendDueReviewRequests;
 use App\Jobs\SendPaymentReminders;
 use App\Jobs\SendScheduledReports;
+use App\Jobs\ShowcaseMonthlyFees;
+use App\Jobs\ShowcaseReminder;
 use App\Jobs\SnapshotPlatformMetrics;
 use App\Jobs\SyncSupplierAdapters;
 use App\Jobs\TransferValidationWatch;
 use App\Jobs\TreasuryCashFlowSnapshot;
 use App\Jobs\TreasuryOpenSessionCheck;
+use App\Jobs\VerifyWidgetDomain;
 use App\Jobs\VoucherDeadlineAlerts;
 use App\Jobs\WarnExpiringCards;
 
@@ -105,6 +108,7 @@ final class JobCatalog
         'JOB-TRAMOS-1' => ['class' => ExpireInTripOffers::class, 'name' => 'Vencer ofertas de venta en ruta', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'default'],
         'JOB-PUSH-1' => ['class' => CheckPushReceipts::class, 'name' => 'Recibos de push de Expo', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
         'JOB-SITIO-1' => ['class' => TransferValidationWatch::class, 'name' => 'Vigilar transferencias por validar', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
+        'JOB-WEB-1' => ['class' => VerifyWidgetDomain::class, 'name' => 'Verificar dominios del widget', 'cron' => '*/10 * * * *', 'label' => 'cada 10 min', 'queue' => 'low'],
     ];
 
     public const PLATFORM = [
@@ -117,6 +121,8 @@ final class JobCatalog
         'PLT-07' => ['class' => ExpireApiKeys::class, 'name' => 'Vencer llaves de API', 'cron' => '30 0 * * *', 'label' => 'diario 00:30', 'queue' => 'low'],
         'PLT-08' => ['class' => PurgeWebhookDeliveries::class, 'name' => 'Depurar entregas de webhooks', 'cron' => '45 0 * * *', 'label' => 'diario 00:45', 'queue' => 'low'],
         'PLT-09' => ['class' => MaintainMonthlyPartitions::class, 'name' => 'Crear particiones mensuales', 'cron' => '30 1 1 * *', 'label' => 'mensual, día 1 01:30', 'queue' => 'low'],
+        'PLT-VIT-1' => ['class' => ShowcaseMonthlyFees::class, 'name' => 'Facturar cargos de la vitrina', 'cron' => '0 4 1 * *', 'label' => 'mensual, día 1 04:00', 'queue' => 'critical'],
+        'PLT-VIT-2' => ['class' => ShowcaseReminder::class, 'name' => 'Recordar salidas de mañana de la vitrina', 'cron' => '0 18 * * *', 'label' => 'diario 18:00', 'queue' => 'notifications'],
     ];
 
     public static function forClass(string $class): ?array

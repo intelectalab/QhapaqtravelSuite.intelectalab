@@ -1,7 +1,8 @@
 "use client";
 
-import { Ban, Building2, CalendarRange, CreditCard, Eye, Handshake, Landmark, Lock, LockOpen, Mail, Plus, RotateCcw, ShieldAlert, TrendingUp, User, Wallet } from "lucide-react";
-import { changeAgencyStatus, previewAgencyPortal, saveAgency } from "@/app/(backoffice)/canales/b2b/actions";
+import { Ban, Building2, CalendarRange, CreditCard, Eye, Handshake, KeyRound, Landmark, Lock, LockOpen, Mail, Plus, RotateCcw, ShieldAlert, TrendingUp, User, Wallet } from "lucide-react";
+import { changeAgencyStatus, inviteAgencyUser, previewAgencyPortal, saveAgency } from "@/app/(backoffice)/canales/b2b/actions";
+import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -129,7 +130,41 @@ function PortalPreviewAction({ agency }: { agency: B2bAgency }) {
   );
 }
 
-function AgencyDetail({ agency, canPreview }: { agency: B2bAgency; canPreview: boolean }) {
+function AgencyInviteAction({ agency }: { agency: B2bAgency }) {
+  const suggest = !!agency.booking_email && !agency.portal_users.some((user) => user.email.toLowerCase() === agency.booking_email?.toLowerCase());
+  if (agency.effective_status !== "activa") {
+    return (
+      <Button size="sm" variant="secondary" icon={<KeyRound size={15} />} disabled title={`La agencia está ${agency.effective_status}: reactiva o renueva el convenio para darle acceso.`}>
+        Invitar al portal
+      </Button>
+    );
+  }
+  return (
+    <PanelAction<StepResult>
+      label="Invitar al portal"
+      icon={<KeyRound size={15} />}
+      size="sm"
+      formId={`agency-invite-${agency.code}`}
+      title="Invitar al portal de agencias"
+      description={`${agency.legal_name} · la persona recibe un correo para crear su clave y reservar desde el portal.`}
+      submitLabel="Enviar invitación"
+      action={inviteAgencyUser}
+      initial={initial}
+      successToast="Invitación enviada"
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={agency.code} />
+          <TextField label="Nombre" name="name" required minLength={3} maxLength={150} defaultValue={suggest ? agency.contact_name : undefined} icon={<User size={16} />} />
+          <TextField label="Correo" name="email" type="email" required maxLength={190} defaultValue={suggest ? agency.booking_email ?? undefined : undefined} icon={<Mail size={16} />} hint="Debe ser un correo que no use otro usuario." />
+          <TextField label="Teléfono" name="phone" maxLength={30} />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+function AgencyDetail({ agency, canPreview, canInvite }: { agency: B2bAgency; canPreview: boolean; canInvite: boolean }) {
   return (
     <DetailPanel label="Ver agencia" title={agency.legal_name} description={`${agency.code} · RUC ${agency.ruc}`}>
       <div className="flex flex-wrap items-center gap-2">
@@ -150,7 +185,7 @@ function AgencyDetail({ agency, canPreview }: { agency: B2bAgency; canPreview: b
       </PanelSection>
       <PanelSection title="Usuarios del portal" aside={`${agency.portal_users.length}`}>
         {agency.portal_users.length === 0 ? (
-          <p className="text-[13px] text-fg-3">Pendiente de alta: invita a un usuario de la agencia desde Administración › Usuarios para que reserve en el portal.</p>
+          <p className="text-[13px] text-fg-3">Aún nadie de la agencia tiene acceso: invítalo para que reserve desde el portal.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {agency.portal_users.map((user) => (
@@ -167,7 +202,10 @@ function AgencyDetail({ agency, canPreview }: { agency: B2bAgency; canPreview: b
             ))}
           </ul>
         )}
-        {canPreview && agency.portal_users.some((user) => user.status === "activo") && <PortalPreviewAction agency={agency} />}
+        <div className="flex flex-wrap gap-2">
+          {canInvite && <AgencyInviteAction agency={agency} />}
+          {canPreview && agency.portal_users.some((user) => user.status === "activo") && <PortalPreviewAction agency={agency} />}
+        </div>
       </PanelSection>
       <PanelSection title="Línea de crédito" aside={agency.credit_limit > 0 ? formatMoney(agency.credit_limit, agency.currency) : "Solo prepago"}>
         {agency.credit_limit > 0 && (
@@ -223,7 +261,7 @@ function AgencyDetail({ agency, canPreview }: { agency: B2bAgency; canPreview: b
   );
 }
 
-export function B2bAgenciesTable({ rows, kpis, catalogs, canManage }: { rows: B2bAgency[]; kpis: B2bOverview["kpis"]; catalogs: Catalogs; canManage: boolean }) {
+export function B2bAgenciesTable({ rows, kpis, catalogs, canManage, canInvite }: { rows: B2bAgency[]; kpis: B2bOverview["kpis"]; catalogs: Catalogs; canManage: boolean; canInvite: boolean }) {
   const columns: Column<B2bAgency>[] = [
     {
       id: "agency",
@@ -261,7 +299,7 @@ export function B2bAgenciesTable({ rows, kpis, catalogs, canManage }: { rows: B2
       header: "",
       cell: (row) => (
         <RowActions>
-          <AgencyDetail agency={row} canPreview={canManage} />
+          <AgencyDetail agency={row} canPreview={canManage} canInvite={canInvite} />
           {canManage && (
             <>
               <AgencyFormAction agency={row} catalogs={catalogs} iconOnly />

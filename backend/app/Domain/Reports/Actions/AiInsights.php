@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domain\Reports\Actions;
 
+use App\Domain\Crm\Support\SalesTargetDirectory;
 use App\Domain\Finance\Support\GrowthFeatureGate;
 use App\Domain\Iam\Models\User;
+use App\Domain\Quotes\Support\QuoteApprovalPolicy;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -31,12 +34,28 @@ final class AiInsights
 
     public const COST_KINDS = ['margen_bajo', 'proveedor_caro'];
 
-    private const MARGIN_FLOOR = '12';
+    public const EXPENSIVE_GAP_PCT = '15';
+
+    public const TARGET_SEVERITY = ['en_riesgo' => 'media', 'critico' => 'alta'];
+
+    public const DEMAND_OCCUPANCY_PCT = 85;
+
+    public const DEMAND_QUOTES = 5;
+
+    public const DEMAND_WINDOW_DAYS = 7;
+
+    private const MARGIN_CRITICAL = '5';
+
+    private const EXPENSIVE_CRITICAL_PCT = '40';
+
+    private const DEMAND_HORIZON_DAYS = 60;
 
     public function __construct(
         private readonly TenantContext $context,
         private readonly AuditLogger $audit,
         private readonly GrowthFeatureGate $gate,
+        private readonly QuoteApprovalPolicy $approval,
+        private readonly SalesTargetDirectory $targets,
     ) {}
 
     public function list(Request $request, User $viewer): array
@@ -96,8 +115,14 @@ final class AiInsights
 
     public function generate(): int
     {
-        $created = 0;
         $today = Carbon::now($this->context->timezone())->toDateString();
+
+        return $this->overdueReceivables($today) + $this->lowMargins() + $this->expensiveSuppliers($today) + $this->targetsAtRisk($today) + $this->highDemand($today);
+    }
+
+    private function overdueReceivables(string $today): int
+    {
+        $created = 0;
         $receivables = DB::table('fin_receivables as f')->join('crm_clients as c', 'c.id', '=', 'f.client_id')->join('booking_reservations as r', 'r.id', '=', 'f.reservation_id')
             ->whereNull('f.deleted_at')->where('f.status', 'vencida')->whereColumn('f.paid_amount', '<', 'f.amount')
             ->orderBy('f.due_date')->limit(50)->get(['f.id', 'f.code', 'f.amount', 'f.paid_amount', 'f.currency', 'f.due_date', 'c.name as client', 'r.code as reservation']);
@@ -110,15 +135,108 @@ final class AiInsights
                 'fin_receivable', (string) $row->id, ['code' => $row->code, 'reservation' => $row->reservation, 'balance' => (string) $balance, 'currency' => $row->currency, 'days_overdue' => $days, 'action' => 'link_de_pago']);
         }
 
+        return $created;
+    }
+
+    private function lowMargins(): int
+    {
+        $created = 0;
+        $floor = (string) Decimal::round2($this->approval->limits()['margin_floor']);
         $quotes = DB::table('quote_quotes as q')->join('quote_versions as v', 'v.id', '=', 'q.current_version_id')->join('crm_clients as c', 'c.id', '=', 'q.client_id')
-            ->whereNull('q.deleted_at')->whereIn('q.status', ['borrador', 'enviada', 'vista', 'negociacion'])->whereNotNull('v.margin_pct')->where('v.margin_pct', '<', self::MARGIN_FLOOR)
+            ->whereNull('q.deleted_at')->whereIn('q.status', ['borrador', 'enviada', 'vista', 'negociacion'])->whereNotNull('v.margin_pct')->where('v.margin_pct', '<', $floor)
             ->orderBy('v.margin_pct')->limit(30)->get(['q.id', 'q.code', 'q.owner_id', 'v.margin_pct', 'v.grand_total', 'v.currency', 'c.name as client']);
 
         foreach ($quotes as $row) {
             $margin = (string) Decimal::round2((string) $row->margin_pct);
-            $created += $this->store('margen_bajo', BigDecimal::of($margin)->isLessThan('5') ? 'alta' : 'media', 'Margen bajo en '.$row->code,
-                'La cotización para '.$row->client.' deja '.$margin.' % de margen, por debajo del piso de '.self::MARGIN_FLOOR.' %. Acción sugerida: revisar proveedores o ajustar el markup antes de enviarla.',
-                'quote_quote', (string) $row->id, ['code' => $row->code, 'margin_pct' => $margin, 'floor_pct' => self::MARGIN_FLOOR, 'total' => (string) $row->grand_total, 'currency' => $row->currency, 'action' => 'revisar_cotizacion']);
+            $created += $this->store('margen_bajo', BigDecimal::of($margin)->isLessThan(self::MARGIN_CRITICAL) ? 'alta' : 'media', 'Margen bajo en '.$row->code,
+                'La cotización para '.$row->client.' deja '.$margin.' % de margen, por debajo del margen mínimo de '.$floor.' % que fijaste en Configuración. Acción sugerida: revisar proveedores o ajustar el markup antes de enviarla.',
+                'quote_quote', (string) $row->id, ['code' => $row->code, 'margin_pct' => $margin, 'floor_pct' => $floor, 'total' => (string) $row->grand_total, 'currency' => $row->currency, 'action' => 'revisar_cotizacion']);
+        }
+
+        return $created;
+    }
+
+    private function expensiveSuppliers(string $today): int
+    {
+        $services = DB::table('catalog_services as s')->join('catalog_providers as p', 'p.id', '=', 's.provider_id')
+            ->whereNull('s.deleted_at')->whereNull('p.deleted_at')->where('s.status', 'activo')->where('p.status', 'activo')->where('s.valid_to', '>=', $today)->whereNotNull('p.city')
+            ->get(['s.id', 's.ref', 's.name', 's.type', 's.unit', 's.cost', 's.currency', 'p.id as provider_id', 'p.name as provider', 'p.city', 'p.stars']);
+        $found = collect();
+
+        foreach ($services->groupBy(fn (object $row): string => implode('|', [$row->type, $row->unit, trim((string) $row->currency), mb_strtolower(trim((string) $row->city)), (string) $row->stars])) as $group) {
+            foreach ($group as $row) {
+                $cheapest = $group->where('provider_id', '<>', $row->provider_id)->filter(fn (object $other): bool => BigDecimal::of((string) $other->cost)->isPositive())->sortBy(fn (object $other): float => (float) $other->cost)->first();
+
+                if ($cheapest === null) {
+                    continue;
+                }
+
+                $gap = BigDecimal::of((string) $row->cost)->minus((string) $cheapest->cost)->multipliedBy(100)->dividedBy((string) $cheapest->cost, 1, RoundingMode::HALF_UP);
+
+                if ($gap->isGreaterThan(self::EXPENSIVE_GAP_PCT)) {
+                    $found->push(['row' => $row, 'cheapest' => $cheapest, 'gap' => $gap]);
+                }
+            }
+        }
+
+        $created = 0;
+
+        foreach ($found->sortByDesc(fn (array $item): float => $item['gap']->toFloat())->take(30) as ['row' => $row, 'cheapest' => $cheapest, 'gap' => $gap]) {
+            $currency = trim((string) $row->currency);
+            $created += $this->store('proveedor_caro', $gap->isGreaterThan(self::EXPENSIVE_CRITICAL_PCT) ? 'alta' : 'media', 'Proveedor caro: '.$row->name,
+                $row->provider.' cobra '.Decimal::display((string) $row->cost, $currency).' por '.$row->unit.', '.$gap.' % más que '.$cheapest->provider.' ('.Decimal::display((string) $cheapest->cost, $currency).') por un servicio de '.mb_strtolower((string) $row->type).' en '.$row->city.'. Acción sugerida: negociar la tarifa o usar el otro proveedor en los productos.',
+                'catalog_service', (string) $row->id, ['code' => $row->ref, 'provider' => $row->provider, 'cost' => (string) $row->cost, 'currency' => $currency, 'unit' => $row->unit, 'alternative' => $cheapest->ref, 'alternative_provider' => $cheapest->provider, 'alternative_cost' => (string) $cheapest->cost, 'gap_pct' => (string) $gap, 'threshold_pct' => self::EXPENSIVE_GAP_PCT, 'action' => 'revisar_proveedor']);
+        }
+
+        return $created;
+    }
+
+    private function targetsAtRisk(string $today): int
+    {
+        $created = 0;
+        $date = Carbon::parse($today, $this->context->timezone());
+        $targets = DB::table('crm_sales_targets')->where('status', 'vigente')->where('period_from', '<=', $today)->where('period_to', '>=', $today)->orderBy('period_to')->get();
+
+        foreach ($targets as $row) {
+            $standing = $this->targets->standing($row, $date);
+            $severity = self::TARGET_SEVERITY[$standing['health']] ?? null;
+
+            if ($severity === null) {
+                continue;
+            }
+
+            $created += $this->store('meta_en_riesgo', $severity, 'Meta en riesgo: '.$standing['scope'].' · '.$standing['period'],
+                'Lleva '.Decimal::display((string) $standing['sales'], 'PEN').' de '.Decimal::display((string) $standing['goal'], 'PEN').' ('.$standing['progress_pct'].' %). Con las oportunidades que cierran en el periodo proyecta el '.$standing['projection_pct'].' % y '.($standing['days_left'] === 1 ? 'queda 1 día' : 'quedan '.$standing['days_left'].' días').'. Acción sugerida: revisar el pipeline con el equipo y priorizar las oportunidades más probables.',
+                'crm_sales_target', (string) $row->id, ['code' => $row->code, 'scope' => $standing['scope'], 'period' => $standing['period'], 'sales' => (string) $standing['sales'], 'goal' => (string) $standing['goal'], 'progress_pct' => $standing['progress_pct'], 'projection_pct' => $standing['projection_pct'], 'health' => $standing['health'], 'action' => 'revisar_meta']);
+        }
+
+        return $created;
+    }
+
+    private function highDemand(string $today): int
+    {
+        $created = 0;
+        $until = Carbon::parse($today)->addDays(self::DEMAND_HORIZON_DAYS)->toDateString();
+        $departures = DB::table('catalog_product_departures as d')->join('catalog_products as p', 'p.id', '=', 'd.product_id')->whereNull('p.deleted_at')
+            ->whereIn('d.status', ['abierta', 'completa'])->whereBetween('d.departure_date', [$today, $until])->whereRaw('d.sold * 100 >= d.capacity * ?', [self::DEMAND_OCCUPANCY_PCT])
+            ->orderBy('d.departure_date')->limit(30)->get(['d.id', 'd.departure_date', 'd.capacity', 'd.sold', 'p.code', 'p.name']);
+
+        foreach ($departures as $row) {
+            $pct = (int) floor((int) $row->sold * 100 / max(1, (int) $row->capacity));
+            $created += $this->store('demanda_alta', (int) $row->sold >= (int) $row->capacity ? 'alta' : 'media', 'Demanda alta: '.$row->name.' del '.Carbon::parse((string) $row->departure_date)->format('d/m/Y'),
+                'La salida tiene '.$row->sold.' de '.$row->capacity.' cupos vendidos ('.$pct.' %). Acción sugerida: abrir otra salida o pedir más cupos al proveedor.',
+                'catalog_departure', (string) $row->id, ['code' => $row->code, 'date' => $row->departure_date, 'sold' => (int) $row->sold, 'capacity' => (int) $row->capacity, 'occupancy_pct' => $pct, 'threshold_pct' => self::DEMAND_OCCUPANCY_PCT, 'action' => 'abrir_salida']);
+        }
+
+        $quoted = DB::table('quote_items as i')->join('quote_versions as v', 'v.id', '=', 'i.quote_version_id')->join('quote_quotes as q', 'q.id', '=', 'v.quote_id')->join('catalog_products as p', 'p.id', '=', 'i.product_id')
+            ->whereNull('q.deleted_at')->whereNull('p.deleted_at')->where('q.created_at', '>=', Carbon::parse($today, $this->context->timezone())->subDays(self::DEMAND_WINDOW_DAYS - 1)->startOfDay()->utc())
+            ->groupBy('p.id', 'p.code', 'p.name')->havingRaw('count(distinct q.id) >= ?', [self::DEMAND_QUOTES])
+            ->selectRaw('p.id, p.code, p.name, count(distinct q.id) as quotes')->orderByDesc('quotes')->limit(20)->get();
+
+        foreach ($quoted as $row) {
+            $created += $this->store('demanda_alta', 'media', 'Demanda alta: '.$row->name,
+                'Se cotizó en '.$row->quotes.' propuestas en los últimos '.self::DEMAND_WINDOW_DAYS.' días. Acción sugerida: revisar cupos y salidas antes de que se agoten, o ajustar el precio.',
+                'catalog_product', (string) $row->id, ['code' => $row->code, 'quotes' => (int) $row->quotes, 'window_days' => self::DEMAND_WINDOW_DAYS, 'threshold' => self::DEMAND_QUOTES, 'action' => 'revisar_producto']);
         }
 
         return $created;

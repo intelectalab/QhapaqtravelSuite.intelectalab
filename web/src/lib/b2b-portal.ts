@@ -1,3 +1,4 @@
+import type { PricingApplied } from "@/lib/pricing-applied";
 import type { Money } from "@/lib/channels";
 import { portalStatus, type PortalStatusScope } from "@/lib/portal";
 import type { Tone } from "@/lib/tone";
@@ -61,6 +62,8 @@ export interface CatalogCard {
   reason: string | null;
   currency: string | null;
   net: string | null;
+  net_list?: string | null;
+  pricing?: PricingApplied | null;
   pvp: string | null;
   commission_pct: number | null;
   commission: string | null;
@@ -142,6 +145,8 @@ export interface PriceQuote {
   seats: number;
   currency: string;
   net_unit: string;
+  net_list?: string | null;
+  pricing?: PricingApplied | null;
   net_total: string;
   commission_pct: number;
   commission: string;

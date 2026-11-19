@@ -134,6 +134,11 @@ it('invita a un usuario del proveedor a la extranet', function () {
         ->and(collect($data['users'])->pluck('email'))->toContain($email)
         ->and(extranetAudit(['entity_id' => 'PRV-001', 'action' => 'invitar_usuario']))->toBeTrue();
 
+    $detail = $this->getJson('/api/v1/catalog/providers/PRV-001')->assertOk()->json('data');
+    expect($detail['can']['invite'])->toBeTrue()
+        ->and(collect($detail['extranet_users'])->firstWhere('email', $email))->toMatchArray(['name' => 'Recepción Hotel', 'status' => 'pendiente', 'last_login_at' => null])
+        ->and(collect($detail['extranet_users'])->firstWhere('email', $email)['invited_at'])->not->toBeNull();
+
     expect($this->postJson('/api/v1/catalog/providers/PRV-001/users', ['name' => 'Recepción Hotel', 'email' => $email]))->toBeApiError(422, 'USR-BR-01');
 });
 
@@ -143,4 +148,7 @@ it('invitar usuarios de proveedor exige también administrar usuarios', function
     $response = $this->postJson('/api/v1/catalog/providers/PRV-001/users', ['name' => 'Recepción Hotel', 'email' => 'otro.extranet@example.com']);
     expect($response)->toBeApiError(403);
     expect($response->json('required_permissions'))->toContain('admin.users.manage');
+
+    $detail = $this->getJson('/api/v1/catalog/providers/PRV-001')->assertOk()->json('data');
+    expect($detail['can']['invite'])->toBeFalse()->and($detail['extranet_users'])->toBeNull();
 });

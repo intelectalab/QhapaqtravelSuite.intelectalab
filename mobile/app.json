@@ -11,7 +11,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.kipucontrol.operador",
       "infoPlist": {
-        "NSCameraUsageDescription": "La cámara se usa para tomar fotos de evidencia del servicio.",
+        "NSCameraUsageDescription": "La cámara se usa para leer el QR del pase de los pasajeros y tomar fotos de evidencia del servicio.",
         "NSPhotoLibraryUsageDescription": "Se usan fotos para adjuntarlas como evidencia del servicio."
       }
     },
@@ -31,6 +31,14 @@
       "expo-sqlite",
       "expo-secure-store",
       "expo-image-picker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "La cámara se usa para leer el QR del pase de los pasajeros y tomar fotos de evidencia del servicio.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-font",
       [
         "expo-notifications",

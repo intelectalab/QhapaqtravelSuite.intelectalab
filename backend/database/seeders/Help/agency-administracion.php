@@ -271,6 +271,7 @@ return [
             ['title' => 'Revocar una clave', 'text' => 'Usa «Revocar clave» en su fila y escribe el motivo. Deja de funcionar al instante y los sistemas que la usan recibirán un error 401.'],
             ['title' => 'Crear un webhook', 'text' => 'Pulsa «Nuevo webhook», escribe la URL de destino con https, una descripción y los eventos que quieres recibir. El secreto para validar la firma también se muestra una sola vez.'],
             ['title' => 'Mantener los webhooks', 'text' => 'En la tarjeta de cada webhook ves los fallos seguidos frente al tope de 10, la última rotación del secreto y «Ver entregas», que abre el log filtrado. Puedes «Editar webhook», «Pausar» o «Reanudar», «Reactivar» uno deshabilitado y «Eliminar webhook». Al eliminarlo deja de recibir eventos, pero el historial de entregas se conserva.'],
+            ['title' => 'Conectar una aplicación por OAuth', 'text' => 'En «Aplicaciones OAuth» pulsa «Nueva aplicación», elige sus permisos y sus URL de retorno. Entrega al proveedor el Client ID (lo copias desde su tarjeta), el secreto que se muestra una sola vez y las direcciones de autorización y de tokens que aparecen debajo de la lista. Cuando el proveedor te envíe a autorizar, revisa los permisos y pulsa «Autorizar» o «Rechazar». Cada tarjeta muestra las llamadas del mes, los accesos vigentes y el último uso; «Revocar» anula todos sus tokens al instante.'],
             ['title' => 'Integrar con la documentación', 'text' => 'En Documentación tienes el enlace a la especificación OpenAPI, el código para verificar la firma de los webhooks en Node.js, PHP y Python, y las convenciones de la API.'],
             ['title' => 'Revisar las entregas', 'text' => 'Historial de entregas muestra la respuesta, el intento y el estado de cada envío. Las tarjetas Entregadas, Reintentando y Fallidas filtran la tabla.'],
         ],
@@ -280,8 +281,9 @@ return [
             ['question' => '¿Por qué no acepta mi URL?', 'answer' => 'Debe empezar con https:// y no puede apuntar a una red interna ni a localhost.'],
             ['question' => '¿Qué pasa si llamo muy seguido?', 'answer' => 'Cada clave tiene un límite por minuto según tu plan. Al pasarlo responde 429 con Retry-After; las cabeceras X-RateLimit-Limit, X-RateLimit-Remaining y X-RateLimit-Reset te dicen cuánto te queda.'],
             ['question' => '¿Por qué no puedo crear más claves o webhooks?', 'answer' => 'Llegaste al máximo de tu plan. Revoca las claves que ya no uses o elimina webhooks que sobren.'],
+            ['question' => '¿Qué pasa al llegar a la cuota mensual de la API?', 'answer' => 'Las llamadas de todas tus claves y aplicaciones OAuth suman en la misma cuota del plan. Al 80 % y al 100 % te avisamos por correo; al llegar al 100 % la API responde 429 QUOTA_EXCEEDED hasta el día 1 del mes siguiente o hasta que mejores el plan. Las cabeceras X-Quota-Limit y X-Quota-Remaining te dicen cuánto te queda.'],
         ],
-        'keywords' => ['api', 'webhook', 'clave', 'token', 'integracion', 'erp'],
+        'keywords' => ['api', 'webhook', 'clave', 'token', 'integracion', 'erp', 'oauth', 'cuota'],
         'roles' => [],
     ],
     [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Growth\Marketplace;
 
+use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Growth\Shared\GrowthRules;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -35,9 +36,10 @@ final class Marketplace
         private readonly GrowthRules $rules,
         private readonly AuditLogger $audit,
         private readonly TenantContext $context,
+        private readonly MarketplaceBooking $bookings,
     ) {}
 
-    public function listings(array $filters): array
+    public function listings(array $filters, User $viewer): array
     {
         $me = $this->me();
         $mine = ($filters['scope'] ?? 'network') === 'mine';
@@ -60,6 +62,8 @@ final class Marketplace
             'listings' => $rows->all(),
             'products' => $mine ? DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->whereNotIn('id', $listed)->orderBy('name')->limit(500)->get(['code', 'name'])
                 ->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name])->all() : [],
+            'clients' => $mine ? [] : Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $viewer)->orderBy('name')->limit(500)->get(['code', 'name'])
+                ->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name, 'hint' => $row->code])->all(),
             'catalogs' => ['listing_statuses' => self::LISTING_STATUSES, 'partnership_statuses' => self::PARTNERSHIP_STATUSES, 'order_statuses' => self::ORDER_STATUSES],
         ];
     }
@@ -221,9 +225,9 @@ final class Marketplace
             ->when(($filters['role'] ?? null) === 'venta', fn ($query) => $query->where('o.seller_tenant_id', $me))
             ->when(($filters['role'] ?? null) === 'compra', fn ($query) => $query->where('o.reseller_tenant_id', $me))
             ->orderByDesc('o.created_at')->limit(300)
-            ->get(['o.*', 'l.title', 'l.destination', 's.commercial_name as seller_name', 'r.commercial_name as reseller_name'])
-            ->map(fn (object $row): array => $this->order($row))
-            ->values();
+            ->get(['o.*', 'l.title', 'l.destination', 's.commercial_name as seller_name', 'r.commercial_name as reseller_name']);
+        $codes = $this->reservationCodes($rows->all());
+        $rows = $rows->map(fn (object $row): array => $this->order($row, $codes))->values();
 
         return [
             'enabled' => $this->rules->enabled('R-MARKETPLACE'),
@@ -262,32 +266,56 @@ final class Marketplace
             }
         }
 
-        $id = $this->db()->transaction(function () use ($listing, $partnership, $gross, $commission, $fee, $idempotencyKey, $me): string {
+        $client = $this->bookings->client((string) $data['client_id'], $actor);
+        $parties = $this->db()->table('tenants')->whereIn('id', [$listing->seller_tenant_id, $me])->get(['id', 'commercial_name', 'legal_name', 'ruc', 'admin_email', 'country'])->keyBy('id');
+        $travelDate = Carbon::parse((string) $data['travel_date'])->toDateString();
+
+        [$id, $outcome] = $this->db()->transaction(function () use ($listing, $partnership, $gross, $commission, $fee, $idempotencyKey, $me, $client, $parties, $travelDate, $data, $actor): array {
             $this->db()->select('select pg_advisory_xact_lock(hashtext(?))', ['platform:platform_marketplace_orders:code']);
             $last = (int) $this->db()->table('platform_marketplace_orders')->selectRaw("max(cast(substring(code from '([0-9]+)$') as bigint)) as n")->value('n');
             $id = (string) Str::uuid7();
+            $code = 'MKP-'.str_pad((string) ($last + 1), 5, '0', STR_PAD_LEFT);
+            $outcome = $this->bookings->book([
+                'code' => $code,
+                'listing' => $listing,
+                'partnership' => $partnership,
+                'client' => $client,
+                'seller' => $parties[$listing->seller_tenant_id],
+                'reseller' => $parties[$me],
+                'pax' => (int) $data['pax'],
+                'travel_date' => $travelDate,
+                'gross' => $gross,
+                'commission' => $commission,
+            ], $actor);
             $this->db()->table('platform_marketplace_orders')->insert([
                 'id' => $id,
-                'code' => 'MKP-'.str_pad((string) ($last + 1), 5, '0', STR_PAD_LEFT),
+                'code' => $code,
                 'partnership_id' => $partnership->id,
                 'listing_id' => $listing->id,
                 'seller_tenant_id' => $listing->seller_tenant_id,
                 'reseller_tenant_id' => $me,
+                'seller_reservation_ref' => isset($outcome['seller']) ? $outcome['seller']->getKey() : null,
+                'reseller_reservation_ref' => isset($outcome['reseller']) ? $outcome['reseller']->getKey() : null,
                 'gross_amount' => (string) $gross,
                 'commission_amount' => (string) $commission,
                 'platform_fee_amount' => (string) $fee,
                 'currency' => $listing->currency,
-                'status' => 'solicitada',
+                'status' => $outcome['status'],
                 'idempotency_key' => $idempotencyKey,
             ]);
 
-            return $id;
+            return [$id, $outcome];
         });
 
         $order = $this->findOrder($id);
-        $this->audit->log('Venta marketplace', $order['code'], 'vender', null, $listing->title.' · '.$data['pax'].' pax · '.$listing->currency.' '.$gross);
 
-        return [...$order, 'travel_date' => $data['travel_date'] ?? null, 'pax' => (int) $data['pax']];
+        if ($outcome['status'] === 'rechazada') {
+            throw ApiException::conflict('MKT-NO-CUPO', $outcome['reason'].' La venta '.$order['code'].' quedó rechazada y no se creó ninguna reserva.');
+        }
+
+        $this->audit->log('Venta marketplace', $order['code'], 'vender', null, $listing->title.' · '.$data['pax'].' pax · '.$listing->currency.' '.$gross.' · reserva '.$outcome['reseller']->code);
+
+        return [...$order, 'travel_date' => $travelDate, 'pax' => (int) $data['pax']];
     }
 
     private function kpis(): array
@@ -394,11 +422,22 @@ final class Marketplace
         ];
     }
 
-    private function order(object $row): array
+    private function reservationCodes(array $rows): array
+    {
+        $me = $this->me();
+        $refs = array_values(array_filter(array_map(fn (object $row): ?string => (string) $row->seller_tenant_id === $me ? $row->seller_reservation_ref : $row->reseller_reservation_ref, $rows)));
+
+        return $refs === [] ? [] : DB::table('booking_reservations')->whereIn('id', $refs)->pluck('code', 'id')->all();
+    }
+
+    private function order(object $row, ?array $codes = null): array
     {
         $seller = (string) $row->seller_tenant_id === $this->me();
+        $ref = $seller ? $row->seller_reservation_ref : $row->reseller_reservation_ref;
+        $codes ??= $this->reservationCodes([$row]);
 
         return [
+            'reservation' => $ref !== null && isset($codes[$ref]) ? $codes[$ref] : null,
             'id' => (string) $row->id,
             'code' => $row->code,
             'role' => $seller ? 'venta' : 'compra',

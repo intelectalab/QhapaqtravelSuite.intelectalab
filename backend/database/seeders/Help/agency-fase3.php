@@ -39,6 +39,7 @@ return [
         ['Simular', 'Antes de activarla, usa el simulador para ver el precio resultante en una fecha y con una ocupación dadas.'],
     ], [
         ['¿Pueden dejar un precio por debajo del costo?', 'No. Cada regla respeta el piso y el techo que defines.'],
+        ['¿Dónde se aplican?', 'Las reglas del canal «Venta interna» ajustan el precio de la tarifa en el cotizador y en la reserva directa de los canales Directo y Corporativo; las de «Agencias B2B», el neto que ve cada agencia en su portal y la reserva directa del canal B2B; las de «Sitio web», la reserva directa del canal E-commerce. Cotizaciones y reservas guardan el ajuste usado, así que cambiar o apagar una regla no altera lo ya vendido.'],
     ], ['precio', 'dinamico', 'ocupacion', 'simulador']),
     $article('asistente-ia', 'General', '/asistente', 'Asistente con IA', 'Pide al asistente borradores de cotizaciones, respuestas o resúmenes. Nada se aplica sin que lo revises.', [
         ['Hacer un pedido', 'Escribe qué necesitas y elige sobre qué registro trabajar.'],
@@ -65,9 +66,12 @@ return [
     $article('canales-marketplace', 'Canales', '/canales/marketplace', 'Marketplace B2B', 'Publica tus tours para que otros operadores los revendan y vende los de tus aliados, con comisión acordada.', [
         ['Publicar', 'En «Mis publicaciones» elige qué productos ofreces y con qué comisión.'],
         ['Alianzas', 'Acepta o rechaza las solicitudes de otros operadores.'],
-        ['Ventas', 'En «Ventas» ves los pedidos hechos entre aliados.'],
+        ['Vender', 'En «Red de operadores», con la alianza activa, pulsa «Vender», elige a tu cliente, la fecha y los pasajeros.'],
+        ['Ventas', 'En «Ventas y compras» ves cada venta entre aliados con su estado y el código de tu reserva.'],
     ], [
-        ['¿Cuándo queda confirmada una venta del marketplace?', 'Por ahora queda como solicitada y se coordina con el aliado.'],
+        ['¿Cuándo queda confirmada una venta del marketplace?', 'Al momento, si el operador tiene cupo para esa fecha. Se crea su reserva con tu agencia como cliente y, en tu agencia, la reserva de tu cliente al precio que le vendiste.'],
+        ['¿Qué pasa si no hay cupo?', 'La venta queda rechazada y no se crea ninguna reserva. Prueba con otra fecha o menos pasajeros.'],
+        ['¿Cuánto cobra el operador?', 'El monto de la venta menos tu comisión. Ese neto queda como costo en tu reserva y como cobro en la del operador.'],
     ], ['marketplace', 'b2b', 'aliados', 'comision']),
     $article('admin-whatsapp', 'Administración', '/admin/whatsapp', 'WhatsApp de la agencia', 'Configura el número de WhatsApp y las plantillas de mensaje que se usan para escribir a los clientes.', [
         ['Número', 'Registra el número de la agencia. Mientras no se conecte el proveedor, funciona en modo de prueba.'],
@@ -78,9 +82,11 @@ return [
     $article('operaciones-checkin', 'Operaciones', '/operaciones/checkin', 'Check-in con QR', 'Registra la llegada de cada pasajero leyendo el código QR de su pase, y gestiona los deslindes que deben firmar.', [
         ['Servicios del día', 'Elige el servicio y abre su manifiesto.'],
         ['Escanear', 'Lee el QR del pase. Cada pase sirve una sola vez y solo el día del servicio.'],
+        ['Desde la app del operador', 'Con el servicio en curso, toca «Escanear pase QR» y apunta la cámara al pase del pasajero. Su ingreso queda marcado en la lista de pasajeros. Necesitas conexión para validar el pase.'],
         ['Deslindes', 'En «Deslindes» mantén las plantillas que el pasajero firma desde su portal.'],
     ], [
         ['¿Quién puede escanear?', 'El guía o el conductor asignado al servicio.'],
+        ['¿Qué pasa si el pase es de otro servicio?', 'La app avisa que no pertenece al servicio que estás registrando y el pase sigue sin usar.'],
         ['¿Y si falta la firma del deslinde?', 'Si el servicio exige deslinde, el pasajero no puede ingresar sin firmarlo.'],
     ], ['check-in', 'qr', 'manifiesto', 'deslinde']),
     $article('finanzas-estados-cuenta-corporativos', 'Finanzas', '/finanzas/estados-cuenta-corporativos', 'Estados de cuenta corporativos', 'Genera, envía y anula los estados de cuenta mensuales de las empresas con crédito.', [
@@ -110,11 +116,13 @@ return [
     ], ['contabilidad', 'exportar', 'plan de cuentas']),
     $article('canales-vitrina', 'Canales', '/canales/vitrina', 'Vitrina Rutas Libres', 'Publica tus free tours en la vitrina de la plataforma y recibe reservas con nombre y correo.', [
         ['Publicar', 'En «Publicaciones» crea la publicación con horarios y punto de encuentro.'],
-        ['Reservas y asistencia', 'En «Reservas» marca quién asistió.'],
-        ['Cargos', 'En «Cargos» ves lo que se cobra por las reservas que superan las gratuitas del mes.'],
+        ['Reservas y asistencia', 'En «Reservas» marca quién asistió. El día anterior a cada salida, a las 18:00, el viajero recibe un correo con la hora, el punto de encuentro y el enlace para cancelar.'],
+        ['Cargos', 'En «Cargos y comisiones» ves por mes los cargos por asistente que superan las reservas gratuitas y las comisiones de tus tours de pago.'],
+        ['Factura del mes', 'El día 1 KipuControl factura los cargos del mes anterior a tu suscripción. La columna «Factura» muestra el número y si está por pagar o pagada; el mes en curso aún no se factura.'],
     ], [
         ['¿Tiene costo?', 'Hay un número de reservas gratuitas al mes; las siguientes se cobran según tu plan.'],
-    ], ['vitrina', 'free tour', 'rutas libres']),
+        ['¿Qué pasa si marco no-show después de la factura?', 'El cargo ya facturado se mantiene. Marca la asistencia antes de fin de mes para que un no-show no se cobre.'],
+    ], ['vitrina', 'free tour', 'rutas libres', 'factura', 'comisión']),
     $article('canales-seo', 'Canales', '/canales/seo', 'Dominio y SEO', 'Conecta tu propio dominio con SSL y mejora cómo aparece tu sitio en Google.', [
         ['Dominio propio', 'Agrega el dominio y copia en tu proveedor los registros TXT y CNAME que se indican. Luego pulsa «Verificar».'],
         ['Auditoría y redirecciones', 'Revisa la auditoría de cada página y crea redirecciones cuando cambies una dirección.'],
@@ -142,12 +150,15 @@ return [
     ], [
         ['¿Puedo comparar pasarelas?', 'Sí, el simulador muestra cuánto recibirías con cada una.'],
     ], ['pasarela', 'comision', 'paypal', 'yape', 'liquidacion']),
-    $article('reportes-alertas', 'Inteligencia', '/reportes/alertas', 'Alertas de rentabilidad', 'Avisos diarios sobre cuotas vencidas y cotizaciones con margen bajo, para actuar a tiempo.', [
-        ['Revisar', 'Cada alerta indica el registro y por qué apareció.'],
-        ['Resolver', 'Cuando la atiendas, márcala como resuelta.'],
+    $article('reportes-alertas', 'Inteligencia', '/reportes/alertas', 'Alertas de rentabilidad', 'Avisos diarios sobre cobranza, márgenes, proveedores, metas y demanda, para actuar a tiempo.', [
+        ['Revisar', 'Cada alerta indica el registro, por qué apareció y una acción sugerida. El título lleva a la cotización, el servicio, la meta o el producto.'],
+        ['Filtrar', 'Elige un tipo: cobranza atrasada, margen bajo, proveedor caro, meta en riesgo o demanda alta.'],
+        ['Resolver', 'Cuando la atiendas, márcala como resuelta, o descártala si no aplica. No vuelve a aparecer en 30 días.'],
     ], [
-        ['¿Todos ven las alertas de margen?', 'No. Solo quien puede ver la rentabilidad.'],
-    ], ['alertas', 'rentabilidad', 'margen', 'cobranza']),
+        ['¿Cuándo sale cada alerta?', 'Cobranza atrasada: cuotas vencidas con saldo. Margen bajo: cotizaciones abiertas bajo el margen mínimo de Configuración › Políticas. Proveedor caro: un servicio que cuesta más de 15 % sobre el de otro proveedor del mismo tipo, unidad, moneda y ciudad (en hoteles, también con las mismas estrellas). Meta en riesgo: una meta vigente que, sumando las oportunidades que cierran en el periodo, no proyecta llegar al 100 %. Demanda alta: salidas de los próximos 60 días con 85 % de cupos vendidos o más, y productos cotizados 5 veces o más en 7 días.'],
+        ['¿Qué la hace de severidad alta?', 'Cobranza con más de 15 días o un saldo de más de 3 000 en su moneda, márgenes bajo el 5 %, servicios 40 % más caros que la alternativa, metas que proyectan menos del 80 % y salidas agotadas.'],
+        ['¿Todos ven las alertas de margen y de proveedores?', 'No. Solo quien puede ver la rentabilidad.'],
+    ], ['alertas', 'rentabilidad', 'margen', 'cobranza', 'proveedor', 'meta', 'demanda']),
     $article('reportes-visitas', 'Inteligencia', '/reportes/visitas', 'Visitas del sitio', 'Cuántas personas visitan tu sitio, qué páginas ven, de dónde llegan y desde qué dispositivo. Se mide sin cookies.', [
         ['Elegir el periodo', 'Cambia entre 7, 30 y 90 días.'],
         ['Explorar', 'Revisa la tendencia, las visitas en vivo, las páginas, las fuentes, los dispositivos y los países.'],

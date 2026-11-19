@@ -98,7 +98,7 @@ final class DirectBookingPlan
         $client = isset($data['client_id']) ? DB::table('crm_clients')->whereNull('deleted_at')->where(self::isUuid((string) $data['client_id']) ? 'id' : 'code', $data['client_id'])->value('id') : null;
         $channel = (string) ($data['channel'] ?? ($client ? $this->assembler->channelFor((string) $client) : 'Directo'));
         $rate = $this->rate($rates, $data, $date->toDateString(), $channel);
-        $price = $this->price((string) $product->id, $rates, $rate, $date->toDateString(), $adults, $children);
+        $price = $this->price((string) $product->id, $rates, $rate, $date->toDateString(), $adults, $children, DynamicPricing::channelFor($channel));
         $tax = $this->tax->apply($price['total']);
         $free = $departure ? (int) $departure->capacity - (int) $departure->sold : null;
         $available = $departure === null || $free >= $seats;
@@ -112,7 +112,8 @@ final class DirectBookingPlan
             'channel' => $channel,
             'rate_id' => $rate->id,
             'rate_ref' => $rate->ref,
-            'rate_snapshot' => LineRates::snapshot($rate, ['price' => (string) $price['adult'], 'cost' => (string) $price['unit_cost']]),
+            'rate_snapshot' => LineRates::snapshot($rate, ['price' => (string) $price['adult'], 'cost' => (string) $price['unit_cost'], 'season' => $price['season'], 'dynamic' => $price['dynamic']]),
+            'pricing' => LineRates::applied($price['season'], $price['dynamic']),
             'rates' => collect($base['rates'])->map(fn (array $option): array => [...$option, 'valid' => LineRates::valid($rates->firstWhere('id', $option['id']), $date->toDateString())])->all(),
             'season_factor' => $this->lineRates->seasonFactor($date->toDateString()),
             'date' => $date->toDateString(),
@@ -191,13 +192,13 @@ final class DirectBookingPlan
         return $rate ?? throw ApiException::unprocessable('PRD-BR-005', 'El producto no tiene una tarifa vigente para esa fecha y canal.', ['date' => ['Sin tarifa vigente para esa fecha.']]);
     }
 
-    private function price(string $productId, Collection $rates, object $rate, string $date, int $adults, int $children): array
+    private function price(string $productId, Collection $rates, object $rate, string $date, int $adults, int $children, string $channel): array
     {
         $currency = trim((string) $rate->currency);
         $companions = $rates->filter(fn (object $other): bool => $other->segment === 'Niño' && LineRates::valid($other, $date) && in_array($other->channel, [$rate->channel, 'Directo'], true));
-        $adult = $this->lineRates->price($productId, $rate, 'Adulto', $date, $currency, $companions)
+        $adult = $this->lineRates->salePrice($productId, $rate, 'Adulto', $date, $currency, $companions, $channel)
             ?? throw ApiException::unprocessable('PRD-BR-005', 'El producto no tiene una tarifa vigente para esa fecha y canal.', ['date' => ['Sin tarifa vigente para esa fecha.']]);
-        $child = $children > 0 ? ($this->lineRates->price($productId, $rate, 'Niño', $date, $currency, $companions) ?? $adult) : $adult;
+        $child = $children > 0 ? ($this->lineRates->salePrice($productId, $rate, 'Niño', $date, $currency, $companions, $channel) ?? $adult) : $adult;
         $adultPrice = BigDecimal::of($adult['price']);
         $childPrice = BigDecimal::of($child['price']);
 
@@ -206,6 +207,8 @@ final class DirectBookingPlan
             'adult' => $adultPrice,
             'child' => $childPrice,
             'unit_cost' => $adult['cost'],
+            'season' => $adult['season'],
+            'dynamic' => $adult['dynamic'],
             'total' => Decimal::round2($adultPrice->multipliedBy($adults)->plus($childPrice->multipliedBy($children))),
             'cost' => Decimal::round2(BigDecimal::of($adult['cost'])->multipliedBy($adults)->plus(BigDecimal::of($child['cost'])->multipliedBy($children))),
         ];

@@ -139,6 +139,10 @@ export interface ShowcaseFeeMonth {
   commissions: string;
   paid_sales: string;
   total: string;
+  billed: string;
+  pending: string;
+  open_month: boolean;
+  invoices: { number: string; status: string }[];
   currency: string;
 }
 

@@ -542,6 +542,7 @@ export interface TravelDocument {
   expires_before_return: boolean;
   file: string | null;
   has_file: boolean;
+  from_client: boolean;
   observation: string | null;
   note: string | null;
   validated_by: string | null;

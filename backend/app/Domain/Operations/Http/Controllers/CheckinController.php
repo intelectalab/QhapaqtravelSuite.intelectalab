@@ -17,9 +17,10 @@ final class CheckinController
         $data = $request->validate([
             'token' => ['required', 'string', 'min:20', 'max:120'],
             'device_id' => ['nullable', 'string', 'max:80'],
-        ], ['token.*' => 'Escanea el código QR del pase.', 'device_id.*' => 'El identificador del equipo admite hasta 80 caracteres.']);
+            'service_id' => ['nullable', 'string', 'max:60'],
+        ], ['token.*' => 'Escanea el código QR del pase.', 'device_id.*' => 'El identificador del equipo admite hasta 80 caracteres.', 'service_id.*' => 'Indica el servicio que estás registrando.']);
 
-        return response()->json(['data' => $checkin->scan($data['token'], $data['device_id'] ?? null, $this->user($request))]);
+        return response()->json(['data' => $checkin->scan($data['token'], $data['device_id'] ?? null, $this->user($request), $data['service_id'] ?? null)]);
     }
 
     public function manifest(Request $request, string $serviceId, Checkin $checkin): JsonResponse

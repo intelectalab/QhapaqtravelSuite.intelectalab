@@ -40,6 +40,8 @@ final class TravelDocDirectory
 
     public const NOMINATIVE = '(machu|huayna)\s*picchu';
 
+    public const PORTAL_CLOSED = ['cancelada', 'completada'];
+
     public function __construct(private readonly OpsCommon $common, private readonly TravelDocRules $rules) {}
 
     public function list(User $viewer): array
@@ -126,6 +128,48 @@ final class TravelDocDirectory
         return $this->passengers($reservations, $this->effective($reservations))
             ->map(fn (array $person): array => ['name' => $person['name'], 'documents' => $person['blocking'] !== [] ? $person['blocking'] : ($person['identity'] === null ? [self::LABELS['id_doc']] : [])])
             ->filter(fn (array $person): bool => $person['documents'] !== [])->values()->all();
+    }
+
+    public function portal(object $reservation): array
+    {
+        if (in_array($reservation->status, self::PORTAL_CLOSED, true)) {
+            return [];
+        }
+
+        $items = $this->effective(collect([$reservation]))->where('state', '<>', 'no_aplica')->whereIn('doc_type', self::FILE_TYPES)->groupBy('passenger_id');
+        $order = array_flip(self::FILE_TYPES);
+        $rows = [];
+
+        foreach (DB::table('booking_passengers')->where('reservation_id', $reservation->id)->orderBy('seq')->get(['id', 'full_name', 'pax_type', 'is_lead']) as $passenger) {
+            $documents = [];
+
+            foreach ($items->get($passenger->id, collect()) as $item) {
+                $documents[] = $this->portalDocument($item);
+            }
+
+            if ($documents === []) {
+                continue;
+            }
+
+            usort($documents, fn (array $a, array $b): int => $order[$a['type']] <=> $order[$b['type']]);
+            $rows[] = ['id' => $passenger->id, 'name' => $passenger->full_name, 'type' => $passenger->pax_type, 'lead' => (bool) $passenger->is_lead, 'documents' => $documents];
+        }
+
+        return $rows;
+    }
+
+    private function portalDocument(object $item): array
+    {
+        return [
+            'type' => (string) $item->doc_type,
+            'label' => self::LABELS[$item->doc_type] ?? $item->doc_type,
+            'status' => $item->state,
+            'file' => $item->file_name,
+            'sent_by_you' => $item->uploaded_by_type === 'client',
+            'observation' => $item->state === 'observado' ? $item->observation : null,
+            'min_expiry' => $item->min_expiry,
+            'can_upload' => $item->state !== 'completo',
+        ];
     }
 
     public function rules(): array
@@ -326,6 +370,7 @@ final class TravelDocDirectory
                     'expires_before_return' => $item->state === 'vencido',
                     'file' => $item->file_name,
                     'has_file' => $item->file_id !== null,
+                    'from_client' => $item->file_id !== null && $item->uploaded_by_type === 'client',
                     'observation' => $item->observation,
                     'note' => $item->note,
                     'validated_by' => $item->validated_by ? ($names[$item->validated_by] ?? null) : null,

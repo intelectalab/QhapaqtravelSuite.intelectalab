@@ -66,9 +66,7 @@ final class WebIntegrationController
 
     public function verifyDomain(Request $request, string $id, ManageWebIntegration $manage): JsonResponse
     {
-        $manage->verifyDomain($id, $this->user($request));
-
-        return response()->json(['data' => ['id' => $id]]);
+        return response()->json(['data' => $manage->verifyDomain($id, $this->user($request))]);
     }
 
     public function destroyDomain(string $id, ManageWebIntegration $manage): JsonResponse

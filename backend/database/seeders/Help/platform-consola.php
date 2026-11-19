@@ -49,6 +49,26 @@ return [
         'roles' => [],
     ],
     [
+        'slug' => 'plataforma-solicitudes',
+        'audience' => 'platform',
+        'module' => 'Negocio',
+        'screen' => '/plataforma/solicitudes',
+        'title' => 'Solicitudes de demo',
+        'summary' => 'Las agencias que pidieron una demo guiada o una prueba gratis desde la página de KipuControl, y en qué quedó cada conversación.',
+        'steps' => [
+            ['title' => 'Ver qué falta atender', 'text' => 'La tarjeta «Por atender» filtra las solicitudes nuevas, que también salen en la campana; al pulsar el aviso llegas aquí con ese filtro. «En conversación», «Convertidas» y «Últimos 7 días» filtran del mismo modo. Puedes buscar por agencia, persona o correo y filtrar por estado o por lo que piden.'],
+            ['title' => 'Revisar la solicitud', 'text' => 'El ojo abre el detalle: datos de contacto (con enlaces para escribir, llamar o abrir WhatsApp), tipo de agencia, tamaño del equipo, plan de interés, el mensaje y quién la atendió por última vez.'],
+            ['title' => 'Atenderla', 'text' => '«Atender» cambia el estado y guarda una nota interna. Una nueva pasa a Contactada, Convertida o Descartada; una contactada, a Convertida o Descartada; una descartada puede volver a Contactada. Para descartar debes escribir el motivo. Cada cambio queda en la auditoría con tu nombre.'],
+        ],
+        'faqs' => [
+            ['question' => '¿Marcarla como convertida crea la agencia?', 'answer' => 'No. Da de alta la agencia en «Agencias» con el asistente de 11 pasos y luego marca la solicitud como convertida.'],
+            ['question' => '¿Por qué no puedo cambiar una solicitud convertida?', 'answer' => 'Es el estado final: la agencia ya existe. Si hubo un error, anótalo en la ficha de la agencia.'],
+            ['question' => '¿Qué pasa si la misma persona envía el formulario dos veces?', 'answer' => 'Si la primera sigue nueva y llegó hace menos de 24 horas, no se crea otra solicitud.'],
+        ],
+        'keywords' => ['demo', 'prueba gratis', 'solicitud', 'prospecto', 'lead'],
+        'roles' => [],
+    ],
+    [
         'slug' => 'plataforma-planes',
         'audience' => 'platform',
         'module' => 'Negocio',

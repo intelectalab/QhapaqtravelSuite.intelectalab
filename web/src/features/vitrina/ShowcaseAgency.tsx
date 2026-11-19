@@ -7,6 +7,7 @@ import { markAttendance, saveListing, toggleListing } from "@/app/(backoffice)/c
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
+import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
@@ -16,8 +17,9 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate, formatMoney } from "@/lib/format";
+import { INVOICE_STATUS, type InvoiceStatus } from "@/lib/platformBilling";
 import type { StepResult } from "@/lib/server/resource";
-import { cityLabel, FEE_BASIS, LANGUAGE_LABELS, monthLabel, type AgencyShowcase, type ShowcaseBooking, type ShowcaseFees, type ShowcaseListing } from "@/lib/vitrina";
+import { cityLabel, FEE_BASIS, LANGUAGE_LABELS, monthLabel, type AgencyShowcase, type ShowcaseBooking, type ShowcaseFeeMonth, type ShowcaseFees, type ShowcaseListing } from "@/lib/vitrina";
 import { initialStep, Meter, QuickAction, TabCard, VitrinaBadge } from "./VitrinaUi";
 
 const CITIES = ["lima", "cusco", "arequipa", "puno", "trujillo", "huaraz", "iquitos"];
@@ -169,10 +171,24 @@ export function BookingsTable({ rows, data }: { rows: ShowcaseBooking[]; data: A
   return <DataTable screen="canales-vitrina-reservas" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="reservas" searchText={(row) => `${row.code} ${row.traveler_name} ${row.traveler_email} ${row.listing.title}`} searchPlaceholder="Buscar reserva, viajero o tour" metrics={metrics} sorts={sorts} emptyTitle="Sin reservas de la vitrina" />;
 }
 
+function FeeInvoice({ month }: { month: ShowcaseFeeMonth }) {
+  if (month.open_month) return <Badge tone="mute">Mes en curso</Badge>;
+  if (month.invoices.length === 0 && Number(month.pending) <= 0) return <span className="text-[12.5px] text-fg-3">Sin cargo</span>;
+  return (
+    <span className="flex flex-col items-start gap-1">
+      {month.invoices.map((invoice) => {
+        const meta = INVOICE_STATUS[invoice.status as InvoiceStatus] ?? INVOICE_STATUS.open;
+        return <span key={invoice.number} className="flex items-center gap-2"><span className="font-mono text-[12px]">{invoice.number}</span><Badge tone={meta.tone}>{invoice.status === "open" ? "Por pagar" : meta.label}</Badge></span>;
+      })}
+      {Number(month.pending) > 0 ? <Badge tone="sun">{formatMoney(month.pending, month.currency)} por facturar</Badge> : null}
+    </span>
+  );
+}
+
 export function FeesPanel({ fees }: { fees: ShowcaseFees }) {
   return (
     <SimpleTable
-      columns={[{ header: "Mes" }, { header: "Reservas", align: "right" }, { header: "Cupo gratis" }, { header: "Por asistente", align: "right" }, { header: "Comisiones", align: "right" }, { header: "Total", align: "right" }]}
+      columns={[{ header: "Mes" }, { header: "Reservas", align: "right" }, { header: "Cupo gratis" }, { header: "Por asistente", align: "right" }, { header: "Comisiones", align: "right" }, { header: "Total", align: "right" }, { header: "Factura" }]}
       rows={fees.months.map((month) => ({
         key: month.month,
         cells: [
@@ -182,6 +198,7 @@ export function FeesPanel({ fees }: { fees: ShowcaseFees }) {
           formatMoney(month.attendee_fees, month.currency),
           formatMoney(month.commissions, month.currency),
           <b key="t">{formatMoney(month.total, month.currency)}</b>,
+          <FeeInvoice key="f" month={month} />,
         ],
       }))}
       empty="Aún no hay cargos: las reservas de la vitrina aparecerán aquí por mes."

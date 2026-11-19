@@ -13,6 +13,7 @@ use App\Domain\Booking\Support\ReservationNotices;
 use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Channels\Support\B2bCredit;
 use App\Domain\Crm\Support\Portfolio;
+use App\Domain\Finance\Actions\IssueAdjustmentNote;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\TravelDocChecklist;
@@ -170,9 +171,12 @@ final class ReservationWorkflow
             }
 
             $refundPayment = null;
+            $creditNote = null;
             if (BigDecimal::of($calc['refund'])->isPositive()) {
+                $notes = app(IssueAdjustmentNote::class)->forRefund($reservation, (string) $calc['refund'], (string) $calc['penalty'], $actor);
+                $creditNote = $notes === [] ? null : (string) DB::table('fin_invoices')->where('number', $notes[0])->value('id');
                 $paymentCode = $this->sequences->next('payment');
-                $refundPayment = (string) DB::table('fin_payments')->insertGetId(['code' => $paymentCode, 'reservation_id' => $reservation->id, 'kind' => 'reembolso', 'source' => 'reserva', 'method' => 'Reembolso (mismo medio de pago)', 'amount' => $calc['refund'], 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate, 'paid_on' => $this->today()->toDateString(), 'reference' => 'Reembolso por cancelación · 7 a 15 días hábiles', 'status' => 'pendiente', 'registered_by' => $actor->getKey(), 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+                $refundPayment = (string) DB::table('fin_payments')->insertGetId(['code' => $paymentCode, 'reservation_id' => $reservation->id, 'kind' => 'reembolso', 'source' => 'reserva', 'method' => 'Reembolso (mismo medio de pago)', 'amount' => $calc['refund'], 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate, 'paid_on' => $this->today()->toDateString(), 'reference' => mb_substr($notes === [] ? 'Reembolso por cancelación · 7 a 15 días hábiles' : 'Reembolso '.implode(', ', $notes).' · 7 a 15 días hábiles', 0, 80), 'status' => 'pendiente', 'registered_by' => $actor->getKey(), 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
                 $this->audit->log('Pago', $paymentCode, 'crear_reembolso', null, "{$reservation->currency} {$calc['refund']}");
             }
 
@@ -187,7 +191,7 @@ final class ReservationWorkflow
             $model = Reservation::query()->whereKey($reservation->id)->firstOrFail();
             $this->states->transition($model, ReservationStatus::Cancelada);
             $model->forceFill(['cancel_reason' => $full, 'cancelled_at' => $now, 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'updated_by' => $actor->getKey()])->save();
-            DB::table('booking_cancellations')->insert(['reservation_id' => $reservation->id, 'total_at_cancel' => $calc['total'], 'paid_at_cancel' => $calc['paid'], 'penalty_services' => $calc['penalty_services'], 'consumed_amount' => $calc['consumed'], 'factor_k' => $calc['factor_k'], 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'owed_amount' => $calc['owed'], 'currency' => $reservation->currency, 'lines' => json_encode($calc['lines'], JSON_UNESCAPED_UNICODE), 'refund_payment_id' => $refundPayment, 'penalty_receivable_id' => $penaltyReceivable, 'reason' => $full, 'cancelled_by' => $actor->getKey(), 'cancelled_at' => $now, 'created_by' => $actor->getKey()]);
+            DB::table('booking_cancellations')->insert(['reservation_id' => $reservation->id, 'total_at_cancel' => $calc['total'], 'paid_at_cancel' => $calc['paid'], 'penalty_services' => $calc['penalty_services'], 'consumed_amount' => $calc['consumed'], 'factor_k' => $calc['factor_k'], 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'owed_amount' => $calc['owed'], 'currency' => $reservation->currency, 'lines' => json_encode($calc['lines'], JSON_UNESCAPED_UNICODE), 'credit_note_id' => $creditNote, 'refund_payment_id' => $refundPayment, 'penalty_receivable_id' => $penaltyReceivable, 'reason' => $full, 'cancelled_by' => $actor->getKey(), 'cancelled_at' => $now, 'created_by' => $actor->getKey()]);
             $requesters = DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->pluck('requested_by');
             DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->update(['status' => 'aprobada', 'decided_by' => $actor->getKey(), 'decided_at' => $now, 'decision_note' => 'Cancelación procesada']);
             foreach ($requesters as $requester) {

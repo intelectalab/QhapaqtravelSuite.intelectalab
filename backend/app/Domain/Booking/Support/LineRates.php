@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Support;
 
+use App\Domain\Admin\Support\PriceRounding;
 use App\Domain\Booking\Data\ProductData;
 use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Catalog\Support\RateResolver;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
+use Brick\Math\BigDecimal;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +21,9 @@ final class LineRates
 
     private array $seasons = [];
 
-    public function __construct(private readonly TenantBookingEngine $engines, private readonly RuleResolver $rules) {}
+    private array $products = [];
+
+    public function __construct(private readonly TenantBookingEngine $engines, private readonly RuleResolver $rules, private readonly DynamicPricing $dynamic) {}
 
     public function catalog(iterable $productIds): Collection
     {
@@ -72,9 +76,9 @@ final class LineRates
         return is_object($rate) ? $rate : null;
     }
 
-    public function price(string $productId, object $rate, string $segment, string $date, string $currency, iterable $companions = []): ?array
+    public function price(string $productId, object $rate, string $segment, string $date, string $currency, iterable $companions = [], bool $round = true): ?array
     {
-        $base = $this->engines->product($productId, $date);
+        $base = $this->products[$productId] ??= $this->engines->product($productId, $date);
         $rows = [];
 
         foreach ([$rate, ...collect($companions)->all()] as $row) {
@@ -96,8 +100,8 @@ final class LineRates
             rates: $rows,
         );
         $engine = $this->engines->engine();
-        $result = $engine->segmentPrice($product, $segment, $date, $currency, (string) $rate->channel, true)
-            ?? ($segment === (string) $rate->segment ? null : $engine->segmentPrice($product, (string) $rate->segment, $date, $currency, (string) $rate->channel, true));
+        $result = $engine->segmentPrice($product, $segment, $date, $currency, (string) $rate->channel, $round)
+            ?? ($segment === (string) $rate->segment ? null : $engine->segmentPrice($product, (string) $rate->segment, $date, $currency, (string) $rate->channel, $round));
 
         return $result === null ? null : [
             'price' => (string) Decimal::round2($result['price']->getAmount()),
@@ -105,12 +109,50 @@ final class LineRates
         ];
     }
 
+    public function salePrice(string $productId, object $rate, string $segment, string $date, string $currency, iterable $companions = [], ?string $channel = null, bool $round = true): ?array
+    {
+        $priced = $this->price($productId, $rate, $segment, $date, $currency, $companions, $round);
+
+        if ($priced === null) {
+            return null;
+        }
+
+        $dynamic = $this->dynamic->adjust($productId, $date, $channel ?? DynamicPricing::channelFor((string) $rate->channel), $priced['price']);
+
+        if ($dynamic !== null && $round) {
+            $dynamic['price'] = (string) app(PriceRounding::class)->apply(BigDecimal::of($dynamic['price']));
+        }
+
+        return [...$priced, 'price' => $dynamic['price'] ?? $priced['price'], 'season' => $this->season($date), 'dynamic' => $dynamic];
+    }
+
+    public static function applied(?array $season, ?array $dynamic): ?array
+    {
+        $season = $season !== null && BigDecimal::of($season['factor'])->compareTo(1) !== 0 ? $season : null;
+
+        if ($season === null && $dynamic === null) {
+            return null;
+        }
+
+        return [
+            'season' => $season === null ? null : [...$season, 'label' => $season['name'].' ×'.rtrim(rtrim($season['factor'], '0'), '.')],
+            'dynamic' => $dynamic === null ? null : ['pct' => $dynamic['pct'], 'clamped' => $dynamic['clamped'], 'rules' => $dynamic['rules'], 'label' => DynamicPricing::label($dynamic)],
+        ];
+    }
+
+    public function season(string $date): ?array
+    {
+        $season = $this->activeSeason($date);
+
+        return $season === null ? null : ['ref' => $season->ref, 'name' => $season->name, 'factor' => (string) $season->factor];
+    }
+
     public function activeSeason(string $date): ?object
     {
         if (! array_key_exists($date, $this->seasons)) {
             $this->seasons[$date] = $this->rules->on('R-SEASON')
                 ? DB::table('catalog_seasons')->whereNull('deleted_at')->where('status', 'activa')
-                    ->where('date_from', '<=', $date)->where('date_to', '>=', $date)->orderBy('priority')->first(['id', 'factor'])
+                    ->where('date_from', '<=', $date)->where('date_to', '>=', $date)->orderBy('priority')->first(['id', 'ref', 'name', 'factor'])
                 : null;
         }
 
@@ -151,6 +193,8 @@ final class LineRates
             'valid_to' => (string) $rate->valid_to,
             'suggested_price' => $priced['price'],
             'suggested_cost' => $priced['cost'],
+            'season' => $priced['season'] ?? null,
+            'dynamic' => $priced['dynamic'] ?? null,
         ];
     }
 

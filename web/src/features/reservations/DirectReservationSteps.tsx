@@ -11,6 +11,7 @@ import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { amountAttr, formatDate, formatMoney } from "@/lib/format";
+import { pricingText } from "@/lib/pricing-applied";
 import type { DirectFormOptions, DirectPayload, DirectPlan } from "@/lib/reservations";
 
 const SAVE_MODES: { title: string; icon: LucideIcon; tone: string; facts: [string, string, boolean | null][] }[] = [
@@ -112,7 +113,13 @@ function PriceLines({ plan, form }: { plan: DirectPlan; form: DirectPayload }) {
       {plan.rate_ref && (
         <div className="flex justify-between text-[12.5px]">
           <dt className="text-fg-3">Tarifa</dt>
-          <dd>{`${plan.rate_ref}${plan.season_factor && Number(plan.season_factor) !== 1 ? ` · temporada ×${Number(plan.season_factor).toFixed(2)}` : ""}`}</dd>
+          <dd>{`${plan.rate_ref}${!plan.pricing?.season && plan.season_factor && Number(plan.season_factor) !== 1 ? ` · temporada ×${Number(plan.season_factor).toFixed(2)}` : ""}`}</dd>
+        </div>
+      )}
+      {plan.pricing && (
+        <div className="flex justify-between gap-3 text-[12.5px]">
+          <dt className="text-fg-3">Ajustes</dt>
+          <dd className="text-right">{pricingText(plan.pricing)}</dd>
         </div>
       )}
       {plan.tax && Number(plan.tax.tax) > 0 && (

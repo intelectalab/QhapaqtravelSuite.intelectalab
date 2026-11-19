@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Http\Controllers;
 
 use App\Domain\Finance\Actions\InvoiceFollowUp;
-use App\Domain\Finance\Actions\IssueCreditNote;
+use App\Domain\Finance\Actions\IssueAdjustmentNote;
 use App\Domain\Finance\Actions\IssueInvoice;
 use App\Domain\Finance\Actions\QueryFiscalStatus;
 use App\Domain\Finance\Http\Controllers\Concerns\ResolvesActor;
@@ -47,20 +47,24 @@ final class InvoiceController
         return response()->json(['data' => $rules->check($data, $rules->receivable((string) $data['receivable_id']))]);
     }
 
-    public function store(Request $request, IssueInvoice $issue, IssueCreditNote $credit): JsonResponse
+    public function store(Request $request, IssueInvoice $issue, IssueAdjustmentNote $notes): JsonResponse
     {
-        if ($request->input('doc_type') === '07') {
+        $type = $request->input('doc_type');
+
+        if (in_array($type, InvoiceRules::NOTES, true)) {
+            $credit = $type === IssueAdjustmentNote::CREDIT;
             $data = $request->validate([
                 'ref_invoice_id' => ['required', 'string', 'max:40'],
-                'credit_note_reason_code' => ['required', Rule::in(array_keys(InvoiceDirectory::CREDIT_REASONS))],
+                'credit_note_reason_code' => ['required', Rule::in(array_keys($credit ? InvoiceDirectory::CREDIT_REASONS : InvoiceDirectory::DEBIT_REASONS))],
                 'credit_note_reason' => ['nullable', 'string', 'max:255'],
-                'amount' => ['nullable', 'numeric', 'gt:0'],
+                'amount' => [$credit ? 'nullable' : 'required', 'numeric', 'gt:0'],
             ], [
                 'ref_invoice_id.*' => 'Indica el comprobante que modifica.',
-                'credit_note_reason_code.*' => 'Elige el motivo de la nota de crédito.',
+                'credit_note_reason_code.*' => $credit ? 'Elige el motivo de la nota de crédito.' : 'Elige el motivo de la nota de débito.',
                 'amount.*' => 'El importe debe ser mayor que cero.',
             ]);
-            $number = $credit((string) $data['ref_invoice_id'], ['reason_code' => $data['credit_note_reason_code'], 'amount' => $data['amount'] ?? null, 'detail' => $data['credit_note_reason'] ?? null], $this->actor($request));
+            $payload = ['reason_code' => $data['credit_note_reason_code'], 'amount' => $data['amount'] ?? null, 'detail' => $data['credit_note_reason'] ?? null];
+            $number = $credit ? $notes->credit((string) $data['ref_invoice_id'], $payload, $this->actor($request)) : $notes->debit((string) $data['ref_invoice_id'], $payload, $this->actor($request));
 
             return response()->json(['data' => DB::table('fin_invoices')->where('number', $number)->first(['number', 'doc_type', 'status', 'currency', 'total_amount', 'issue_date'])], 202);
         }

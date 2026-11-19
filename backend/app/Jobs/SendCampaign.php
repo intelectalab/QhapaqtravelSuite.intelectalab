@@ -6,6 +6,8 @@ namespace App\Jobs;
 
 use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Data\OutboundMessage;
+use App\Domain\Integrations\Mail\AgencyMailbox;
+use App\Domain\Marketing\Support\CampaignTracking;
 use App\Domain\Marketing\Support\ContactBook;
 use App\Domain\Platform\Support\EffectiveLimits;
 use App\Domain\Platform\Support\UsageMeter;
@@ -57,7 +59,7 @@ final class SendCampaign implements ShouldBeUnique, ShouldQueue
         return [new RestoreTenantContext];
     }
 
-    public function handle(MessagingChannel $channel, ContactBook $contacts, AuditLogger $audit, TenantContext $context): void
+    public function handle(MessagingChannel $channel, ContactBook $contacts, AuditLogger $audit, TenantContext $context, AgencyMailbox $mailbox): void
     {
         $campaign = DB::table('mkt_campaigns as c')->leftJoin('iam_users as u', 'u.id', '=', 'c.owner_id')->leftJoin('mkt_templates as t', 't.id', '=', 'c.template_id')
             ->where('c.id', $this->campaignId)->first(['c.id', 'c.code', 'c.channel', 'c.status', 'c.subject', 'c.body', 'c.promo_code', 'u.name as owner', 't.code as template_code', 't.provider_template_id']);
@@ -77,9 +79,10 @@ final class SendCampaign implements ShouldBeUnique, ShouldQueue
         $remaining = self::remaining($tenantId, (string) $context->tenant()->getAttribute('plan_id'), $metric);
         $sent = 0;
         $deferred = false;
+        $tracked = $campaign->channel === 'email' && $mailbox->connection() !== null;
 
         DB::table('mkt_campaign_recipients')->where('campaign_id', $campaign->id)->where('status', 'pendiente')->orderBy('id')
-            ->chunkById(self::BATCH, function ($rows) use ($campaign, $book, $channel, $agency, $subdomain, $trips, &$pending, &$remaining, &$sent, &$deferred): bool {
+            ->chunkById(self::BATCH, function ($rows) use ($campaign, $book, $channel, $agency, $subdomain, $trips, $tracked, $tenantId, &$pending, &$remaining, &$sent, &$deferred): bool {
                 foreach ($rows as $row) {
                     $contact = $book->get("{$row->subject_type}:{$row->subject_id}");
                     $reason = $this->suppression($contact, $campaign->channel);
@@ -107,14 +110,21 @@ final class SendCampaign implements ShouldBeUnique, ShouldQueue
                         'enlace_baja' => NewsletterLifecycle::unsubscribeUrl($subdomain, NewsletterLifecycle::campaignToken((string) $row->id)),
                     ];
                     $email = $campaign->channel === 'email';
+                    $body = $email ? self::render((string) $campaign->body, $variables) : $campaign->body;
+                    $html = null;
+
+                    if ($tracked) {
+                        ['text' => $body, 'html' => $html] = CampaignTracking::prepare($tenantId, (string) $row->id, (string) $campaign->body, (string) $body);
+                    }
 
                     $result = $channel->send(new OutboundMessage(
                         channel: $campaign->channel,
                         to: (string) $row->address,
                         subject: $email && $campaign->subject !== null ? self::render((string) $campaign->subject, $variables) : $campaign->subject,
-                        body: $email ? self::render((string) $campaign->body, $variables) : $campaign->body,
+                        body: $body,
                         templateCode: $email ? null : (string) ($campaign->provider_template_id ?? $campaign->template_code),
                         variables: $variables,
+                        html: $html,
                     ));
 
                     if (! $result->ok && $result->errorClass === 'transitorio') {

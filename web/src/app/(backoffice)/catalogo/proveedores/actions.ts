@@ -48,6 +48,10 @@ export async function renewProviderContract(_state: StepResult, form: FormData):
   return run(`/catalog/providers/${ref(form)}/renew-contract`, "POST", formValues(form, ["contract_end", "payment_terms"]), "No pudimos renovar el contrato.");
 }
 
+export async function inviteProviderUser(_state: StepResult, form: FormData): Promise<StepResult> {
+  return run(`/catalog/providers/${ref(form)}/users`, "POST", formValues(form, ["name", "email", "phone"]), "No pudimos enviar la invitación.");
+}
+
 export async function rateProvider(_state: StepResult, form: FormData): Promise<StepResult> {
   return run(`/catalog/providers/${ref(form)}/rating`, "POST", formValues(form, ["rating", "note"]), "No pudimos guardar la calificación.");
 }

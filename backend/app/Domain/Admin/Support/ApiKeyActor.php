@@ -18,6 +18,8 @@ final class ApiKeyActor
 
     private const MARKER = 'api_key_code';
 
+    private const OAUTH_OWNER = 'oauth_owner_id';
+
     public static function make(array $key): User
     {
         $user = new User;
@@ -31,6 +33,10 @@ final class ApiKeyActor
             'mfa_enabled' => false,
             self::MARKER => $key['code'],
         ]);
+
+        if (($key['oauth_owner_id'] ?? null) !== null) {
+            $user->setAttribute(self::OAUTH_OWNER, (string) $key['oauth_owner_id']);
+        }
         $user->setRelation('roles', new Collection);
         $user->setRelation('permissions', Permission::query()->where('guard_name', 'api')->whereIn('name', ApiKeyRoutes::permissions($key['scopes']))->get());
 
@@ -70,6 +76,14 @@ final class ApiKeyActor
             }
 
             return $requested;
+        }
+
+        $oauthOwner = $actor->getAttribute(self::OAUTH_OWNER);
+
+        if ($oauthOwner !== null) {
+            $first = $advisors->has((string) $oauthOwner) ? (string) $oauthOwner : $advisors->all(['sales'])->pluck('id')->first() ?? $advisors->all()->pluck('id')->first();
+
+            return $first !== null ? (string) $first : throw ApiException::unprocessable('API_KEY_OWNER', 'La agencia no tiene asesores activos para hacerse cargo de lo que crea esta aplicación. Envía owner_id o activa un asesor.');
         }
 
         return self::fallback((string) $actor->getKey(), $advisors);

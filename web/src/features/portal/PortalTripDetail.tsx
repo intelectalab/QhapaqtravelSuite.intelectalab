@@ -9,6 +9,7 @@ import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { countdownLabel, PAX_TYPES, PHASES, SERVICE_STATES, type PortalTrip } from "@/lib/portal";
 import { serviceIcon } from "@/lib/reservations";
 import { toneStyle } from "@/lib/tone";
+import { PortalTravelDocs } from "./PortalTravelDocs";
 import { AdvisorCard, EmptyLine, PortalBadge, RISE, rise, SectionCard } from "./PortalUi";
 
 const KIND_ICONS: Record<string, LucideIcon> = { tour: Mountain, traslado: Bus, alojamiento: BedDouble, tren_entrada: Ticket, libre: Coffee };
@@ -201,6 +202,7 @@ export function PortalTripDetail({ trip, passenger, extra }: { trip: PortalTrip;
               ))}
             </ul>
           </SectionCard>
+          {trip.travel_docs.length > 0 && <PortalTravelDocs trip={trip.code} passengers={trip.travel_docs} />}
         </div>
         <div className="flex flex-col gap-5">
           {trip.billing && <Billing billing={trip.billing} />}

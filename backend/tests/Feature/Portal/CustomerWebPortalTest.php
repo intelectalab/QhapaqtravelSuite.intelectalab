@@ -1,5 +1,6 @@
 <?php
 
+use Brick\Math\BigDecimal;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -37,11 +38,7 @@ it('CAN-V21: el cliente completa acompañantes por código de reserva y paga una
     expect(collect($updated['passengers'])->firstWhere('seq', $adult['seq'])['name'])->toBe('Gabriela Ríos Montoya');
 
     $open = collect($this->getJson("/api/v1/portal/client/reservations/{$code}/web-summary")->json('data.receivables'))->firstWhere('can_pay', true);
-    if ($open === null) {
-        expect(true)->toBeTrue();
-
-        return;
-    }
+    expect($open)->not->toBeNull()->and(BigDecimal::of($open['payable'])->isPositive())->toBeTrue();
 
     $receivable = $open['code'];
     $paid = $this->postJson("/api/v1/portal/client/receivables/{$receivable}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_ok_4242', 'card_holder' => 'GABRIELA RIOS'], critical())->assertOk()->json('data');

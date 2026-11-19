@@ -49,7 +49,8 @@ it('SC-11: A publica, B pide la alianza, A la acepta y B vende con comisión y t
 
     actingAsTenantBAdmin();
     $key = idem('mkp');
-    $order = $this->postJson('/api/v1/marketplace/orders', ['listing' => $listing['id'], 'pax' => 2, 'travel_date' => now()->addDays(20)->toDateString(), 'gross_amount' => 500], critical(null, $key))
+    $client = withinTenant(tenantB(), fn () => (string) DB::table('crm_clients')->insertGetId(['code' => 'CLI-9001', 'kind' => 'persona', 'name' => 'Rosa Huamán Quispe', 'doc_type' => 'DNI', 'doc_number' => '45678912', 'email' => 'rosa.huaman@correo.pe', 'country' => 'Perú', 'segment_code' => 'Directo', 'owner_id' => seedUser('U01', tenantB())->getKey(), 'tags' => '{}']));
+    $order = $this->postJson('/api/v1/marketplace/orders', ['listing' => $listing['id'], 'client_id' => $client, 'pax' => 2, 'travel_date' => now()->addDays(20)->toDateString(), 'gross_amount' => 500], critical(null, $key))
         ->assertCreated()
         ->assertJsonPath('data.role', 'compra')
         ->assertJsonPath('data.gross_amount', '500.00')
@@ -58,7 +59,7 @@ it('SC-11: A publica, B pide la alianza, A la acepta y B vende con comisión y t
         ->json('data');
 
     expect($order['code'])->toStartWith('MKP-');
-    $this->postJson('/api/v1/marketplace/orders', ['listing' => $listing['id'], 'pax' => 2, 'travel_date' => now()->addDays(20)->toDateString(), 'gross_amount' => 500], critical(null, $key))->assertJsonPath('data.id', $order['id']);
+    $this->postJson('/api/v1/marketplace/orders', ['listing' => $listing['id'], 'client_id' => $client, 'pax' => 2, 'travel_date' => now()->addDays(20)->toDateString(), 'gross_amount' => 500], critical(null, $key))->assertJsonPath('data.id', $order['id']);
     expect(DB::connection('pgsql_platform')->table('platform_marketplace_orders')->where('idempotency_key', $key)->count())->toBe(1);
 
     actingAsSeed('U01');

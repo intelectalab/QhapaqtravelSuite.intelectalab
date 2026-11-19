@@ -661,6 +661,7 @@ export interface Adapter {
   kind_label: string;
   status: string;
   status_label: string;
+  status_reason: string | null;
   environment: "sandbox" | "production";
   max_retries: number;
   backoff: number;

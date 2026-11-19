@@ -13,7 +13,7 @@ class AgencyMailer
 {
     public function __construct(private readonly SmtpConnector $smtp, private readonly OutgoingMail $platform) {}
 
-    public function deliver(array $connection, string $to, ?string $name, string $subject, string $body): ?string
+    public function deliver(array $connection, string $to, ?string $name, string $subject, string $body, ?string $html = null): ?string
     {
         $redirect = $this->platform->redirect();
         $fromName = (string) ($connection['from_name'] ?? '');
@@ -29,6 +29,10 @@ class AgencyMailer
             ->to(new Address($redirect === null ? $to : (string) $redirect['to'], $name ?? ''))
             ->subject($redirect === null ? $subject : "[Para {$to}] {$subject}")
             ->text($body);
+
+        if ($html !== null) {
+            $email->html($html);
+        }
 
         if ($redirect !== null) {
             $email->getHeaders()->addTextHeader('X-Original-To', $to);

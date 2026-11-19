@@ -83,6 +83,7 @@ export interface B2bOverview {
   price_lists: { id: string; name: string }[];
   clients: { code: string; name: string }[];
   can_manage: boolean;
+  can_invite: boolean;
 }
 
 export interface EcomOrder {
@@ -251,6 +252,7 @@ export interface WebDomain {
   status: string;
   token: string;
   verified_at: string | null;
+  checking_until?: string | null;
   added_at: string;
   added_by: string | null;
 }

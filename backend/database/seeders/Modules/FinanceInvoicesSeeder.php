@@ -93,7 +93,7 @@ final class FinanceInvoicesSeeder
             $this->history('invoice', $id, $seed['status'], $seed['status'] === 'observado' ? 'Respuesta del OSE con observaciones' : 'Respuesta del OSE', null, $this->moment($seed['date'].' 10:05'));
         }
 
-        foreach (['F001' => '01', 'B001' => '03', 'FC01' => '07', 'BC01' => '07'] as $series => $type) {
+        foreach (['F001' => '01', 'B001' => '03', 'FC01' => '07', 'BC01' => '07', 'FD01' => '08', 'BD01' => '08'] as $series => $type) {
             $last = (int) DB::table('fin_invoices')->where('tenant_id', $this->tenant->getKey())->where('series', $series)->max('correlative');
             $this->upsert('fin_document_series', ['series' => $series], ['doc_type' => $type, 'next_number' => $last + 1, 'active' => true]);
         }

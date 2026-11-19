@@ -1,4 +1,4 @@
-import { Building2, Globe, Layers, LayoutDashboard, LayoutTemplate, LifeBuoy, Palette, Plug, ReceiptText, Settings2, ShieldCheck, Ticket, TrendingUp } from "lucide-react";
+import { Building2, Globe, Inbox, Layers, LayoutDashboard, LayoutTemplate, LifeBuoy, Palette, Plug, ReceiptText, Settings2, ShieldCheck, Ticket, TrendingUp } from "lucide-react";
 import type { NavGroup } from "./navigation";
 
 export const PLATFORM_NAV_GROUPS: NavGroup[] = [
@@ -10,6 +10,7 @@ export const PLATFORM_NAV_GROUPS: NavGroup[] = [
     screens: [
       { href: "/plataforma/inicio", label: "Inicio", icon: LayoutDashboard },
       { href: "/plataforma/agencias", label: "Agencias", icon: Building2 },
+      { href: "/plataforma/solicitudes", label: "Solicitudes de demo", icon: Inbox },
       { href: "/plataforma/planes", label: "Planes", icon: Layers },
       { href: "/plataforma/plantillas", label: "Plantillas web", icon: LayoutTemplate },
       { href: "/plataforma/facturacion", label: "Facturación", icon: ReceiptText },

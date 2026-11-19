@@ -28,8 +28,8 @@ export default async function FacturacionPage() {
     <>
       <PageHeader
         title="Facturación"
-        subtitle="Facturas, boletas y notas de crédito electrónicas."
-        info={<InfoTip>Cada comprobante se envía al OSE que eligió la agencia entre los homologados por KipuControl. El XML y la constancia de recepción (CDR) quedan guardados en la ficha del comprobante y en el portal del cliente. Un comprobante aceptado solo se anula con una nota de crédito.</InfoTip>}
+        subtitle="Facturas, boletas y notas de crédito y de débito electrónicas."
+        info={<InfoTip>Cada comprobante se envía al OSE que eligió la agencia entre los homologados por KipuControl. El XML y la constancia de recepción (CDR) quedan guardados en la ficha del comprobante y en el portal del cliente. Un comprobante aceptado solo se anula o se rebaja con una nota de crédito; un cargo adicional sobre él va con una nota de débito.</InfoTip>}
         actions={data.can.issue ? <IssueAnyInvoiceAction options={data.invoiceable} /> : undefined}
       />
       {ose && <OseNotice data={ose} />}

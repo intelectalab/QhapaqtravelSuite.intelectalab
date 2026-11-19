@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Actions;
 
+use App\Domain\Channels\Support\WidgetDomainVerifier;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 
 final class ManageWebIntegration
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly WidgetDomainVerifier $verifier) {}
 
     public function saveDefaults(array $data, User $actor): void
     {
@@ -93,9 +94,9 @@ final class ManageWebIntegration
         $this->audit->log('Dominio del widget', $domain, 'crear', null, 'pendiente');
     }
 
-    public function verifyDomain(string $id, User $actor): void
+    public function verifyDomain(string $id, User $actor): array
     {
-        $row = DB::table('channel_widget_domains')->where('id', $id)->first(['domain', 'status']);
+        $row = DB::table('channel_widget_domains')->where('id', $id)->first(['id', 'domain', 'status', 'verify_token']);
 
         if ($row === null) {
             throw ApiException::notFound('El dominio no existe.');
@@ -105,8 +106,21 @@ final class ManageWebIntegration
             throw ApiException::conflict('WEB-BR-03', 'El dominio ya está verificado.');
         }
 
-        DB::table('channel_widget_domains')->where('id', $id)->update(['status' => 'verificado', 'verified_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-        $this->audit->log('Dominio del widget', $row->domain, 'verificar', 'pendiente', 'verificado');
+        if ($this->verifier->check($row, $actor, 'manual')) {
+            return ['id' => $id, 'status' => 'verificado', 'message' => null, 'checking_until' => null];
+        }
+
+        DB::table('channel_widget_domains')->where('id', $id)->update(['updated_by' => $actor->getKey(), 'updated_at' => now()->utc()]);
+        $touched = DB::table('channel_widget_domains')->where('id', $id)->value('updated_at');
+        $hours = WidgetDomainVerifier::RETRY_HOURS;
+        $minutes = WidgetDomainVerifier::EVERY_MINUTES;
+
+        return [
+            'id' => $id,
+            'status' => 'pendiente',
+            'message' => "Todavía no encontramos el registro TXT {$row->verify_token} en {$row->domain}. Si acabas de crearlo, el DNS puede tardar en propagarse: lo seguiremos revisando cada {$minutes} minutos durante {$hours} horas.",
+            'checking_until' => WidgetDomainVerifier::checkingUntil($touched !== null ? (string) $touched : null)?->toIso8601String(),
+        ];
     }
 
     public function removeDomain(string $id): void

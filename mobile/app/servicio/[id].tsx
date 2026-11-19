@@ -141,6 +141,9 @@ export default function AssignmentScreen() {
 
         <SectionTitle title="Pasajeros" aside={`${assignment.checked_in} de ${assignment.passengers.length} con check-in`} />
         {assignment.can.checkin && assignment.checked_in < assignment.passengers.length ? (
+          <Button testID="action-scan" label="Escanear pase QR" icon="qr-code-outline" onPress={() => router.push(`/escanear/${assignment.id}`)} disabled={!online} />
+        ) : null}
+        {assignment.can.checkin && assignment.checked_in < assignment.passengers.length ? (
           <Button testID="action-checkin-all" label="Check-in de todo el grupo" icon="checkmark-done-outline" variant="ghost" onPress={() => void run("checkin_all", () => actions.checkinAll(assignment.id, online))} busy={busy === "checkin_all"} />
         ) : null}
         <Card style={{ paddingVertical: space.sm }}>

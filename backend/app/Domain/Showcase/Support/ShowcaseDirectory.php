@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Showcase\Support;
 
+use App\Domain\Platform\Support\PlatformSequence;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
 use Illuminate\Database\ConnectionInterface;
@@ -151,7 +152,17 @@ final class ShowcaseDirectory
             ->selectRaw("coalesce(sum(b.fee_amount) filter (where b.fee_basis = 'por_asistente' and b.status <> 'cancelada'), 0) as attendee_fees")
             ->selectRaw("coalesce(sum(b.fee_amount) filter (where b.fee_basis = 'comision' and b.status <> 'cancelada'), 0) as commissions")
             ->selectRaw("coalesce(sum(b.amount) filter (where b.fee_basis = 'comision' and b.status <> 'cancelada'), 0) as paid_sales")
+            ->selectRaw("coalesce(sum(b.fee_amount) filter (where b.invoice_id is not null and b.status <> 'cancelada'), 0) as billed")
             ->groupByRaw("to_char(b.service_date, 'YYYY-MM')")->orderByDesc('month')->get();
+        $invoices = $this->db()->table('platform_showcase_bookings as b')->join('platform_showcase_listings as l', 'l.id', '=', 'b.listing_id')->join('platform_invoices as i', 'i.id', '=', 'b.invoice_id')
+            ->where('l.agency_id', $agency->id)->where('i.tenant_id', $tenantId)
+            ->selectRaw("distinct to_char(b.service_date, 'YYYY-MM') as month, i.series, i.number, i.status")->orderBy('i.number')->get()
+            ->reduce(function (array $carry, object $invoice): array {
+                $carry[(string) $invoice->month][] = ['number' => PlatformSequence::format((string) $invoice->series, (int) $invoice->number), 'status' => (string) $invoice->status];
+
+                return $carry;
+            }, []);
+        $current = Carbon::now('America/Lima')->format('Y-m');
 
         return [
             'plan' => $plan,
@@ -166,6 +177,10 @@ final class ShowcaseDirectory
                 'commissions' => Decimal::toApi(Decimal::money($row->commissions)),
                 'paid_sales' => Decimal::toApi(Decimal::money($row->paid_sales)),
                 'total' => Decimal::toApi(Decimal::money($row->attendee_fees)->plus(Decimal::money($row->commissions))),
+                'billed' => Decimal::toApi(Decimal::money($row->billed)),
+                'pending' => Decimal::toApi(Decimal::money($row->attendee_fees)->plus(Decimal::money($row->commissions))->minus(Decimal::money($row->billed))),
+                'open_month' => $row->month >= $current,
+                'invoices' => $invoices[(string) $row->month] ?? [],
                 'currency' => ShowcaseRules::FEE_CURRENCY,
             ])->values()->all(),
         ];

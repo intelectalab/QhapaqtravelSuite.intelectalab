@@ -144,6 +144,27 @@ final class SalesTargetDirectory
         ];
     }
 
+    public function standing(object $row, Carbon $today): array
+    {
+        $live = $this->progress($row, $today);
+        $goal = (float) $row->goal_sales_pen;
+        $projection = $live['sales'] + $live['weighted_pipeline'];
+        $progress = $goal > 0 ? round($live['sales'] / $goal * 100, 1) : 0.0;
+        $projectionPct = $goal > 0 ? round($projection / $goal * 100, 1) : 0.0;
+        $to = Carbon::parse($row->period_to);
+
+        return [
+            'health' => $this->health($row->status, $progress, $projectionPct, Carbon::parse($row->period_from), $to, $today),
+            'sales' => $live['sales'],
+            'goal' => $goal,
+            'progress_pct' => $progress,
+            'projection_pct' => $projectionPct,
+            'days_left' => (int) max(0, $today->diffInDays($to, false)),
+            'scope' => $this->scopeNames()[$row->scope_type][$row->scope_id] ?? 'Sin nombre',
+            'period' => TargetPeriod::label($row->period_key),
+        ];
+    }
+
     public function policy(): array
     {
         $row = DB::table('crm_sales_target_policies')->first();

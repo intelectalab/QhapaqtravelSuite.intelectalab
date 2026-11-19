@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleCheck, Eye, FilePlus2, FileMinus2, MailCheck, Receipt, RefreshCw, Send, SendHorizontal, TriangleAlert } from "lucide-react";
+import { Check, CircleCheck, Eye, FilePlus2, FileMinus2, FileUp, MailCheck, Receipt, RefreshCw, Send, SendHorizontal, TriangleAlert } from "lucide-react";
 import { INVOICES_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
@@ -37,13 +37,14 @@ function invoiceSummary(row: InvoiceRow) {
   ];
 }
 
-export function InvoiceRowActions({ row, reasons }: { row: InvoiceRow; reasons: FinanceOption[] }) {
+export function InvoiceRowActions({ row, reasons, debitReasons }: { row: InvoiceRow; reasons: FinanceOption[]; debitReasons: FinanceOption[] }) {
   return (
     <>
       {(row.status === "emitido" || row.status === "pendiente_envio") && <FiscalStatusAction row={row} />}
       {row.status === "observado" && <ResendAction row={row} />}
       {row.status === "aceptado" && <DeliverAction row={row} />}
       {row.creditable > 0 ? <CreditNoteAction row={row} reasons={reasons} /> : <RowIcon tone="delete" label="Nota de crédito" icon={<FileMinus2 size={15} />} disabledHint={row.doc_type === "07" ? "Una nota de crédito no se acredita" : row.status === "anulado" ? "El comprobante ya está anulado" : "Solo sobre comprobantes aceptados por el OSE"} />}
+      {row.debitable ? <DebitNoteAction row={row} reasons={debitReasons} /> : <RowIcon tone="edit" label="Nota de débito" icon={<FileUp size={15} />} disabledHint={["07", "08"].includes(row.doc_type) ? "Una nota no lleva otra nota" : row.status === "anulado" ? "El comprobante ya está anulado" : "Solo sobre comprobantes aceptados por el OSE"} />}
     </>
   );
 }
@@ -65,6 +66,29 @@ function CreditNoteAction({ row, reasons }: { row: InvoiceRow; reasons: FinanceO
       <SelectField label="Motivo (catálogo 09)" name="credit_note_reason_code" options={reasons} defaultValue={reasons[0]?.value} />
       <TextField label={`Importe (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" max={row.creditable} defaultValue={row.creditable.toFixed(2)} hint="Por defecto, todo el saldo: al aceptarla el OSE, anula el comprobante." />
       <TextArea label="Sustento" name="credit_note_reason" rows={3} maxLength={255} placeholder="Ejemplo: cancelación de la reserva por fuerza mayor." />
+    </FinanceStep>
+  );
+}
+
+function DebitNoteAction({ row, reasons }: { row: InvoiceRow; reasons: FinanceOption[] }) {
+  return (
+    <FinanceStep
+      step="invoice_debit"
+      itemKey={row.number}
+      label="Nota de débito"
+      title="Emitir nota de débito"
+      description="Suma un cargo al comprobante, como intereses por mora o una penalidad. Se numera con la serie de notas de débito y se envía al OSE."
+      submitLabel="Emitir nota de débito"
+      successToast="Nota de débito enviada al OSE. Su estado se actualiza en segundos."
+      trigger={(open) => <RowIcon tone="edit" label="Cargo adicional con nota de débito" icon={<FileUp size={15} />} onClick={open} testId={`invoice-debit:${row.number}`} />}
+    >
+      <SummaryBox rows={invoiceSummary(row)} />
+      <input type="hidden" name="doc_type" value="08" />
+      <input type="hidden" name="ref_invoice_id" value={row.number} />
+      <SelectField label="Motivo (catálogo 10)" name="credit_note_reason_code" options={reasons} defaultValue={reasons[0]?.value} />
+      <TextField label={`Importe del cargo (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" required hint={row.operation === "gravada" ? "Con IGV incluido, igual que el comprobante." : "Exportación: sin IGV."} />
+      <TextArea label="Sustento" name="credit_note_reason" rows={3} maxLength={255} placeholder="Ejemplo: intereses por 15 días de atraso en el pago." />
+      <p className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-fg-2">No se emite si el periodo del mes está cerrado: en ese caso va en el periodo siguiente.</p>
     </FinanceStep>
   );
 }
@@ -128,7 +152,7 @@ export function InvoiceFlow({ row }: { row: Pick<InvoiceRow, "status" | "deliver
   );
 }
 
-function InvoicePreview({ row, canIssue, reasons }: { row: InvoiceRow; canIssue: boolean; reasons: FinanceOption[] }) {
+function InvoicePreview({ row, canIssue, reasons, debitReasons }: { row: InvoiceRow; canIssue: boolean; reasons: FinanceOption[]; debitReasons: FinanceOption[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -140,7 +164,7 @@ function InvoicePreview({ row, canIssue, reasons }: { row: InvoiceRow; canIssue:
         description={`${row.customer.name} · ${formatDate(row.issue_date)}`}
         footer={
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {canIssue && <InvoiceRowActions row={row} reasons={reasons} />}
+            {canIssue && <InvoiceRowActions row={row} reasons={reasons} debitReasons={debitReasons} />}
             <Button variant="primary" href={`/finanzas/facturacion/${row.number}`}>
               Abrir comprobante
             </Button>
@@ -160,7 +184,7 @@ function InvoicePreview({ row, canIssue, reasons }: { row: InvoiceRow; canIssue:
 }
 
 export function InvoicesTable({ data }: { data: InvoicesOverview }) {
-  const { rows, can, reasons } = data;
+  const { rows, can, reasons, debit_reasons: debitReasons = [] } = data;
   const [monthStart] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
@@ -222,9 +246,9 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
       align: "right",
       cell: (row) => (
         <RowActions>
-          <InvoicePreview row={row} canIssue={can.issue} reasons={reasons} />
+          <InvoicePreview row={row} canIssue={can.issue} reasons={reasons} debitReasons={debitReasons} />
           <RowIcon tone="view" label="Ver comprobante" href={`/finanzas/facturacion/${row.number}`} testId={`invoice-view:${row.number}`} />
-          {can.issue && <InvoiceRowActions row={row} reasons={reasons} />}
+          {can.issue && <InvoiceRowActions row={row} reasons={reasons} debitReasons={debitReasons} />}
         </RowActions>
       ),
     },

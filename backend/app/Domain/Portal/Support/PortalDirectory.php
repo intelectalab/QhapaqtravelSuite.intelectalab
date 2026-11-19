@@ -11,6 +11,7 @@ use App\Domain\Crm\Actions\ArcoRequests;
 use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Inbox\Support\MessageCipher;
+use App\Domain\Operations\Support\TravelDocDirectory;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -27,6 +28,7 @@ final class PortalDirectory
         private readonly ChannelKit $kit,
         private readonly PaymentMethods $methods,
         private readonly TenantContext $context,
+        private readonly TravelDocDirectory $travelDocs,
     ) {}
 
     public function session(PortalAccount $account): array
@@ -171,6 +173,7 @@ final class PortalDirectory
                 'payments' => $payments,
             ],
             'notices' => $notices->map(fn ($row): array => ['code' => $row->code, 'subject' => $row->subject, 'body' => $row->body, 'sent_at' => $row->sent_at, 'channel' => $row->channel])->values(),
+            'travel_docs' => $this->travelDocs->portal($reservation),
         ];
     }
 

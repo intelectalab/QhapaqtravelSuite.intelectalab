@@ -220,6 +220,26 @@ export interface PortalTrip {
   invoices: { number: string; type: string; date: string; total: number; currency: string; status: string }[];
   billing: { amount: number; paid: number; balance: number; currency: string; installments: PortalInstallment[]; payments: PortalPayment[] } | null;
   notices: { code: string; subject: string | null; body: string; sent_at: string | null; channel: string }[];
+  travel_docs: PortalTravelDocPassenger[];
+}
+
+export interface PortalTravelDoc {
+  type: string;
+  label: string;
+  status: "pendiente" | "recibido" | "completo" | "observado" | "vencido";
+  file: string | null;
+  sent_by_you: boolean;
+  observation: string | null;
+  min_expiry: string | null;
+  can_upload: boolean;
+}
+
+export interface PortalTravelDocPassenger {
+  id: string;
+  name: string;
+  type: string;
+  lead: boolean;
+  documents: PortalTravelDoc[];
 }
 
 export interface PortalQuote {

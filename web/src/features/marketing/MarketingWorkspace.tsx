@@ -102,7 +102,7 @@ function CampaignsTable({ overview }: { overview: MarketingOverview }) {
       icon: <MailOpen size={19} />,
       display: kpis.open_rate !== null ? formatPercent(kpis.open_rate, 0) : "Sin datos",
       note: `${kpis.click_rate !== null ? `${formatPercent(kpis.click_rate, 0)} con clic · ` : ""}${formatNumber(kpis.delivered_90)} entregados`,
-      info: <p>Destinatarios que abrieron o leyeron el mensaje entre los entregados, en las campañas enviadas en los últimos 90 días; la nota suma los clics y los entregados de esas campañas. Al presionarla, la tabla muestra solo esas campañas con su apertura.</p>,
+      info: <p>Destinatarios que abrieron o leyeron el mensaje entre los entregados, en las campañas enviadas en los últimos 90 días; la nota suma los clics y los entregados de esas campañas. Si envías desde el correo de tu agencia, la apertura se cuenta cuando el contacto ve las imágenes del correo y el clic cuando abre un enlace de la campaña; cada contacto cuenta una sola vez. Al presionarla, la tabla muestra solo esas campañas con su apertura.</p>,
       matches: sentRecently,
     },
     {

@@ -1,6 +1,7 @@
 "use client";
 
-import { Activity, AppWindow, Ban, Link2, Plus, RotateCw } from "lucide-react";
+import { Activity, AppWindow, Ban, BarChart3, Check, Copy, KeyRound, Link2, Plus, RotateCw } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { createOAuthApp, revokeOAuthApp, rotateOAuthSecret } from "@/app/(backoffice)/admin/api/actions";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import { Badge } from "@/components/ui/Badge";
@@ -10,7 +11,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { ADMIN_INITIAL, type AdminActionState, type Option } from "@/lib/admin";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatNumber } from "@/lib/format";
 import { CheckChips, FieldLabel, RISE } from "./AdminParts";
 import { useSecretReveal } from "./ApiAccess";
 
@@ -25,9 +26,46 @@ export interface OAuthApp {
   created_at: string;
   created_by: string | null;
   last_token_at: string | null;
+  last_used_at: string | null;
+  active_tokens: number;
+  calls_month: number;
 }
 
 const scopeLabel = (scopes: Option[], value: string) => scopes.find((scope) => scope.value === value)?.label ?? value;
+
+function ClientId({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <span className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-[9px] bg-surface-2 py-1 pl-2.5 pr-1 text-[11.5px]">
+      <span className="text-fg-3">Client ID</span>
+      <code className="truncate font-mono text-fg-2">{value}</code>
+      <button
+        type="button"
+        aria-label="Copiar el client ID"
+        onClick={() => {
+          void navigator.clipboard.writeText(value).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1800);
+          });
+        }}
+        className="grid h-6 w-6 flex-none place-items-center rounded-[7px] text-fg-3 transition hover:bg-surface hover:text-fg"
+      >
+        {copied ? <Check size={13} /> : <Copy size={13} />}
+      </button>
+    </span>
+  );
+}
+
+function AppStat({ icon, label, value, hint }: { icon: ReactNode; label: string; value: string; hint: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-[11.5px] text-fg-3" title={hint}>
+      {icon}
+      <span>
+        <b className="font-semibold text-fg-2">{value}</b> {label}
+      </span>
+    </span>
+  );
+}
 
 export function OAuthAppCreateAction({ scopes }: { scopes: Option[] }) {
   const reveal = useSecretReveal();
@@ -112,7 +150,8 @@ export function OAuthAppList({ apps, scopes, canManage }: { apps: OAuthApp[]; sc
               <p className="text-[14px] font-semibold">{app.name}</p>
               <Badge tone={app.status === "active" ? "ok" : "mute"}>{app.status === "active" ? "Autorizada" : "Revocada"}</Badge>
             </div>
-            <p className="text-[12.5px] text-fg-3">{app.vendor} · cliente <span className="font-mono">{app.client_id.slice(0, 8)}</span></p>
+            <p className="text-[12.5px] text-fg-3">{app.vendor}</p>
+            <ClientId value={app.client_id} />
             <div className="mt-2 flex flex-wrap gap-1">
               {app.scopes.map((scope) => (
                 <span key={scope} className="rounded-md bg-surface-2 px-2 py-0.5 text-[11.5px] text-fg-2" title={scope}>
@@ -129,8 +168,10 @@ export function OAuthAppList({ apps, scopes, canManage }: { apps: OAuthApp[]; sc
             </ul>
           </div>
           <div className="flex flex-none flex-col items-end gap-2">
-            <span className="flex items-center gap-1 text-[11.5px] text-fg-3" title="Último token emitido o último cambio">
-              <Activity size={12} /> {app.last_token_at ? formatDateTime(app.last_token_at, false) : "Sin uso"}
+            <AppStat icon={<BarChart3 size={12} />} label="llamadas este mes" value={formatNumber(app.calls_month)} hint="Llamadas a la API hechas con los tokens de esta aplicación en el mes. Cuentan para la cuota mensual del plan." />
+            <AppStat icon={<KeyRound size={12} />} label={app.active_tokens === 1 ? "acceso vigente" : "accesos vigentes"} value={formatNumber(app.active_tokens)} hint="Autorizaciones que la aplicación todavía puede renovar. Revocar la aplicación las anula todas." />
+            <span className="flex items-center gap-1 text-[11.5px] text-fg-3" title="Última llamada a la API con un token de esta aplicación">
+              <Activity size={12} /> {app.last_used_at ? formatDateTime(app.last_used_at, false) : app.last_token_at ? `Autorizada el ${formatDateTime(app.last_token_at, false)}` : "Sin uso"}
             </span>
             {canManage && app.status === "active" && (
               <RowActions>

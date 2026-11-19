@@ -7,10 +7,12 @@ namespace App\Domain\Operations\Http\Controllers;
 use App\Domain\Admin\Actions\ManageIntegrations;
 use App\Domain\Admin\Support\EmailNotifications;
 use App\Domain\Iam\Models\User;
+use App\Domain\Iam\Support\RoleExperience;
 use App\Domain\Operations\Actions\SaveTravelDocSettings;
 use App\Domain\Operations\Actions\TravelDocWorkflow;
 use App\Domain\Operations\Support\TravelDocDirectory;
 use App\Domain\Operations\Support\TravelDocRules;
+use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Jobs\RemindTravelDocuments;
@@ -82,6 +84,17 @@ final class TravelDocController
 
     public function upload(Request $request, string $code, string $passenger, string $type, TravelDocWorkflow $workflow): JsonResponse
     {
+        $user = $this->user($request);
+        $source = RoleExperience::isPortal($user) ? 'client' : 'user';
+
+        if ($source === 'client' && in_array(PortalAccount::of($user)->reservation($code)->status, TravelDocDirectory::PORTAL_CLOSED, true)) {
+            throw ApiException::notFound('Este viaje ya no recibe documentos.');
+        }
+
+        if ($source === 'user' && ! $user->can('operations.travel_docs')) {
+            throw ApiException::forbidden('FORBIDDEN', 'Solo Operaciones carga documentos de viaje desde el back-office.', ['operations.travel_docs']);
+        }
+
         $data = $request->validate([
             'file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png'],
             'doc_number' => ['nullable', 'string', 'max:40'],
@@ -97,7 +110,7 @@ final class TravelDocController
         $file = $request->file('file');
         assert($file instanceof UploadedFile);
 
-        return response()->json(['data' => $workflow->upload($code, $passenger, $type, $file, $data, $this->user($request))], 201);
+        return response()->json(['data' => $workflow->upload($code, $passenger, $type, $file, $data, $user, $source)], 201);
     }
 
     public function file(Request $request, string $code, string $passenger, string $type, TravelDocWorkflow $workflow): StreamedResponse

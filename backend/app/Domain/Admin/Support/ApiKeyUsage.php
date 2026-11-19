@@ -38,6 +38,20 @@ final class ApiKeyUsage
         return ['calls_30d' => $calls, 'rejected_24h' => $rejected];
     }
 
+    public function month(string $keyId): int
+    {
+        $day = Carbon::now('UTC')->startOfMonth();
+        $today = Carbon::now('UTC')->format('Ymd');
+        $calls = 0;
+
+        while ($day->format('Ymd') <= $today) {
+            $calls += (int) Cache::get("apikey:{$keyId}:calls:".$day->format('Ymd'), 0);
+            $day->addDay();
+        }
+
+        return $calls;
+    }
+
     private function bump(string $key, Carbon $ttl): void
     {
         Cache::add($key, 0, $ttl);

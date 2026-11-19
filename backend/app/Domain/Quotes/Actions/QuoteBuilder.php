@@ -34,6 +34,8 @@ final class QuoteBuilder
 
     public const MAX_TAX = '18';
 
+    public const DYNAMIC_CHANNEL = 'interno';
+
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly SequenceService $sequences,
@@ -161,6 +163,7 @@ final class QuoteBuilder
                 'rate_cost' => $seeMargin ? $item['rate_cost'] : null,
                 'price_source' => $item['price_source'],
                 'season_factor' => $item['season_factor'],
+                'pricing' => LineRates::applied($item['season'], $item['price_source'] === 'rate' ? $item['dynamic'] : null),
                 'total' => (string) QuotePricing::lineTotal($item['unit_price'], $item['qty'], $item['pax']),
                 'margin_pct' => $seeMargin ? QuotePricing::lineMargin($item['unit_price'], $item['unit_cost']) : null,
             ])->values(),
@@ -333,7 +336,7 @@ final class QuoteBuilder
             }
 
             $companions = $rate === null ? [] : $rates->filter(fn (object $other): bool => $other->id !== $rate->id && $other->segment === 'Niño' && LineRates::valid($other, $date) && in_array($other->channel, [$rate->channel, 'Directo'], true));
-            $priced = $rate === null ? null : $this->lineRates->price((string) $product->id, $rate, $segment, $date, $currency, $companions);
+            $priced = $rate === null ? null : $this->lineRates->salePrice((string) $product->id, $rate, $segment, $date, $currency, $companions, self::DYNAMIC_CHANNEL);
 
             if ($rate !== null && $priced === null) {
                 throw ApiException::unprocessable('QTE-BR-06', "La tarifa {$rate->ref} es para {$rate->segment}: elige otra tarifa o el tipo {$rate->segment}.", ['field' => "items.{$index}.rate_id"]);
@@ -369,6 +372,8 @@ final class QuoteBuilder
                 'rate_ref' => $rate?->ref,
                 'rate_snapshot' => $rate === null ? null : LineRates::snapshot($rate, $priced),
                 'season_factor' => $this->lineRates->seasonFactor($date),
+                'season' => $priced['season'] ?? $this->lineRates->season($date),
+                'dynamic' => $priced['dynamic'] ?? null,
                 'unit_price' => $price,
                 'rate_price' => $ratePrice,
                 'rate_cost' => $priced['cost'] ?? null,

@@ -121,7 +121,7 @@ final class ShowcaseBookings
 
             $changes = ['status' => $status, 'updated_at' => now()];
 
-            if ($status === 'no_show' && $booking->fee_basis === 'por_asistente') {
+            if ($status === 'no_show' && $booking->fee_basis === 'por_asistente' && $booking->invoice_id === null) {
                 $changes['fee_amount'] = '0';
             }
 

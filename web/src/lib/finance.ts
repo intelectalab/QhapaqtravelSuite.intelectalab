@@ -302,6 +302,7 @@ export interface InvoiceRow {
   issued_by: string | null;
   lock_version: number;
   creditable: number;
+  debitable: boolean;
 }
 
 export interface InvoiceInvoiceable {
@@ -326,6 +327,7 @@ export interface InvoiceKpis {
 export interface InvoiceListMeta {
   kpis: InvoiceKpis;
   reasons: FinanceOption[];
+  debit_reasons: FinanceOption[];
   can: { issue: boolean };
 }
 
@@ -679,7 +681,7 @@ export interface InvoiceDetail extends InvoiceRow {
   lines: { line_no: number; description: string; quantity: string; unit_code: string; unit_value: string; igv_affectation: string; line_amount: string; igv_amount: string }[];
   fiscal_events: { action: string; attempt: number; response_code: string | null; response_message: string | null; status: string; created_at: string }[];
   history: { status: string; note: string | null; created_at: string; user: string | null }[];
-  credit_notes: { number: string; status: string; total_amount: string; credit_note_reason: string | null }[];
+  credit_notes: { number: string; doc_type: string; status: string; total_amount: string; credit_note_reason: string | null }[];
   ose_ticket: string | null;
   hash: string | null;
 }

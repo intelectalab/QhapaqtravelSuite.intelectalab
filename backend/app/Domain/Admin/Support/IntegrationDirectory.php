@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Integrations\Mail\AgencyMailbox;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -33,6 +35,8 @@ final class IntegrationDirectory
         'distribution' => 'Publicar tarifas y recibir reservas de canales',
     ];
 
+    public const REAL_DRIVER = ['fiscal' => 'ose', 'payments' => 'payments', 'messaging' => 'whatsapp', 'suppliers' => 'travel_inventory', 'distribution' => 'ota'];
+
     public function __construct(private readonly AuditDirectory $audit, private readonly TenantContext $context) {}
 
     public function adaptersPage(Request $request, User $viewer): array
@@ -46,8 +50,7 @@ final class IntegrationDirectory
         return CursorPage::respond($request, $query, ['code' => 'a.code', 'name' => 'a.name', 'status' => 'a.status'], 'code', fn (object $row): array => $this->adapter($row, $open), CursorPage::isFirst($request) ? [
             'kpis' => [
                 'total' => DB::table('integration_adapters')->count(),
-                'active' => DB::table('integration_adapters')->where('status', 'activo')->count(),
-                'production' => DB::table('integration_adapters')->where('environment', 'production')->count(),
+                ...$this->effectiveKpis(),
                 'open_errors' => DB::table('integration_errors')->where('status', '<>', 'resuelto')->count(),
             ],
             'owners' => $this->owners(),
@@ -167,15 +170,44 @@ final class IntegrationDirectory
             ->select(['j.id', 'j.code', 'j.name', 'j.job_class', 'j.cron', 'j.cron_label', 'j.queue', 'j.paused', 'j.last_run_at', 'j.next_run_at', 'j.last_status', 'j.last_result', 'j.report_key', 'j.report_format', 'j.recipients', 'j.owner_user_id', 'j.is_system', 'j.created_at', 'j.updated_at', 'u.name as owner_name']);
     }
 
+    private function effectiveKpis(): array
+    {
+        $states = DB::table('integration_adapters')->get(['kind', 'status', 'environment'])->map(fn (object $row): array => $this->effective($row));
+
+        return ['active' => $states->where('status', 'activo')->count(), 'production' => $states->where('environment', 'production')->count()];
+    }
+
+    public function effective(object $row): array
+    {
+        if ($row->kind === 'email') {
+            return app(AgencyMailbox::class)->active()
+                ? ['status' => 'activo', 'environment' => 'production', 'reason' => null]
+                : ['status' => 'por_validar', 'environment' => 'sandbox', 'reason' => 'La agencia aún no conecta su cuenta de correo (Notificaciones › Correo de salida).'];
+        }
+
+        if (! isset(self::REAL_DRIVER[$row->kind])) {
+            return ['status' => 'futuro', 'environment' => 'sandbox', 'reason' => 'KipuControl todavía no tiene un proveedor para este tipo de integración.'];
+        }
+
+        if (in_array($row->status, ['activo', 'parcial'], true) && ! IntegrationReadiness::real(self::REAL_DRIVER[$row->kind])) {
+            return ['status' => 'sandbox', 'environment' => 'sandbox', 'reason' => 'Funciona con un proveedor de prueba: aún no hay uno real conectado.'];
+        }
+
+        return ['status' => $row->status, 'environment' => $row->environment, 'reason' => null];
+    }
+
     private function adapter(object $row, array $open): array
     {
+        $effective = $this->effective($row);
+
         return [
             'id' => $row->id,
             'code' => $row->code,
             'name' => $row->name,
             'kind' => $row->kind,
-            'status' => $row->status,
-            'environment' => $row->environment,
+            'status' => $effective['status'],
+            'environment' => $effective['environment'],
+            'status_reason' => $effective['reason'],
             'owner_user_id' => $row->owner_user_id,
             'max_retries' => (int) $row->max_retries,
             'backoff_base_s' => (int) $row->backoff_base_s,
@@ -190,7 +222,7 @@ final class IntegrationDirectory
             'created_at' => $row->created_at,
             'updated_at' => $row->updated_at,
             'kind_label' => self::KINDS[$row->kind] ?? $row->kind,
-            'status_label' => self::STATUSES[$row->status] ?? $row->status,
+            'status_label' => self::STATUSES[$effective['status']] ?? $effective['status'],
             'contract' => self::CONTRACTS[$row->kind] ?? null,
             'backoff' => (int) $row->backoff_base_s,
             'timeout' => (int) $row->timeout_s,

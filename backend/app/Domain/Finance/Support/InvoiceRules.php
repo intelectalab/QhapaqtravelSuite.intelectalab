@@ -14,6 +14,8 @@ final class InvoiceRules
 {
     public const ISSUABLE = ['01', '03'];
 
+    public const NOTES = ['07', '08'];
+
     public const DOC_TYPES = ['RUC', 'DNI', 'PASAPORTE', 'CE', 'SIN_DOC'];
 
     private const RUC = '/^(10|15|17|20)\d{9}$/';
@@ -96,11 +98,18 @@ final class InvoiceRules
             }, $customerDoc === 'RUC' ? 'Con RUC corresponde emitir factura.' : 'La boleta requiere DNI de 8 dígitos, o pasaporte o carné de extranjería de 6 a 12 caracteres.'),
             $this->rule('FIN-BR-42', trim((string) ($data['customer_name'] ?? '')) !== '' && trim((string) ($data['description'] ?? '')) !== '', 'El nombre del cliente y la descripción son obligatorios.'),
             $this->rule('FIN-BR-43', $amount->isPositive() && $amount->isLessThanOrEqualTo($maximum), "El importe debe ser mayor que cero y no superar lo pendiente de facturar ({$receivable->currency} {$maximum})."),
-            $this->rule('FIN-BR-48', ! DB::table('fin_period_closes')->where('period', $period)->where('status', 'cerrado')->exists(), "El periodo {$period} está cerrado: los ajustes van con nota de crédito en el periodo siguiente."),
+            $this->rule('FIN-BR-48', $this->closedPeriod() === null, "El periodo {$period} está cerrado: los ajustes van con nota de crédito o de débito en el periodo siguiente."),
             $this->rule('FIN-BR-46', in_array($docType, self::ISSUABLE, true) && DB::table('fin_document_series')->where('doc_type', $docType)->where('active', true)->exists(), 'No hay una serie activa para ese tipo de comprobante.'),
         ];
 
         return ['ok' => collect($checks)->every(fn (array $check): bool => $check['ok']), 'checks' => $checks, 'maximum' => (string) $maximum, ...$this->amounts($amount, (bool) ($data['domiciled'] ?? true), (string) $receivable->currency)];
+    }
+
+    public function closedPeriod(): ?string
+    {
+        $period = substr($this->money->today(), 0, 7);
+
+        return DB::table('fin_period_closes')->where('period', $period)->where('status', 'cerrado')->exists() ? $period : null;
     }
 
     public function assert(array $data, object $receivable): array

@@ -15,6 +15,7 @@ import { SUPPLY_STATE } from "@/lib/catalog-services";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { ContractCell, Rating } from "./ProvidersTable";
+import { ProviderExtranet } from "./ProviderExtranet";
 import { ProviderContacts } from "./ProviderForms";
 
 type ServiceItem = ProviderDetail["services"][number];
@@ -54,6 +55,7 @@ export function ProviderSummary({ detail }: { detail: ProviderDetail }) {
               </span>
             </div>
           </PanelSection>
+          {detail.extranet_users !== null && <ProviderExtranet provider={provider} users={detail.extranet_users} />}
         </div>
         <ProviderContacts provider={provider} manage={can.manage} />
       </div>

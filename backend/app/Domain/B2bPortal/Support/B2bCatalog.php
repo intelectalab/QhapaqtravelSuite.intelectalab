@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\B2bPortal\Support;
 
+use App\Domain\Booking\Support\LineRates;
+use App\Domain\Catalog\Support\RateResolver;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -21,11 +23,18 @@ final class B2bCatalog
 
     private const LOOKAHEAD = 90;
 
+    private const DYNAMIC_CHANNEL = 'b2b';
+
+    private const PUBLIC_CHANNELS = ['Directo', 'Todos', 'E-commerce'];
+
     private ?Collection $products = null;
+
+    private array $rates = [];
 
     public function __construct(
         private readonly SiteAvailability $availability,
         private readonly Consolidation $money,
+        private readonly LineRates $lineRates,
     ) {}
 
     public function products(B2bAccount $account): Collection
@@ -82,8 +91,10 @@ final class B2bCatalog
             }
         }
 
-        $pvp = $next ? $this->pvp($next, (string) $row->currency) : null;
-        $net = $row->net !== null ? Decimal::round2((string) $row->net) : null;
+        $currency = (string) ($row->currency ?? 'USD');
+        $pvp = $next ? $this->pvp($row, $next['date'], $currency, false) : null;
+        $engine = $next && $row->net !== null ? $this->net($row, $next['date']) : null;
+        $net = $engine['net'] ?? ($row->net !== null ? Decimal::round2((string) $row->net) : null);
 
         return [
             'code' => $row->code,
@@ -101,6 +112,8 @@ final class B2bCatalog
             'reason' => $row->reason,
             'currency' => $row->currency,
             'net' => $net === null ? null : (string) $net,
+            'net_list' => $row->net !== null ? (string) Decimal::round2((string) $row->net) : null,
+            'pricing' => $engine['pricing'] ?? null,
             'pvp' => isset($pvp['adult']) ? (string) $pvp['adult'] : null,
             'commission_pct' => $row->commission_pct !== null ? (float) $row->commission_pct : null,
             'commission' => $net !== null ? (string) self::percent($net, (string) ($row->commission_pct ?? '0')) : null,
@@ -149,7 +162,7 @@ final class B2bCatalog
 
         for ($date = $start->copy(); $date->month === $start->month; $date->addDay()) {
             $day = $row->reason === null ? $this->day($row, $date->toDateString(), $seats, $today) : ['status' => 'cerrado', 'spots' => null, 'note' => $row->reason, 'price' => null, 'departure' => null];
-            $pvp = $this->pvp($day, (string) $row->currency);
+            $pvp = $row->reason === null && $day['status'] !== 'pasado' ? $this->pvp($row, $date->toDateString(), (string) ($row->currency ?? 'USD'), false) : null;
             $days[] = [
                 'date' => $date->toDateString(),
                 'status' => $day['status'],
@@ -204,10 +217,11 @@ final class B2bCatalog
         }
 
         $currency = (string) ($row->currency ?? 'USD');
-        $net = Decimal::round2((string) ($row->net ?? '0'));
+        $engine = $row->net !== null ? $this->net($row, $date) : null;
+        $net = $engine['net'] ?? Decimal::round2((string) ($row->net ?? '0'));
         $netTotal = $net->multipliedBy($seats);
         $pct = (float) $row->commission_pct;
-        $pvp = $this->pvp($day, $currency);
+        $pvp = $day['status'] === 'pasado' ? null : $this->pvp($row, $date, $currency, $children > 0);
         $pvpTotal = $pvp && $row->net !== null ? $pvp['adult']->multipliedBy($adults)->plus($pvp['child']->multipliedBy($children)) : null;
         $creditCurrency = (string) $account->agency->credit_currency;
         $inCredit = $this->convert($netTotal, $currency, $creditCurrency);
@@ -230,7 +244,9 @@ final class B2bCatalog
             'seats' => $seats,
             'currency' => $currency,
             'net_unit' => (string) $net,
+            'net_list' => $row->net !== null ? (string) Decimal::round2((string) $row->net) : null,
             'net_total' => (string) $netTotal,
+            'pricing' => $engine['pricing'] ?? null,
             'commission_pct' => $pct,
             'commission' => (string) self::percent($netTotal, (string) ($row->commission_pct ?? '0')),
             'pvp_total' => $pvpTotal === null ? null : (string) $pvpTotal,
@@ -288,17 +304,40 @@ final class B2bCatalog
         }];
     }
 
-    private function pvp(array $day, string $currency): ?array
+    private function net(stdClass $row, string $date): ?array
     {
-        $price = $day['price'] ?? null;
+        $currency = (string) $row->currency;
+        $agreement = (object) ['segment' => 'Adulto', 'channel' => 'B2B', 'currency' => $currency, 'price' => (string) $row->net, 'cost' => '0', 'rate_type' => 'B2B', 'season_id' => null];
+        $priced = $this->lineRates->salePrice((string) $row->id, $agreement, 'Adulto', $date, $currency, [], self::DYNAMIC_CHANNEL, false);
 
-        if ($price === null) {
+        return $priced === null ? null : [
+            'net' => Decimal::round2($priced['price']),
+            'pricing' => LineRates::applied($priced['season'], $priced['dynamic']),
+            'season' => $priced['season'],
+            'dynamic' => $priced['dynamic'],
+        ];
+    }
+
+    private function pvp(stdClass $row, string $date, string $currency, bool $child): ?array
+    {
+        $rates = $this->rates[$row->id] ??= collect($this->lineRates->catalog([(string) $row->id])->get($row->id, []));
+        $public = $rates->filter(fn (stdClass $rate): bool => $rate->segment !== 'Niño' && in_array($rate->channel, self::PUBLIC_CHANNELS, true));
+        $rate = $this->lineRates->pick($public, $date, 'Adulto', RateResolver::FALLBACK_CHANNEL);
+
+        if ($rate === null || ! LineRates::valid($rate, $date)) {
             return null;
         }
 
-        $adult = $this->convert(number_format((float) ($price['list'] ?? $price['adult']), 2, '.', ''), (string) $price['currency'], $currency);
+        $companions = $rates->filter(fn (stdClass $other): bool => $other->segment === 'Niño' && LineRates::valid($other, $date) && in_array($other->channel, [$rate->channel, RateResolver::FALLBACK_CHANNEL], true));
+        $adult = $this->lineRates->price((string) $row->id, $rate, 'Adulto', $date, $currency, $companions);
 
-        return ['adult' => $adult, 'child' => $this->convert(number_format((float) $price['child'], 2, '.', ''), (string) $price['currency'], $currency)];
+        if ($adult === null) {
+            return null;
+        }
+
+        $kid = $child ? $this->lineRates->price((string) $row->id, $rate, 'Niño', $date, $currency, $companions) : null;
+
+        return ['adult' => Decimal::round2($adult['price']), 'child' => Decimal::round2(($kid ?? $adult)['price'])];
     }
 
     private function reason(stdClass $row, B2bAccount $account): ?string

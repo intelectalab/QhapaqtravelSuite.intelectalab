@@ -33,7 +33,10 @@ function catSeasonDeskPrice(): string
     return (string) test()->postJson('/api/v1/reservations/availability-check', ['product_id' => 'CUS-HUM-FD', 'departure_id' => departureRow('SAL-0403')->id, 'adt' => 2])->assertOk()->json('data.adult_price');
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    Queue::fake();
+    withinTenant(tenantA(), fn () => DB::table('catalog_dynamic_price_rules')->update(['active' => false]));
+});
 
 it('una temporada nueva aplica su factor al sitio y al cotizador en sus fechas', function () {
     actingAsSeed('U01');

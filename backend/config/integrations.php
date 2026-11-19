@@ -21,6 +21,7 @@ return [
         'checkout' => env('PLATFORM_CHECKOUT_PROVIDER', 'fake'),
         'domains' => env('DOMAIN_PROVISIONER', 'fake'),
         'tracking' => env('TRACKING_PROVIDER', 'fake'),
+        'dns' => env('DNS_RESOLVER', 'dns'),
     ],
 
     'require_real' => env('INTEGRATIONS_REQUIRE_REAL'),

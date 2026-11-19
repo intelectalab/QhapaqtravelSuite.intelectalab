@@ -7,6 +7,7 @@ namespace App\Domain\Admin\Support;
 use App\Domain\Admin\Actions\ManageWebhookDeliveries;
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Iam\Models\User;
+use App\Domain\Platform\Support\EffectiveLimits;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
@@ -67,7 +68,10 @@ final class ApiDirectory
                 'last_token_at' => $row->updated_at,
             ]);
         $history = DB::connection('pgsql_platform')->table('usage_monthly')->where('tenant_id', $this->context->idOrFail())->where('metric', 'api_calls_month')->orderByDesc('month')->limit(6)->get(['month', 'value']);
-        $calls = $history->first()?->value;
+        $calls = app(ApiQuota::class)->used($this->context->idOrFail());
+        $callsLimit = EffectiveLimits::limit($this->context->idOrFail(), (string) $this->context->tenant()->plan_id, ApiQuota::METRIC);
+        $thisMonth = Carbon::now('America/Lima')->startOfMonth()->toDateString();
+        $history = $history->reject(fn (object $row): bool => substr((string) $row->month, 0, 10) === $thisMonth)->prepend((object) ['month' => $thisMonth, 'value' => $calls])->take(6);
 
         return [
             'keys' => $keys->values(),
@@ -90,10 +94,10 @@ final class ApiDirectory
             'limits' => [
                 'api_keys' => isset($limits['api_keys']) ? (int) $limits['api_keys'] : null,
                 'webhooks' => isset($limits['webhooks']) ? (int) $limits['webhooks'] : null,
-                'calls_month' => isset($limits['api_calls_month']) ? (int) $limits['api_calls_month'] : null,
+                'calls_month' => $callsLimit,
                 'rate_per_min' => isset($limits['api_rate_per_min']) ? (int) $limits['api_rate_per_min'] : null,
             ],
-            'calls_month' => (int) ($calls ?? 0),
+            'calls_month' => $calls,
             'calls_history' => $history->reverse()->map(fn (object $row): array => ['month' => substr((string) $row->month, 0, 7), 'value' => (int) $row->value])->values(),
             'api_version' => self::API_VERSION,
             'public_endpoints' => ApiKeyEndpoints::all(),

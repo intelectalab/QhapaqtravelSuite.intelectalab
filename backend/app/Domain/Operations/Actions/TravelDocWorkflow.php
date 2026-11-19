@@ -6,6 +6,7 @@ namespace App\Domain\Operations\Actions;
 
 use App\Domain\Admin\Support\EmailNotifications;
 use App\Domain\Admin\Support\StaffNotices;
+use App\Domain\Crm\Support\PortalAccessDirectory;
 use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Support\AttachmentGuard;
 use App\Domain\Operations\Support\TravelDocDirectory;
@@ -89,12 +90,16 @@ final class TravelDocWorkflow
         $client = DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->where('r.id', $item->reservation_id)->first(['c.id', 'c.name', 'c.email']);
         $label = TravelDocDirectory::LABELS[$item->doc_type] ?? $item->doc_type;
         $notices = app(StaffNotices::class);
-        $notices->email($client?->email, 'documentos.observado', "Revisa un documento de tu viaje {$item->reservation_code} · ".$notices->agency(), "Hola, {$client?->name}:\n\nRevisamos el documento «{$label}» de {$item->full_name} y necesitamos que lo corrijas:\n{$reason}\n\nEnvíanos el documento corregido respondiendo este correo o escribiendo a tu asesor; nosotros lo cargamos en tu reserva.\n\n".$notices->agency(), 'ops_travel_doc', (string) $item->id, 'client', ['client_id' => $client?->id, 'reservation_id' => $item->reservation_id]);
+        $portal = $client !== null && in_array(app(PortalAccessDirectory::class)->user((string) $client->id)?->status, ['activo', 'pendiente'], true);
+        $next = $portal
+            ? "Sube el documento corregido desde tu portal, en la sección «Documentos de viaje» de tu reserva:\n".self::portalLink((string) $item->reservation_code)
+            : 'Envíanos el documento corregido respondiendo este correo o escribiendo a tu asesor; nosotros lo cargamos en tu reserva.';
+        $notices->email($client?->email, 'documentos.observado', "Revisa un documento de tu viaje {$item->reservation_code} · ".$notices->agency(), "Hola, {$client?->name}:\n\nRevisamos el documento «{$label}» de {$item->full_name} y necesitamos que lo corrijas:\n{$reason}\n\n{$next}\n\n".$notices->agency(), 'ops_travel_doc', (string) $item->id, 'client', ['client_id' => $client?->id, 'reservation_id' => $item->reservation_id]);
 
         return (string) $item->id;
     }
 
-    public function upload(string $reservation, string $passenger, string $type, UploadedFile $file, array $data, User $actor): array
+    public function upload(string $reservation, string $passenger, string $type, UploadedFile $file, array $data, User $actor, string $source = 'user'): array
     {
         $item = $this->item($reservation, $passenger, $type);
         $this->assertFileType($item);
@@ -119,7 +124,7 @@ final class TravelDocWorkflow
         }
 
         try {
-            DB::transaction(function () use ($item, $file, $data, $actor, $disk, $id, $path, $mime, $name): void {
+            DB::transaction(function () use ($item, $file, $data, $actor, $disk, $id, $path, $mime, $name, $source): void {
                 DB::table('sys_documents')->insert([
                     'id' => $id,
                     'doc_type' => 'travel_doc',
@@ -138,7 +143,7 @@ final class TravelDocWorkflow
                     'status' => 'recibido',
                     'file_id' => $id,
                     'file_name' => $name,
-                    'uploaded_by_type' => 'user',
+                    'uploaded_by_type' => $source,
                     'doc_number' => filled($data['doc_number'] ?? null) ? $data['doc_number'] : $item->doc_number,
                     'expiry_date' => filled($data['expiry_date'] ?? null) ? $data['expiry_date'] : $item->expiry_date,
                     'note' => filled($data['note'] ?? null) ? $data['note'] : $item->note,
@@ -149,7 +154,7 @@ final class TravelDocWorkflow
                     'updated_by' => $actor->getKey(),
                     'updated_at' => now(),
                 ]);
-                $this->audit->log('Documento de viaje', "{$item->reservation_code} · {$item->full_name}", $item->file_id ? 'reemplazar_archivo' : 'cargar', $item->status, 'recibido · '.(TravelDocDirectory::LABELS[$item->doc_type] ?? $item->doc_type).' · '.$name);
+                $this->audit->log('Documento de viaje', "{$item->reservation_code} · {$item->full_name}", $item->file_id ? 'reemplazar_archivo' : 'cargar', $item->status, 'recibido · '.(TravelDocDirectory::LABELS[$item->doc_type] ?? $item->doc_type).' · '.$name.($source === 'client' ? ' · enviado por el cliente desde el portal' : ''));
             });
         } catch (\Throwable $exception) {
             Storage::disk($disk)->delete($path);
@@ -230,7 +235,7 @@ final class TravelDocWorkflow
             'cliente' => (string) $row->name,
             'reserva' => (string) $row->code,
             'fecha_viaje' => CarbonImmutable::parse((string) $row->travel_from)->format('d/m/Y'),
-            'enlace' => rtrim((string) config('app.frontend_url'), '/').'/portal',
+            'enlace' => self::portalLink((string) $row->code),
             'vendedor' => (string) ($row->owner_name ?? ''),
         ], ['source_type' => 'booking_reservation', 'source_id' => $row->id, 'client_id' => $row->client_id, 'reservation_id' => $row->id])];
 
@@ -247,6 +252,11 @@ final class TravelDocWorkflow
         $this->audit->log('Documento de viaje', (string) $row->code, 'solicitar_documentos', null, "{$pending} ítems · Email");
 
         return ['items' => $pending, 'documents' => $missing, 'channels' => ['Email'], 'not_sent' => array_values(array_diff($channels, ['Email'])), 'recipient' => $row->email];
+    }
+
+    public static function portalLink(string $reservation): string
+    {
+        return rtrim((string) config('app.frontend_url'), '/').'/portal/viajes/'.rawurlencode($reservation).'#documentos-de-viaje';
     }
 
     private function missingDocuments(User $actor, string $reservation): array

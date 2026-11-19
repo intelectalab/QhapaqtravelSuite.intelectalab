@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Admin\Http\Controllers\OAuthController;
 use App\Domain\B2bPortal\Http\Controllers\B2bPortalController;
 use App\Domain\Booking\Http\Controllers\ReservationController;
 use App\Domain\Catalog\Actions\ProductWorkflow;
@@ -52,6 +53,8 @@ Route::post('auth/password/forgot', [PasswordController::class, 'forgot'])->midd
 Route::post('auth/password/reset', [PasswordController::class, 'reset'])->middleware('throttle:login')->name('auth.password.reset');
 
 Route::post('b2b/auth/login', [B2bPortalController::class, 'login'])->middleware('throttle:login')->name('b2b.auth.login');
+
+Route::post('oauth/token', [OAuthController::class, 'token'])->middleware('throttle:60,1')->name('oauth.token');
 
 Route::prefix('portal/passenger/auth')->middleware(['throttle:public', 'public.site', ScopeSiteTenant::class])->name('portal.passenger.auth.')->controller(PassengerPortalController::class)->group(function (): void {
     Route::post('link', 'link')->middleware('throttle:5,1')->name('link');

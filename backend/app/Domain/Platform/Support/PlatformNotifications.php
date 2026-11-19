@@ -76,7 +76,7 @@ final class PlatformNotifications
                 'kind' => 'demo',
                 'title' => ($row->kind === 'trial' ? 'Solicitud de prueba' : 'Solicitud de demo').' de '.($row->company ?: $row->full_name),
                 'detail' => "{$row->full_name} · {$row->code}",
-                'href' => null,
+                'href' => '/plataforma/solicitudes?estado=nueva',
                 'at' => Carbon::parse($row->created_at)->toIso8601String(),
             ]);
 

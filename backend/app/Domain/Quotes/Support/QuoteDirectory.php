@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Quotes\Support;
 
 use App\Domain\Admin\Support\PriceTax;
+use App\Domain\Booking\Support\LineRates;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Actions\QuoteAccessTokens;
@@ -346,8 +347,16 @@ final class QuoteDirectory
             'rate_id' => $item->rate_id ?? null,
             'rate_ref' => isset($item->rate_snapshot) ? (json_decode((string) $item->rate_snapshot, true)['ref'] ?? null) : null,
             'price_source' => $item->price_source ?? 'rate',
+            'pricing' => self::pricing($item),
             'margin_pct' => $seeMargin ? QuotePricing::lineMargin((string) $item->sale_total, (string) $item->cost_total) : null,
         ];
+    }
+
+    private static function pricing(object $item): ?array
+    {
+        $snapshot = isset($item->rate_snapshot) ? (array) json_decode((string) $item->rate_snapshot, true) : [];
+
+        return LineRates::applied($snapshot['season'] ?? null, ($item->price_source ?? 'rate') === 'rate' ? ($snapshot['dynamic'] ?? null) : null);
     }
 
     private function rows(User $viewer): Builder

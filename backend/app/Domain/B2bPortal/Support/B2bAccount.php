@@ -68,6 +68,11 @@ final class B2bAccount
         return $this->limit() > 0 ? round($this->used() / $this->limit() * 100, 1) : null;
     }
 
+    public function nearLimit(): bool
+    {
+        return $this->limit() > 0 && $this->status() !== 'bloqueada' && $this->used() * 100 >= $this->limit() * self::CREDIT_ALERT_PCT;
+    }
+
     public function bookingBlock(): ?string
     {
         return match ($this->status()) {

@@ -38,7 +38,7 @@ return [
     ],
 
     'experience_routes' => [
-        'shared' => ['me', 'me.access', 'me.counts', 'me.permissions', 'me.notifications.index', 'me.notifications.read-all', 'ops.evidences.presign', 'mobile.devices.', 'documents.download', 'crecimiento-a.ops.checkin.'],
+        'shared' => ['me', 'me.access', 'me.counts', 'me.permissions', 'me.notifications.index', 'me.notifications.read-all', 'ops.evidences.presign', 'mobile.devices.', 'documents.download', 'crecimiento-a.ops.checkin.', 'ops.travel-docs.files'],
         'portal' => ['b2b.', 'supplier.', 'portal.', 'public.me.', 'mobile.passenger.'],
         'mobile' => ['mobile.operator.'],
     ],

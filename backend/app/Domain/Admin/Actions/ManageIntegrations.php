@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Admin\Actions;
 
+use App\Domain\Admin\Support\IntegrationDirectory;
 use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Contracts\HealthCheckable;
@@ -32,11 +33,15 @@ final class ManageIntegrations
     {
         DB::transaction(function () use ($code, $data, $actor): void {
             $adapter = $this->adapter($code);
+            $status = app(IntegrationDirectory::class)->effective($adapter)['status'];
 
-            if ($data['environment'] === 'production' && $adapter->environment !== 'production' && in_array($adapter->status, ['por_validar', 'futuro', 'sandbox'], true)) {
-                throw ApiException::unprocessable('INT-BR-02', $adapter->status === 'sandbox'
-                    ? 'WhatsApp necesita plantillas aprobadas por Meta antes de pasar a producción.'
-                    : 'Esta integración aún no tiene proveedor validado: no puede pasar a producción.');
+            if ($data['environment'] === 'production' && $adapter->environment !== 'production' && in_array($status, ['por_validar', 'futuro', 'sandbox'], true)) {
+                throw ApiException::unprocessable('INT-BR-02', match (true) {
+                    $status === 'sandbox' && $adapter->kind === 'messaging' => 'WhatsApp necesita plantillas aprobadas por Meta antes de pasar a producción.',
+                    $status === 'sandbox' => 'Esta integración funciona con un proveedor de prueba: no puede pasar a producción.',
+                    $adapter->kind === 'email' => 'Conecta primero la cuenta de correo de la agencia.',
+                    default => 'Esta integración aún no tiene proveedor validado: no puede pasar a producción.',
+                });
             }
 
             $values = [

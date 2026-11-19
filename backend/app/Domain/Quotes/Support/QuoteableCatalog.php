@@ -84,7 +84,7 @@ final class QuoteableCatalog
         $seeCost = QuoteBuilder::seesCost($viewer);
         $segment = $rate !== null && $rate->segment === 'Niño' ? 'Niño' : 'Adulto';
         $companions = $rate === null ? [] : $rates->filter(fn (object $other): bool => $other->id !== $rate->id && $other->segment === 'Niño' && LineRates::valid($other, $date) && in_array($other->channel, [$rate->channel, 'Directo'], true));
-        $priced = $rate === null ? null : $this->lineRates->price((string) $product->id, $rate, $segment, $date, $currency, $companions);
+        $priced = $rate === null ? null : $this->lineRates->salePrice((string) $product->id, $rate, $segment, $date, $currency, $companions, QuoteBuilder::DYNAMIC_CHANNEL);
 
         return [
             'product' => ['id' => $product->id, 'code' => $product->code, 'name' => $product->name],
@@ -97,6 +97,7 @@ final class QuoteableCatalog
             'unit_price' => $priced['price'] ?? null,
             'unit_cost' => $seeCost ? ($priced['cost'] ?? null) : null,
             'season_factor' => $this->lineRates->seasonFactor($date),
+            'pricing' => $priced === null ? null : LineRates::applied($priced['season'], $priced['dynamic']),
             'manual' => $priced === null,
             'message' => $priced === null ? 'No hay tarifa vigente para esa fecha: ingresa el precio manualmente.' : null,
             'rates' => $rates->map(fn (object $row): array => [

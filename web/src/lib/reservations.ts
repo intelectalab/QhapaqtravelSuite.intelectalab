@@ -1,4 +1,5 @@
 import { BedDouble, Bus, Car, Coffee, Map as MapIcon, Plane, TrainFront, type LucideIcon } from "lucide-react";
+import type { PricingApplied } from "@/lib/pricing-applied";
 
 export interface ReservationRow {
   code: string;
@@ -403,6 +404,7 @@ export interface DirectPlan {
   rate_id?: string;
   rate_ref?: string;
   season_factor?: string | null;
+  pricing?: PricingApplied | null;
   channel?: string;
   date?: string;
   travel_from?: string;

@@ -292,7 +292,7 @@ export function DomainsSection({ overview }: { overview: WebOverview }) {
         <div>
           <SectionHead icon={BadgeCheck} title="Cómo verificar un dominio" />
           <ol className="flex flex-col gap-2">
-            {["Agrega el dominio sin https:// ni rutas.", "Crea en tu DNS un registro TXT con el valor que te damos.", "Cuando el DNS se propague, pulsa Verificar."].map((step, index) => (
+            {["Agrega el dominio sin https:// ni rutas.", "Crea en tu DNS un registro TXT con el valor que te damos.", "Pulsa Verificar. Si el DNS aún no se propaga, lo revisamos cada 10 minutos durante 72 horas."].map((step, index) => (
               <li key={step} className="lift flex items-center gap-3 rounded-tile border border-line px-3.5 py-2.5 text-[13px]">
                 <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-accent/10 text-[12px] font-bold text-accent">{index + 1}</span>
                 {step}
@@ -335,13 +335,30 @@ function DomainAction({ domain, kind }: { domain: WebDomain; kind: "verify" | "r
       label={verify ? "Verificar" : "Quitar"}
       formId={`domain-${kind}-${domain.id}`}
       title={verify ? "Verificar dominio" : "Quitar dominio"}
-      description={verify ? `Comprueba que ${domain.domain} tenga el registro TXT ${domain.token}.` : `${domain.domain} dejará de cargar el widget.`}
+      description={verify ? `Buscamos ahora mismo en el DNS de ${domain.domain} el registro TXT con este valor.` : `${domain.domain} dejará de cargar el widget.`}
       submitLabel={verify ? "Verificar" : "Quitar"}
       action={verify ? verifyDomain : removeDomain}
       initial={initial}
+      successToast={verify ? "Dominio verificado. El widget ya responde en ese sitio." : undefined}
       trigger={(open) => <RowIcon tone={verify ? "view" : "delete"} label={verify ? "Verificar" : "Quitar"} icon={verify ? <BadgeCheck size={15} /> : <Trash2 size={15} />} onClick={open} />}
     >
-      {() => <input type="hidden" name="id" value={domain.id} />}
+      {() => (
+        <>
+          <input type="hidden" name="id" value={domain.id} />
+          {verify && (
+            <>
+              <FieldList
+                fields={[
+                  { label: "Tipo", value: "TXT" },
+                  { label: "Nombre", value: <span className="font-mono text-[12.5px]">{domain.domain}</span> },
+                  { label: "Valor", value: <span className="font-mono text-[12.5px]">{domain.token}</span> },
+                ]}
+              />
+              <p className="mt-3 text-[12.5px] text-fg-3">Si todavía no lo encontramos, lo seguimos revisando solos cada 10 minutos durante 72 horas.</p>
+            </>
+          )}
+        </>
+      )}
     </PanelAction>
   );
 }
@@ -361,7 +378,17 @@ export function DomainsTable({ rows, canManage }: { rows: WebDomain[]; canManage
     },
     { id: "token", header: "Registro TXT", wideOnly: true, cell: (row) => <span className="font-mono text-[12px] text-fg-2">{row.token}</span> },
     { id: "added", header: "Agregado", cell: (row) => <span className="text-[12.5px] text-fg-2">{row.added_by ?? "—"} · {formatDateTime(row.added_at)}</span> },
-    { id: "status", header: "Estado", mobile: "detail", cell: (row) => <ChannelBadge status={row.status} /> },
+    {
+      id: "status",
+      header: "Estado",
+      mobile: "detail",
+      cell: (row) => (
+        <span className="flex flex-col items-start gap-1">
+          <ChannelBadge status={row.status} />
+          {row.status !== "verificado" && row.checking_until && <span className="text-[11.5px] text-fg-3">Revisión automática hasta {formatDateTime(row.checking_until)}</span>}
+        </span>
+      ),
+    },
     {
       id: "actions",
       header: "",

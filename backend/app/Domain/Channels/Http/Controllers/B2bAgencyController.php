@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Http\Controllers;
 
+use App\Domain\Channels\Actions\B2bAgencyUserInvitation;
 use App\Domain\Channels\Actions\B2bPortalPreview;
 use App\Domain\Channels\Actions\ManageB2bAgency;
 use App\Domain\Channels\Support\B2bDirectory;
@@ -71,6 +72,17 @@ final class B2bAgencyController
         $manage->update($code, $this->validated($request), $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function inviteUser(Request $request, string $code, B2bAgencyUserInvitation $invitation): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:150'],
+            'email' => ['required', 'regex:/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/', 'max:190'],
+            'phone' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+()\s-]{6,30}$/'],
+        ], ['name.*' => 'Escribe el nombre de la persona.', 'email.*' => 'Escribe un correo válido.', 'phone.*' => 'Escribe un teléfono válido.']);
+
+        return response()->json(['data' => $invitation->invite($code, $data, $this->user($request))]);
     }
 
     public function block(Request $request, string $code, ManageB2bAgency $manage): JsonResponse

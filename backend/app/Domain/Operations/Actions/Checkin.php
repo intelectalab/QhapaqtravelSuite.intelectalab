@@ -25,9 +25,9 @@ final class Checkin
         private readonly AuditLogger $audit,
     ) {}
 
-    public function scan(string $token, ?string $device, User $actor): array
+    public function scan(string $token, ?string $device, User $actor, ?string $expectedService = null): array
     {
-        return DB::transaction(function () use ($token, $device, $actor): array {
+        return DB::transaction(function () use ($token, $device, $actor, $expectedService): array {
             $pass = DB::table('ops_checkin_passes')->where('token_hash', DerivedTokens::hash(trim($token)))->lockForUpdate()->first();
 
             if ($pass === null) {
@@ -36,6 +36,11 @@ final class Checkin
 
             $service = DB::table('booking_reservation_services')->where('id', $pass->service_id)->first(['id', 'code', 'name', 'service_date', 'service_time']);
             $passenger = DB::table('booking_passengers')->where('id', $pass->passenger_id)->first(['id', 'full_name', 'birth_date', 'age', 'pax_type']);
+
+            if ($expectedService !== null) {
+                $this->assertSameService($expectedService, $service, $passenger);
+            }
+
             $this->assertAssigned((string) $service->id, $actor);
 
             if ($pass->status === 'usado') {
@@ -65,12 +70,13 @@ final class Checkin
             }
 
             DB::table('ops_checkin_passes')->where('id', $pass->id)->update(['status' => 'usado', 'scanned_at' => now(), 'scanned_by' => $actor->getKey(), 'scan_device_id' => $device ? mb_substr($device, 0, 80) : null]);
-            DB::table('ops_assignments')->where('reservation_service_id', $service->id)->whereNull('first_checkin_at')->update(['first_checkin_at' => now()]);
+            $this->markAssignments((string) $service->id, (string) $passenger->id, $device !== null ? 'app' : 'web', $actor);
             $this->audit->log('Check-in', (string) $service->code, 'checkin', after: $passenger->full_name.($device ? ' · '.$device : ''), actor: $actor);
 
             return [
                 'result' => 'ingreso',
                 'passenger' => $passenger->full_name,
+                'passenger_id' => $passenger->id,
                 'service' => ['id' => $service->id, 'code' => $service->code, 'name' => $service->name],
                 'scanned_at' => now()->toIso8601String(),
                 'counts' => $this->counts((string) $service->id),
@@ -193,6 +199,34 @@ final class Checkin
                 'checked_in' => (int) $counts->sum('used'),
             ],
         ];
+    }
+
+    private function assertSameService(string $expected, object $service, object $passenger): void
+    {
+        $target = DB::table('booking_reservation_services')->where(Str::isUuid($expected) ? 'id' : 'code', $expected)->value('id');
+
+        if ($target === null) {
+            throw ApiException::notFound('El servicio que estás registrando no existe.');
+        }
+
+        if ((string) $target !== (string) $service->id) {
+            throw ApiException::unprocessable('PASS_OTHER_SERVICE', 'El pase de '.$passenger->full_name.' es para «'.$service->name.'» del '.Carbon::parse((string) $service->service_date)->format('d/m/Y').'. No pertenece al servicio que estás registrando.');
+        }
+    }
+
+    private function markAssignments(string $serviceId, string $passengerId, string $source, User $actor): void
+    {
+        $assignments = DB::table('ops_assignments')->where('reservation_service_id', $serviceId)->where('status', 'en_curso')->pluck('id');
+
+        foreach ($assignments as $assignmentId) {
+            DB::table('ops_assignment_checkins')->insertOrIgnore(['assignment_id' => $assignmentId, 'passenger_id' => $passengerId, 'checked_at' => now(), 'source' => $source, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+        }
+
+        DB::table('ops_assignments')->where('reservation_service_id', $serviceId)->whereNull('first_checkin_at')->update(['first_checkin_at' => now()]);
+
+        if ($assignments->isNotEmpty()) {
+            DB::table('ops_assignments')->whereIn('id', $assignments)->update(['updated_at' => now()]);
+        }
     }
 
     private function counts(string $serviceId): array

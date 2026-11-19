@@ -239,7 +239,7 @@ final class ProvisionTenant
         $invoice = (string) ($data['invoice_series'] ?? 'F001');
         $receipt = (string) ($data['receipt_series'] ?? 'B001');
 
-        foreach ([$invoice => '01', $receipt => '03', 'FC'.substr($invoice, -2) => '07', 'BC'.substr($receipt, -2) => '07'] as $series => $type) {
+        foreach ([$invoice => '01', $receipt => '03', 'FC'.substr($invoice, -2) => '07', 'BC'.substr($receipt, -2) => '07', 'FD'.substr($invoice, -2) => '08', 'BD'.substr($receipt, -2) => '08'] as $series => $type) {
             DB::table('fin_document_series')->insert(['doc_type' => $type, 'series' => $series, 'next_number' => 1, 'active' => true, 'sede_id' => null]);
         }
 

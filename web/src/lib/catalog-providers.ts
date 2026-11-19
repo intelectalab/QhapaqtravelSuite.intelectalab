@@ -38,7 +38,16 @@ export interface ProvidersOverview {
   today: string;
   providers: ProviderRow[];
   options: { types: string[]; currencies: string[]; agency_response_hours: number };
-  can: { manage: boolean };
+  can: { manage: boolean; invite: boolean };
+}
+
+export interface ProviderExtranetUser {
+  code: string;
+  name: string;
+  email: string;
+  status: "activo" | "pendiente" | "inactivo";
+  invited_at: string | null;
+  last_login_at: string | null;
 }
 
 export interface ProviderDetail extends Pick<ProvidersOverview, "today" | "options" | "can"> {
@@ -48,4 +57,5 @@ export interface ProviderDetail extends Pick<ProvidersOverview, "today" | "optio
   reservations: { code: string; client: string; service_code: string; service: string; date: string; pax: number; status: string; confirmation_code: string | null; cost: string | null; currency: string }[] | null;
   payables: { code: string; reservation: string | null; concept: string; due_date: string | null; overdue: boolean; amount: string; balance: string; currency: string; status: string }[] | null;
   history: CatalogHistoryEvent[] | null;
+  extranet_users: ProviderExtranetUser[] | null;
 }

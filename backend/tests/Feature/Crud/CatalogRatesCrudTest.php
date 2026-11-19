@@ -56,6 +56,7 @@ function catDeskPrice(): string
 beforeEach(function () {
     lockCatalogProducts();
     Queue::fake();
+    withinTenant(tenantA(), fn () => DB::table('catalog_dynamic_price_rules')->update(['active' => false]));
 });
 
 it('cambiar el precio de la tarifa directa cambia el precio del cotizador y lo audita', function () {

@@ -24,7 +24,7 @@ export default async function MarketplacePage() {
       <PageHeader
         title="Marketplace B2B"
         subtitle="Publica tus productos para otras agencias y vende los de operadores aliados."
-        info={<InfoTip>El revendedor ve el precio público menos su comisión y vende con su margen. Cada venta crea la reserva en la agencia que opera el servicio. La plataforma cobra el 1 % al vendedor en su suscripción.</InfoTip>}
+        info={<InfoTip>El revendedor ve el precio público menos su comisión y vende con su margen. Cada venta con cupo se confirma al momento: crea la reserva en la agencia que opera el servicio y la de tu cliente en tu agencia. Sin cupo, la venta queda rechazada. La plataforma cobra el 1 % al vendedor en su suscripción.</InfoTip>}
       />
       <MarketplaceBoard network={network} mine={mine} partnerships={partnerships?.partnerships ?? []} orders={orders?.orders ?? []} />
     </>

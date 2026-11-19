@@ -15,5 +15,6 @@ final readonly class OutboundMessage
         public array $variables = [],
         public ?string $locale = 'es',
         public ?array $sender = null,
+        public ?string $html = null,
     ) {}
 }

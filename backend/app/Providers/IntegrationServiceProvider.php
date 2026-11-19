@@ -6,8 +6,10 @@ namespace App\Providers;
 
 use App\Domain\Integrations\Adapters\ClamAvMalwareScanner;
 use App\Domain\Integrations\Adapters\ExpoPushSender;
+use App\Domain\Integrations\Adapters\SystemDnsResolver;
 use App\Domain\Integrations\Contracts\AccountingGateway;
 use App\Domain\Integrations\Contracts\CaptchaVerifier;
+use App\Domain\Integrations\Contracts\DnsResolver;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Contracts\FxRateProvider;
 use App\Domain\Integrations\Contracts\MalwareScanner;
@@ -21,6 +23,7 @@ use App\Domain\Integrations\Contracts\SiteContentAi;
 use App\Domain\Integrations\Contracts\TravelInventory;
 use App\Domain\Integrations\Contracts\WhatsappCloud;
 use App\Domain\Integrations\Fake\FakeAccountingGateway;
+use App\Domain\Integrations\Fake\FakeDnsResolver;
 use App\Domain\Integrations\Fake\FakeFiscalGateway;
 use App\Domain\Integrations\Fake\FakeFxRateProvider;
 use App\Domain\Integrations\Fake\FakeMalwareScanner;
@@ -61,6 +64,7 @@ final class IntegrationServiceProvider extends ServiceProvider
         OtaConnector::class => ['config' => 'integrations.drivers.ota', 'drivers' => ['fake' => FakeOtaConnector::class]],
         AccountingGateway::class => ['config' => 'integrations.drivers.accounting', 'drivers' => ['fake' => FakeAccountingGateway::class]],
         TravelInventory::class => ['config' => 'integrations.drivers.travel_inventory', 'drivers' => ['fake' => FakeTravelInventory::class]],
+        DnsResolver::class => ['config' => 'integrations.drivers.dns', 'drivers' => ['dns' => SystemDnsResolver::class, 'fake' => FakeDnsResolver::class]],
     ];
 
     public function register(): void

@@ -71,6 +71,13 @@ final class DeliveryReceipts
         return $this->passenger($event, $messageId, $at, $detail) ?? $this->notification($event, $messageId, $at, $detail);
     }
 
+    public function track(string $recipientId, string $event, CarbonInterface $at): ?array
+    {
+        $recipient = $this->recipient(fn ($query) => $query->where('r.id', $recipientId)->where('c.channel', 'email'));
+
+        return $recipient === null ? null : $this->record($recipient, $event, $at, null);
+    }
+
     public function reply(string $channel, ?string $messageId, ?string $from, ?string $text, CarbonInterface $at): ?array
     {
         $digits = preg_replace('/\D/', '', (string) $from);

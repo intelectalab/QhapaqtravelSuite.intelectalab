@@ -77,6 +77,7 @@ function AdapterCard({ adapter, data, index }: { adapter: Adapter; data: Integra
           </div>
           <Badge tone={tone}>{adapter.status_label}</Badge>
         </div>
+        {adapter.status_reason && <p className="mt-2.5 rounded-[10px] bg-[color-mix(in_srgb,var(--tint)_10%,transparent)] px-2.5 py-1.5 text-[12.5px] font-medium text-fg">{adapter.status_reason}</p>}
         {adapter.note && <p className="mt-2.5 text-[12.5px] text-fg-2">{adapter.note}</p>}
         <dl className="mt-3 grid grid-cols-3 gap-2 text-[12px]">
           <div className="rounded-[10px] bg-surface-2 px-2.5 py-1.5">

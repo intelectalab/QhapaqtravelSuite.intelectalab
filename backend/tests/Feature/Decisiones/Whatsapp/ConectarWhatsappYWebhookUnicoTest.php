@@ -177,6 +177,17 @@ it('con su propia app de Meta la agencia recibe una URL propia, firmada con su s
 
     $uri = "/api/v1/integrations/whatsapp/webhook/{$subdomain}";
     expect(wadecSigned($uri, wadecInbound('166655544433', 'wamid.propia-1', 'Hola desde la app propia'), WADEC_APP_SECRET))->toBeApiError(401, 'WEBHOOK_SIGNATURE_INVALID');
-    wadecSigned($uri, wadecInbound('166655544433', 'wamid.propia-1', 'Hola desde la app propia'), 'secreto-app-propia-agencia')->assertStatus(202)->assertJsonPath('data.received', 1);
+    $raw = (string) json_encode(wadecInbound('166655544433', 'wamid.propia-1', 'Hola desde la app propia'));
+    $this->call('POST', "/api/v1/integrations/whatsapp/webhook/{$subdomain}", [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_HUB_SIGNATURE_256' => ChannelWebhooks::sign($raw, 'secreto-app-propia-agencia')], $raw)
+        ->assertStatus(202)->assertJsonPath('data.received', 1);
+    wadecSigned($uri, wadecInbound('166655544433', 'wamid.propia-1', 'Hola desde la app propia'), 'secreto-app-propia-agencia')->assertStatus(202)->assertJsonPath('data.duplicates', 1);
+
+    $event = withinTenant(tenantA(), fn () => DB::table('collab_inbound_events')->where('channel', 'whatsapp')->where('external_event_id', 'wamid.propia-1')->first());
+    expect($event)->not->toBeNull()
+        ->and(MessageCipher::open(json_decode($event->payload, true)['message']['body']))->toBe('Hola desde la app propia');
+
     expect(wadecSigned('/api/v1/integrations/whatsapp/webhook/agencia-inexistente', wadecInbound('166655544433', 'wamid.propia-2', 'Hola'), 'secreto-app-propia-agencia'))->toBeApiError(404);
+
+    withinTenant(tenantA(), fn () => DB::table('collab_channel_accounts')->where('channel', 'whatsapp')->update(['status' => 'inactivo']));
+    expect(wadecSigned($uri, wadecInbound('166655544433', 'wamid.propia-3', 'Hola'), 'secreto-app-propia-agencia'))->toBeApiError(404);
 });

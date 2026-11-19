@@ -154,6 +154,7 @@ final class B2bDirectory
             'price_lists' => DB::table('channel_b2b_price_lists')->where('status', 'activa')->orderBy('name')->get(['id', 'name']),
             'clients' => DB::table('crm_clients')->whereNull('deleted_at')->orderBy('name')->get(['code', 'name']),
             'can_manage' => $viewer->can('channels.b2b.manage'),
+            'can_invite' => $viewer->can('channels.b2b.manage') && $viewer->can('admin.users.manage'),
         ];
     }
 }

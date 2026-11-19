@@ -7,6 +7,7 @@ import { useTransition } from "react";
 import { growthStep } from "@/app/(backoffice)/finanzas/crecimiento-actions";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { serviceHref } from "@/features/catalog-services/ServicesTable";
 import type { InsightRow } from "@/lib/growth-ops";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
@@ -17,6 +18,10 @@ const SEVERITY: Record<InsightRow["severity"], Tone> = { alta: "bad", media: "wa
 const SOURCE_LINKS: Record<string, (code: string) => string> = {
   fin_receivable: () => "/finanzas/links-de-pago",
   quote_quote: (code) => `/cotizaciones/${code}`,
+  catalog_service: (code) => serviceHref(code),
+  crm_sales_target: (code) => `/crm/metas/${encodeURIComponent(code)}`,
+  catalog_departure: (code) => `/catalogo/productos/${encodeURIComponent(code)}?seccion=salidas`,
+  catalog_product: (code) => `/catalogo/productos/${encodeURIComponent(code)}`,
 };
 
 function ResolveButtons({ insight }: { insight: InsightRow }) {

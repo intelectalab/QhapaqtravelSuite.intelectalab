@@ -39,11 +39,11 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
     <div className="grid gap-5">
       <div className="flex items-center gap-2">
         <h2 className="text-[17px] font-semibold">Alertas de rentabilidad</h2>
-        <InfoTip>Las alertas se calculan cada día con los datos reales de la agencia: cuotas vencidas y cotizaciones con margen bajo el piso. Cada rol ve solo lo que ya puede ver; los márgenes solo llegan a quien ve rentabilidad.</InfoTip>
+        <InfoTip>Las alertas se calculan cada día con los datos reales de la agencia: cuotas vencidas, cotizaciones bajo el margen mínimo de Configuración, servicios que cuestan más de 15 % sobre otro proveedor del mismo tipo, ciudad y categoría, metas vigentes que no proyectan llegar al 100 %, y salidas de los próximos 60 días con 85 % de cupos vendidos o productos cotizados 5 veces o más en una semana. Cada rol ve solo lo que ya puede ver; márgenes y costos solo llegan a quien ve rentabilidad.</InfoTip>
       </div>
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={BellRing} tone="info" label="Abiertas" value={kpis.open} info={<p>Alertas nuevas o vistas que aún no se resuelven ni descartan.</p>} />
-        <TintTile icon={Siren} tone="bad" label="Severidad alta" value={kpis.high} info={<p>Alertas abiertas con severidad alta: cobranza con más de 15 días o montos altos, y márgenes bajo el 5 %.</p>} />
+        <TintTile icon={Siren} tone="bad" label="Severidad alta" value={kpis.high} info={<p>Alertas abiertas con severidad alta: cobranza con más de 15 días o montos altos, márgenes bajo el 5 %, servicios 40 % más caros que la alternativa, metas que proyectan menos del 80 % y salidas agotadas.</p>} />
         <TintTile icon={Sparkles} tone="violet" label="Nuevas" value={kpis.new} info={<p>Alertas generadas que nadie ha revisado todavía.</p>} />
         <TintTile icon={CircleCheck} tone="ok" label="Resueltas" value={kpis.resolved} info={<p>Alertas que el equipo marcó como resueltas.</p>} />
       </section>

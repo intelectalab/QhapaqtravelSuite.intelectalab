@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Queue;
 beforeEach(function () {
     lockTreasury();
     Queue::fake();
+    withinTenant(tenantA(), fn () => DB::table('catalog_dynamic_price_rules')->update(['active' => false]));
 });
 
 function gapAudit(string $entity, string $code, string $action): bool

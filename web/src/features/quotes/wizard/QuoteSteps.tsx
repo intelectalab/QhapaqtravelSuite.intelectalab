@@ -12,6 +12,7 @@ import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
+import { pricingText } from "@/lib/pricing-applied";
 import { MANUAL_RATE, paxLabel, rateValidOn, type QuoteFormOptions, type QuoteLineInput, type QuotePreview, type QuoteRateOption, type QuoteSegmentOption } from "@/lib/quotes";
 import { QuoteItinerary } from "../QuoteItinerary";
 import { lineKey, lineReady, type QuoteDraft, type QuotePatch } from "./draft";
@@ -294,7 +295,7 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
                     <span className="text-fg-3">
                       {result.price_source === "manual" ? `Precio manual${ratePrice ? ` · tarifa ${formatMoney(ratePrice, currency)}` : ""}` : `${result.rate_ref ?? "Tarifa"} ${formatMoney(result.unit_price, currency)}`} × {line.pax} {line.pax === 1 ? "pasajero" : "pasajeros"}
                       {line.qty > 1 ? ` × ${line.qty}` : ""}
-                      {result.season_factor && Number(result.season_factor) !== 1 ? ` · temporada ×${Number(result.season_factor).toFixed(2)}` : ""}
+                      {result.pricing ? ` · ${pricingText(result.pricing)}` : result.season_factor && Number(result.season_factor) !== 1 ? ` · temporada ×${Number(result.season_factor).toFixed(2)}` : ""}
                     </span>
                     <span className="flex items-center gap-3">
                       {result.margin_pct !== null && <span className={cn("font-semibold", marginTone(result.margin_pct, floor))}>{result.margin_pct} % margen</span>}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Actions;
 
 use App\Domain\Admin\Support\ApiDirectory;
+use App\Domain\Admin\Support\ApiKeyUsage;
 use App\Domain\Admin\Support\PgArray;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -22,6 +23,14 @@ final class ManageOAuthApps
 
     public function list(): array
     {
+        $tokens = DB::connection('pgsql_platform')->table('integration_oauth_tokens')
+            ->where('tenant_id', $this->context->idOrFail())
+            ->groupBy('client_id')
+            ->selectRaw('client_id, max(created_at) as last_token_at, max(last_used_at) as last_used_at, count(*) filter (where revoked_at is null and refresh_expires_at > now()) as active')
+            ->get()
+            ->keyBy('client_id');
+        $usage = app(ApiKeyUsage::class);
+
         return DB::table('integration_oauth_apps as a')
             ->join('oauth_clients as c', 'c.id', '=', 'a.client_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'a.created_by')
@@ -39,7 +48,10 @@ final class ManageOAuthApps
                 'status' => $row->status,
                 'created_at' => $row->created_at,
                 'created_by' => $row->created_by,
-                'last_token_at' => $row->updated_at,
+                'last_token_at' => $tokens->get($row->client_id)?->last_token_at,
+                'last_used_at' => $tokens->get($row->client_id)?->last_used_at,
+                'active_tokens' => (int) ($tokens->get($row->client_id)->active ?? 0),
+                'calls_month' => $usage->month((string) $row->client_id),
             ])
             ->values()
             ->all();
@@ -112,6 +124,7 @@ final class ManageOAuthApps
 
             DB::table('integration_oauth_apps')->where('id', $app->id)->update(['status' => 'revoked']);
             DB::table('oauth_clients')->where('id', $app->client_id)->update(['revoked' => true, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            DB::connection('pgsql_platform')->table('integration_oauth_tokens')->where('tenant_id', $this->context->idOrFail())->where('client_id', $app->client_id)->whereNull('revoked_at')->update(['revoked_at' => now()->utc()]);
             $this->audit->log(self::ENTITY, (string) $app->client_id, 'revocar', 'active', 'revoked · '.$app->name);
         });
     }

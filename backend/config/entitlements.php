@@ -29,7 +29,7 @@ return [
         'module.web_analytics' => ['analytics/web'],
         'module.api_access' => ['integrations/api-keys', 'admin/api'],
         'module.webhooks' => ['integrations/webhooks', 'integrations/webhook-deliveries'],
-        'module.oauth_apps' => ['integrations/oauth-apps'],
+        'module.oauth_apps' => ['integrations/oauth-apps', 'oauth/authorize'],
     ],
 
     'public' => [

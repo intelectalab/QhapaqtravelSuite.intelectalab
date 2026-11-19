@@ -61,6 +61,7 @@ const STEPS: Record<string, FinanceStepConfig> = {
   commission_annul: { path: (key) => `/finance/commissions/${key}/annul`, method: "POST", fields: ["reason"], failure: "No pudimos anular la comisión." },
   invoice_issue: { path: () => "/finance/invoices", method: "POST", fields: ["receivable_id", "doc_type", "customer_doc_type", "customer_doc_number", "customer_name", "customer_address", "domiciled", "amount", "fx_rate", "description"], failure: "No pudimos emitir el comprobante." },
   invoice_credit: { path: () => "/finance/invoices", method: "POST", fields: ["doc_type", "ref_invoice_id", "credit_note_reason_code", "amount", "credit_note_reason"], failure: "No pudimos emitir la nota de crédito." },
+  invoice_debit: { path: () => "/finance/invoices", method: "POST", fields: ["doc_type", "ref_invoice_id", "credit_note_reason_code", "amount", "credit_note_reason"], failure: "No pudimos emitir la nota de débito." },
   invoice_status: { path: (key) => `/finance/invoices/${key}/status-check`, method: "POST", fields: [], failure: "No pudimos consultar al OSE." },
   invoice_deliver: { path: (key) => `/finance/invoices/${key}/deliver`, method: "POST", fields: ["email"], failure: "No pudimos entregar el comprobante." },
   invoice_resend: { path: (key) => `/finance/invoices/${key}/resend`, method: "POST", fields: ["description", "fx_rate", "lock_version"], failure: "No pudimos reenviar el comprobante." },

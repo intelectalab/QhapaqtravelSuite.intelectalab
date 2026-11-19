@@ -120,6 +120,27 @@ export async function payOnline(code: string, _state: StepResult, form: FormData
   return result.data.result === "rechazado" ? { message: result.data.message, done: false } : { message: result.data.message, done: true };
 }
 
+const TRAVEL_DOC_BYTES = 10 * 1024 * 1024;
+
+export async function uploadTripDocument(trip: string, passenger: string, type: string, _state: StepResult, form: FormData): Promise<StepResult> {
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) return { message: "Elige el archivo del documento.", done: false };
+  if (file.size > TRAVEL_DOC_BYTES) return { message: `${file.name} pesa más de 10 MB.`, done: false };
+  const payload = new FormData();
+  payload.set("file", file, file.name);
+  for (const field of ["doc_number", "expiry_date", "note"]) {
+    const value = form.get(field);
+    if (typeof value === "string" && value.trim() !== "") payload.set(field, value.trim());
+  }
+  const result = await apiFetch(`/reservations/${encodeURIComponent(trip)}/travel-docs/${encodeURIComponent(passenger)}/${encodeURIComponent(type)}/files`, { method: "POST", form: payload });
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos subir el documento.", done: false };
+  }
+  refresh(`/portal/viajes/${trip}`);
+  return { message: null, done: true };
+}
+
 export async function buyInTrip(code: string, kind: "tour" | "transport", itemId: string): Promise<{ message: string | null; done: boolean; url: string | null }> {
   const result = await apiFetch<{ offer: { payment_link: { url: string | null } | null } }>(`/portal/client/reservations/${encodeURIComponent(code)}/in-trip`, { method: "POST", body: { kind, item_id: itemId } });
   refresh(`/portal/viajes/${code}`);

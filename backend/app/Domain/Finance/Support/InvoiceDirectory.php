@@ -24,6 +24,12 @@ final class InvoiceDirectory
         '13' => 'Ajuste de montos o fechas de pago',
     ];
 
+    public const DEBIT_REASONS = [
+        '01' => 'Intereses por mora',
+        '02' => 'Aumento en el valor',
+        '03' => 'Penalidades u otros conceptos',
+    ];
+
     public const VOID = ['rechazado', 'anulado'];
 
     public const STATUSES = ['pendiente_envio', 'emitido', 'aceptado', 'observado', 'rechazado', 'anulado'];
@@ -40,6 +46,7 @@ final class InvoiceDirectory
         return CursorPage::respond($request, $this->filtered($this->rows(), $filters), self::SORTS, '-issue_date,-number', fn (object $row): array => $this->row($row, $credited), [
             'kpis' => $this->kpis(),
             'reasons' => $this->reasons(),
+            'debit_reasons' => $this->reasons(self::DEBIT_REASONS),
             'statuses' => self::STATUSES,
             'can' => ['issue' => $viewer->can('finance.invoicing')],
         ]);
@@ -64,12 +71,13 @@ final class InvoiceDirectory
             'history' => DB::table('fin_status_history as h')->leftJoin('iam_users as u', 'u.id', '=', 'h.user_id')
                 ->where('h.entity_type', 'invoice')->where('h.entity_id', $row->id)->orderBy('h.created_at')
                 ->get(['h.status', 'h.note', 'h.created_at', 'u.name as user']),
-            'credit_notes' => DB::table('fin_invoices')->where('ref_invoice_id', $row->id)->orderBy('issue_date')->get(['number', 'status', 'total_amount', 'credit_note_reason']),
+            'credit_notes' => DB::table('fin_invoices')->where('ref_invoice_id', $row->id)->orderBy('issue_date')->orderBy('number')->get(['number', 'doc_type', 'status', 'total_amount', 'credit_note_reason']),
             'ose_ticket' => $row->ose_ticket,
             'fiscal_files' => ['xml' => $row->xml_document_id, 'cdr' => $row->cdr_document_id],
             'hash' => $row->hash_code,
             'lock_version' => (int) $row->lock_version,
             'reasons' => $this->reasons(),
+            'debit_reasons' => $this->reasons(self::DEBIT_REASONS),
             'can' => ['issue' => $viewer->can('finance.invoicing')],
         ];
     }
@@ -148,6 +156,7 @@ final class InvoiceDirectory
             'issued_by' => $row->issued_by_name,
             'lock_version' => (int) $row->lock_version,
             'creditable' => $row->status === 'aceptado' && in_array($row->doc_type, ['01', '03'], true) && $available > ReceivableLedger::TOLERANCE ? $available : 0.0,
+            'debitable' => $row->status === 'aceptado' && in_array($row->doc_type, ['01', '03'], true),
         ];
     }
 
@@ -174,9 +183,9 @@ final class InvoiceDirectory
         ];
     }
 
-    private function reasons(): array
+    private function reasons(array $catalog = self::CREDIT_REASONS): array
     {
-        return collect(self::CREDIT_REASONS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all();
+        return collect($catalog)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all();
     }
 
     private function pendingReceivables(): array

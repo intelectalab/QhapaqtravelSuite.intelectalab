@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDownLeft, ArrowUpRight, Check, Handshake, MapPin, Network, Plus, ShoppingBag, Store, X } from "lucide-react";
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { decidePartnership, requestPartnership, saveListing, sellListing } from "@/app/(backoffice)/canales/marketplace/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -90,13 +91,13 @@ function RequestForm({ listing }: { listing: MarketListing }) {
   );
 }
 
-function SellForm({ listing }: { listing: MarketListing }) {
+function SellForm({ listing, clients }: { listing: MarketListing; clients: MarketListings["clients"] }) {
   return (
     <PanelAction<StepResult>
       label="Vender"
       formId={`venta-${listing.id}`}
       title={`Vender ${listing.title}`}
-      description={`${listing.seller} recibe la reserva; tú registras la venta con tu margen.${listing.net_price ? ` Precio neto ${formatMoney(listing.net_price, listing.currency)} por pasajero.` : ""}`}
+      description={`Se confirma al momento si ${listing.seller} tiene cupo: recibe su reserva y a ti se te crea la reserva de tu cliente.${listing.net_price ? ` Precio neto ${formatMoney(listing.net_price, listing.currency)} por pasajero.` : ""}`}
       submitLabel="Registrar venta"
       action={sellListing}
       initial={initial}
@@ -105,6 +106,7 @@ function SellForm({ listing }: { listing: MarketListing }) {
       {() => (
         <>
           <input type="hidden" name="listing" value={listing.id} />
+          <SelectField label="Cliente" name="client_id" options={clients} placeholder="Elegir cliente de tu cartera" searchable />
           <div className="grid grid-cols-2 gap-3">
             <TextField label="Pasajeros" name="pax" type="number" min={1} max={99} required defaultValue="2" />
             <DateField label="Fecha de viaje" name="travel_date" required />
@@ -130,7 +132,7 @@ function DecideButton({ partnership, decision }: { partnership: MarketPartnershi
   );
 }
 
-function ListingCard({ listing, index }: { listing: MarketListing; index: number }) {
+function ListingCard({ listing, index, clients }: { listing: MarketListing; index: number; clients: MarketListings["clients"] }) {
   return (
     <li style={{ animationDelay: `${index * 50}ms` }} className="lift flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-col gap-3 rounded-tile border border-line bg-surface p-4">
       <div>
@@ -158,7 +160,7 @@ function ListingCard({ listing, index }: { listing: MarketListing; index: number
       </div>
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-3">
         {listing.partnership ? <StatusPill status={listing.partnership} label={PARTNERSHIP_LABELS[listing.partnership] ?? listing.partnership} /> : <span className="text-[12px] text-fg-3">Sin alianza</span>}
-        {listing.partnership === "activa" ? <SellForm listing={listing} /> : !listing.partnership || ["rechazada", "terminada"].includes(listing.partnership) ? <RequestForm listing={listing} /> : null}
+        {listing.partnership === "activa" ? <SellForm listing={listing} clients={clients} /> : !listing.partnership || ["rechazada", "terminada"].includes(listing.partnership) ? <RequestForm listing={listing} /> : null}
       </div>
     </li>
   );
@@ -194,7 +196,7 @@ export function MarketplaceBoard({ network, mine, partnerships, orders }: { netw
                   ) : (
                     <ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
                       {visible.map((listing, index) => (
-                        <ListingCard key={listing.id} listing={listing} index={index} />
+                        <ListingCard key={listing.id} listing={listing} index={index} clients={network.clients ?? []} />
                       ))}
                     </ul>
                   )}
@@ -272,6 +274,7 @@ export function MarketplaceBoard({ network, mine, partnerships, orders }: { netw
                     { id: "partner", header: "Agencia", cell: (order) => <span className="text-[13px]">{order.role === "venta" ? "Vendió " : "Compraste a "}{order.partner}</span> },
                     { id: "gross", header: "Monto", align: "right", cell: (order) => <span className="text-[13px] font-semibold">{formatMoney(order.gross_amount, order.currency)}</span> },
                     { id: "commission", header: "Comisión · plataforma", align: "right", wideOnly: true, cell: (order) => <span className="text-[12.5px] text-fg-2">{formatMoney(order.commission_amount, order.currency)} · {formatMoney(order.platform_fee_amount, order.currency)}</span> },
+                    { id: "reservation", header: "Tu reserva", cell: (order) => (order.reservation ? <Link href={`/reservas/${order.reservation}`} className="font-mono text-[12.5px] font-semibold hover:underline">{order.reservation}</Link> : <span className="text-[12.5px] text-fg-3">Sin reserva</span>) },
                     { id: "status", header: "Estado", cell: (order) => <StatusPill status={order.status} label={order.status_label} /> },
                   ]}
                 />

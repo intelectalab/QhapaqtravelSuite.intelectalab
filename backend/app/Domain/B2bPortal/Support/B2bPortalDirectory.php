@@ -350,7 +350,7 @@ final class B2bPortalDirectory
             $alerts->push(['kind' => 'block', 'tone' => 'warn', 'title' => 'Convenio por vencer', 'detail' => 'Coordina la renovación para seguir reservando sin interrupciones.', 'amount' => null, 'currency' => null, 'date' => $account->agency->valid_to, 'href' => '/agencia/mi-agencia']);
         }
 
-        if (($account->usagePct() ?? 0) >= B2bAccount::CREDIT_ALERT_PCT && $account->status() !== 'bloqueada') {
+        if ($account->nearLimit()) {
             $alerts->push(['kind' => 'credit', 'tone' => 'warn', 'title' => 'Crédito al límite', 'detail' => "Usas el {$account->usagePct()} % de tu línea. Informa pagos para liberar crédito.", 'amount' => $account->available(), 'currency' => $account->agency->credit_currency, 'date' => null, 'href' => '/agencia/cuenta']);
         }
 

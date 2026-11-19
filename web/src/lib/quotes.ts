@@ -1,3 +1,4 @@
+import type { PricingApplied } from "@/lib/pricing-applied";
 import type { QuoteQuote } from "@/lib/api/types";
 
 type QuoteContractFields = Pick<QuoteQuote, "id" | "code" | "client_id" | "owner_id" | "title" | "current_version_no" | "travel_from" | "travel_to" | "valid_until" | "currency" | "lock_version">;
@@ -43,6 +44,7 @@ export interface QuoteItem {
   rate_id?: string | null;
   rate_ref?: string | null;
   price_source?: "rate" | "manual";
+  pricing?: PricingApplied | null;
 }
 
 export interface QuoteVersion {
@@ -209,6 +211,7 @@ export interface QuotePreviewLine {
   rate_cost: string | null;
   price_source: "rate" | "manual";
   season_factor: string | null;
+  pricing?: PricingApplied | null;
   total: string;
   margin_pct: string | null;
 }

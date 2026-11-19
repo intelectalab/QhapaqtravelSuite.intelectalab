@@ -278,6 +278,7 @@ export interface MarketListings {
   kpis: MarketKpis;
   listings: MarketListing[];
   products: Option[];
+  clients: (Option & { hint?: string })[];
 }
 
 export interface MarketPartnership {
@@ -297,6 +298,7 @@ export interface MarketPartnership {
 export interface MarketOrder {
   id: string;
   code: string;
+  reservation: string | null;
   role: "venta" | "compra";
   partner: string;
   listing: { title: string; destination: string | null };

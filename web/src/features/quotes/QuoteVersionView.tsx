@@ -8,6 +8,7 @@ import { SidePanel } from "@/components/ui/SidePanel";
 import { SOFT_TINT } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { pricingText } from "@/lib/pricing-applied";
 import type { QuoteVersion } from "@/lib/quotes";
 import { statusLabel } from "@/lib/tone";
 import { QuoteItinerary } from "./QuoteItinerary";
@@ -57,6 +58,7 @@ export function QuoteVersionView({ version, currency, current, seeMargin }: { ve
                       {item.pax === 1 ? "" : "s"}
                       {item.qty > 1 ? ` × ${item.qty}` : ""}
                     </span>
+                    {item.pricing && <span className="block text-xs text-[var(--t1)]">{pricingText(item.pricing)}</span>}
                   </span>
                   <b className="flex-none font-mono text-[13px]">{formatMoney(item.total, currency)}</b>
                 </li>

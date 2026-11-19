@@ -17,6 +17,7 @@ import { PortalTitle, RISE, SectionCard } from "@/features/portal/PortalUi";
 import { agencyStatus, AVAILABILITY_TONES, PAY_MODES, type AgencyProduct, type CalendarDay, type PayMode, type PriceQuote } from "@/lib/b2b-portal";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
+import { pricingText } from "@/lib/pricing-applied";
 import { LOAD_FAILED, withRetry } from "@/lib/retry";
 import { toneStyle } from "@/lib/tone";
 import { CreditMeter, NetInfo } from "./AgencyUi";
@@ -340,6 +341,7 @@ export function AgencyProductView({ data, initialDate }: { data: AgencyProduct; 
                   <div className={cn("flex flex-col gap-3 transition-opacity", pending && "opacity-60")}>
                     <div className="rounded-tile bg-surface-2 px-3.5 py-2">
                       <QuoteLine label={`Neto ${formatMoney(quote.net_unit, quote.currency)} × ${quote.seats}`} value={formatMoney(quote.net_total, quote.currency)} strong />
+                      {quote.pricing && quote.net_list && <p className="pb-1 text-[12px] text-fg-3">{`Lista ${formatMoney(quote.net_list, quote.currency)} · ${pricingText(quote.pricing)}`}</p>}
                       <QuoteLine label={`Tu comisión ${quote.commission_pct} %`} value={formatMoney(quote.commission, quote.currency)} tone="violet" />
                       {quote.pvp_total !== null && <QuoteLine label="PVP sugerido" value={formatMoney(quote.pvp_total, quote.currency)} />}
                       {quote.margin !== null && Number(quote.margin) > 0 && <QuoteLine label="Margen al PVP" value={formatMoney(quote.margin, quote.currency)} tone="ok" />}

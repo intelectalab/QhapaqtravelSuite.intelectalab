@@ -8,6 +8,7 @@ use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\OperationsSettings;
 use App\Domain\Shared\Errors\ApiException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -79,9 +80,23 @@ final class ProviderDirectory
             'reservations' => $viewer->can('reservations.view') ? $this->reservations($viewer, $provider->id, $seesCost) : null,
             'payables' => $viewer->can('finance.payables') ? $this->payables($provider->id, $today) : null,
             'history' => $viewer->can('catalog.providers.manage') ? CatalogHistory::of('Proveedor', $provider->ref) : null,
+            'extranet_users' => $this->can($viewer)['invite'] ? $this->extranetUsers($provider->id) : null,
             'options' => $this->options(),
             'can' => $this->can($viewer),
         ];
+    }
+
+    private function extranetUsers(string $providerId): Collection
+    {
+        return DB::table('iam_users')->where('provider_id', $providerId)->whereNull('deleted_at')->orderBy('name')->get(['code', 'name', 'email', 'status', 'invited_at', 'last_login_at'])
+            ->map(fn (object $row): array => [
+                'code' => $row->code,
+                'name' => $row->name,
+                'email' => $row->email,
+                'status' => $row->status,
+                'invited_at' => $row->invited_at ? Carbon::parse((string) $row->invited_at)->toIso8601String() : null,
+                'last_login_at' => $row->last_login_at ? Carbon::parse((string) $row->last_login_at)->toIso8601String() : null,
+            ])->values();
     }
 
     public static function group(Collection $grouped, string $key): array
@@ -164,7 +179,7 @@ final class ProviderDirectory
 
     private function can(User $viewer): array
     {
-        return ['manage' => $viewer->can('catalog.providers.manage')];
+        return ['manage' => $viewer->can('catalog.providers.manage'), 'invite' => $viewer->can('catalog.providers.manage') && $viewer->can('admin.users.manage')];
     }
 
     private static function pick(Collection $grouped, string $key, array $fields): array
