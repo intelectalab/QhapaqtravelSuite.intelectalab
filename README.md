@@ -41,7 +41,7 @@ make help     # lista todos los comandos
 3. `docs/CONVENCIONES.md`: reglas de tablas, API, colas y pruebas.
 4. `docs/kit/backlog/`: historias por fase (0 → 1A → 1B → 2 → 3).
 5. `docs/kit/database/` y `docs/kit/api/`: esquema de base de datos y contrato de la API (fuentes de verdad).
-6. `docs/prototipo/index.html`: prototipo navegable (referencia visual y de flujo).
+6. `docs/prototipo/index.html`: prototipo navegable (referencia visual y de flujo). No se sube al repositorio: se copia desde el kit en cada PC de desarrollo.
 
 ## Forma de trabajo
 

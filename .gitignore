@@ -59,6 +59,9 @@ Credenciales de prueba/
 # Paquetes de actualización del kit: solo local
 Actualización/
 
+# Prototipo navegable del kit: referencia solo local
+docs/prototipo/
+
 # Documentación interna (avances, pendientes): solo local. Se sube únicamente el manual de uso.
 Documentación/*
 !Documentación/Manual de uso/
