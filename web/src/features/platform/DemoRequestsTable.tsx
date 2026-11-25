@@ -144,10 +144,10 @@ const sorts: SortOption<DemoRequest>[] = [{ id: "created", label: "Fecha de lleg
 export function DemoRequestsTable({ overview, initialStatus }: { overview: DemoRequestsOverview; initialStatus?: string }) {
   const [weekAgo] = useState(() => Date.now() - 7 * 24 * 60 * 60 * 1000);
   const metrics: MetricFilter<DemoRequest>[] = [
-    { id: "new", label: "Por atender", tone: "info", icon: <Inbox size={19} />, info: <p>Solicitudes en estado Nueva: nadie las ha contactado. Salen también en la campana. Al presionarla ves solo esas.</p>, matches: (row) => row.status === "nueva" },
-    { id: "contacted", label: "En conversación", tone: "sun", icon: <Handshake size={19} />, info: <p>Solicitudes marcadas como Contactada que aún no se convierten ni se descartan. Al presionarla ves solo esas.</p>, matches: (row) => row.status === "contactada" },
-    { id: "converted", label: "Convertidas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Solicitudes que terminaron en una agencia dada de alta. Al presionarla ves solo esas.</p>, matches: (row) => row.status === "convertida" },
-    { id: "week", label: "Últimos 7 días", tone: "t1", icon: <CalendarClock size={19} />, info: <p>Solicitudes que llegaron en los últimos 7 días, en cualquier estado. Al presionarla ves solo esas.</p>, matches: (row) => new Date(row.created_at).getTime() >= weekAgo },
+    { id: "new", label: "Por atender", tone: "info", icon: <Inbox size={19} />, info: <p>Solicitudes en estado Nueva: nadie las ha contactado. Salen también en la campana.</p>, matches: (row) => row.status === "nueva" },
+    { id: "contacted", label: "En conversación", tone: "sun", icon: <Handshake size={19} />, info: <p>Solicitudes marcadas como Contactada que aún no se convierten ni se descartan.</p>, matches: (row) => row.status === "contactada" },
+    { id: "converted", label: "Convertidas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Solicitudes que terminaron en una agencia dada de alta.</p>, matches: (row) => row.status === "convertida" },
+    { id: "week", label: "Últimos 7 días", tone: "t1", icon: <CalendarClock size={19} />, info: <p>Solicitudes que llegaron en los últimos 7 días, en cualquier estado.</p>, matches: (row) => new Date(row.created_at).getTime() >= weekAgo },
   ];
   return (
     <DataTable

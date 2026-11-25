@@ -255,11 +255,11 @@ function ReviewsTable({ rows, kpis, canModerate }: { rows: OwnReview[]; kpis: Ow
     { id: "actions", header: "", cell: (row) => <ReviewActions review={row} canModerate={canModerate} /> },
   ];
   const metrics: MetricFilter<OwnReview>[] = [
-    { id: "published", label: "Calificación promedio", tone: "sun", icon: <Star size={19} />, display: kpis.average !== null ? kpis.average.toFixed(1) : "—", note: `${kpis.published} publicadas de ${kpis.received} recibidas`, info: <p>Promedio de estrellas de las reseñas publicadas, todas de viajes verificados. Al presionarla, la tabla muestra solo las publicadas.</p>, matches: (row) => row.status === "publicada" },
-    { id: "recommend", label: "Recomiendan", tone: "t4", icon: <ThumbsUp size={19} />, display: kpis.recommend_pct !== null ? `${kpis.recommend_pct} %` : "—", note: "Calificaron con 4 o 5 estrellas", info: <p>Parte de las reseñas publicadas con 4 o 5 estrellas. Al presionarla, la tabla muestra esas reseñas publicadas.</p>, matches: (row) => row.status === "publicada" && row.stars >= 4 },
-    { id: "pending", label: "Pendientes", tone: "warn", icon: <Clock3 size={19} />, note: `${kpis.flagged} con alertas`, info: <p>Reseñas que esperan moderación; la nota cuenta las que el filtro marcó para revisar con cuidado: lenguaje ofensivo, datos personales o una nota muy baja. Al presionarla, la tabla muestra las pendientes.</p>, matches: (row) => row.status === "pendiente" },
-    { id: "replied", label: "Con respuesta", tone: "violet", icon: <MessageSquareReply size={19} />, info: <p>Reseñas que ya tienen una respuesta de la agencia. Al presionarla, la tabla muestra esas reseñas.</p>, matches: (row) => row.reply !== null },
-    { id: "low", label: "3 estrellas o menos", tone: "bad", icon: <TriangleAlert size={19} />, info: <p>Reseñas con 3 estrellas o menos. La nota nunca es motivo de rechazo: conviene responderlas. Al presionarla, la tabla muestra esas reseñas.</p>, matches: (row) => row.stars <= 3 },
+    { id: "published", label: "Calificación promedio", tone: "sun", icon: <Star size={19} />, display: kpis.average !== null ? kpis.average.toFixed(1) : "—", note: `${kpis.published} publicadas de ${kpis.received} recibidas`, info: <p>Promedio de estrellas de las reseñas publicadas, todas de viajes verificados.</p>, matches: (row) => row.status === "publicada" },
+    { id: "recommend", label: "Recomiendan", tone: "t4", icon: <ThumbsUp size={19} />, display: kpis.recommend_pct !== null ? `${kpis.recommend_pct} %` : "—", note: "Calificaron con 4 o 5 estrellas", info: <p>Parte de las reseñas publicadas con 4 o 5 estrellas.</p>, matches: (row) => row.status === "publicada" && row.stars >= 4 },
+    { id: "pending", label: "Pendientes", tone: "warn", icon: <Clock3 size={19} />, note: `${kpis.flagged} con alertas`, info: <p>Reseñas que esperan moderación; la nota cuenta las que el filtro marcó para revisar con cuidado: lenguaje ofensivo, datos personales o una nota muy baja.</p>, matches: (row) => row.status === "pendiente" },
+    { id: "replied", label: "Con respuesta", tone: "violet", icon: <MessageSquareReply size={19} />, info: <p>Reseñas que ya tienen una respuesta de la agencia.</p>, matches: (row) => row.reply !== null },
+    { id: "low", label: "3 estrellas o menos", tone: "bad", icon: <TriangleAlert size={19} />, info: <p>Reseñas con 3 estrellas o menos. La nota nunca es motivo de rechazo: conviene responderlas.</p>, matches: (row) => row.stars <= 3 },
   ];
   const filters: FilterConfig<OwnReview>[] = [
     { id: "status", label: "Estado", options: [...new Set(rows.map((row) => row.status))].map((value) => ({ value, label: channelStatus(value).label })), value: (row) => row.status },
@@ -325,10 +325,10 @@ function RequestsTable({ rows, canModerate }: { rows: ReviewRequest[]; canModera
     },
   ];
   const metrics: MetricFilter<ReviewRequest>[] = [
-    { id: "scheduled", label: "Programadas", tone: "info", icon: <CalendarClock size={19} />, info: <p>Invitaciones que salen solas en la fecha programada, con el canal y los plazos de los ajustes. Al presionarla, la tabla muestra esas invitaciones.</p>, matches: (row) => row.status === "programada" },
-    { id: "sent", label: "Enviadas", tone: "t1", icon: <Send size={19} />, info: <p>Invitaciones ya enviadas al viajero que todavía no tienen reseña; vencen a los 30 días del envío. Al presionarla, la tabla muestra esas invitaciones.</p>, matches: (row) => row.status === "enviada" },
-    { id: "reviewed", label: "Con reseña", tone: "ok", icon: <BadgeCheck size={19} />, info: <p>Invitaciones con al menos una reseña recibida del viajero. Al presionarla, la tabla muestra esas invitaciones.</p>, matches: (row) => row.reviews > 0 },
-    { id: "expired", label: "Vencidas", tone: "bad", icon: <Clock3 size={19} />, info: <p>Invitaciones que vencieron sin reseña; se pueden reenviar. Al presionarla, la tabla muestra esas invitaciones.</p>, matches: (row) => row.status === "vencida" },
+    { id: "scheduled", label: "Programadas", tone: "info", icon: <CalendarClock size={19} />, info: <p>Invitaciones que salen solas en la fecha programada, con el canal y los plazos de los ajustes.</p>, matches: (row) => row.status === "programada" },
+    { id: "sent", label: "Enviadas", tone: "t1", icon: <Send size={19} />, info: <p>Invitaciones ya enviadas al viajero que todavía no tienen reseña; vencen a los 30 días del envío.</p>, matches: (row) => row.status === "enviada" },
+    { id: "reviewed", label: "Con reseña", tone: "ok", icon: <BadgeCheck size={19} />, info: <p>Invitaciones con al menos una reseña recibida del viajero.</p>, matches: (row) => row.reviews > 0 },
+    { id: "expired", label: "Vencidas", tone: "bad", icon: <Clock3 size={19} />, info: <p>Invitaciones que vencieron sin reseña; se pueden reenviar.</p>, matches: (row) => row.status === "vencida" },
   ];
   return <DataTable screen="canales-resenas-solicitudes" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="solicitudes" searchText={(row) => `${row.client} ${row.reservation} ${row.to}`} searchPlaceholder="Buscar viajero o reserva" metrics={metrics} emptyTitle="Sin solicitudes" />;
 }

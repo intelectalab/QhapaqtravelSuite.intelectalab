@@ -101,10 +101,10 @@ export function StatementsTable({ statements, accounts, kpis }: { statements: Co
   ];
   const autoAccounts = new Set(accounts.filter((account) => account.statement_auto).map((account) => account.id));
   const metrics: MetricFilter<CorporateStatement>[] = [
-    { id: "generated", label: "Generados sin enviar", tone: "info", icon: <FileClock size={19} />, info: <p>Estados en estado generado: listos para revisar y enviar a la empresa. Al presionarla, la tabla muestra esos estados.</p>, matches: (row) => row.status === "generado" },
-    { id: "sent", label: "Enviados", tone: "ok", icon: <FileCheck2 size={19} />, info: <p>Estados enviados por correo a los destinatarios de la cuenta. Al presionarla, la tabla muestra esos estados.</p>, matches: (row) => row.status === "enviado" },
-    { id: "void", label: "Anulados", tone: "mute", icon: <FileX2 size={19} />, note: "Se conservan como historial", info: <p>Estados anulados para regenerar el mes. Al presionarla, la tabla muestra esos estados.</p>, matches: (row) => row.status === "anulado" },
-    { id: "auto", label: "Cuentas con envío automático", tone: "t1", icon: <CalendarClock size={19} />, display: kpis.auto_accounts, note: `De ${accounts.length} cuentas`, info: <p>Cuentas corporativas activas o suspendidas con el envío automático encendido: reciben el mes anterior el día configurado. Al presionarla, la tabla muestra los estados de esas cuentas.</p>, matches: (row) => autoAccounts.has(row.account.id) },
+    { id: "generated", label: "Generados sin enviar", tone: "info", icon: <FileClock size={19} />, info: <p>Estados en estado generado: listos para revisar y enviar a la empresa.</p>, matches: (row) => row.status === "generado" },
+    { id: "sent", label: "Enviados", tone: "ok", icon: <FileCheck2 size={19} />, info: <p>Estados enviados por correo a los destinatarios de la cuenta.</p>, matches: (row) => row.status === "enviado" },
+    { id: "void", label: "Anulados", tone: "mute", icon: <FileX2 size={19} />, note: "Se conservan como historial", info: <p>Estados anulados para regenerar el mes.</p>, matches: (row) => row.status === "anulado" },
+    { id: "auto", label: "Cuentas con envío automático", tone: "t1", icon: <CalendarClock size={19} />, display: kpis.auto_accounts, note: `De ${accounts.length} cuentas`, info: <p>Cuentas corporativas activas o suspendidas con el envío automático encendido: reciben el mes anterior el día configurado.</p>, matches: (row) => autoAccounts.has(row.account.id) },
   ];
   const sorts: SortOption<CorporateStatement>[] = [
     { id: "month", label: "Mes", type: "text", value: (row) => row.month },

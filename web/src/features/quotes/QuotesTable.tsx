@@ -101,10 +101,10 @@ export function QuotesTable({ rows, canManage, ownOnly = false }: { rows: QuoteR
   ];
 
   const metrics: MetricFilter<QuoteRow>[] = [
-    { id: "open", label: "En curso", tone: "t1", icon: <FileText size={19} />, info: <p>Cotizaciones en borrador, enviadas, vistas por el cliente o en negociación. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => OPEN_QUOTE.includes(row.status) },
-    { id: "expiring", label: "Vencen en 3 días", tone: "warn", icon: <Hourglass size={19} />, info: <p>Cotizaciones cuya fecha de vigencia es hoy o cae en los próximos tres días. Al presionarla, la tabla muestra las que hay que mover antes de que venzan.</p>, matches: (row) => row.days_left !== null && row.days_left >= 0 && row.days_left <= 3 },
-    { id: "won", label: "Aprobadas o en reserva", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Cotizaciones que el cliente aprobó, incluidas las que ya pasaron a reserva. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => ["aprobada", "convertida"].includes(row.status) },
-    { id: "lost", label: "Rechazadas o vencidas", tone: "bad", icon: <TimerOff size={19} />, info: <p>Cotizaciones que el cliente rechazó o que pasaron su fecha de vigencia sin aprobarse. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => ["rechazada", "vencida"].includes(row.status) },
+    { id: "open", label: "En curso", tone: "t1", icon: <FileText size={19} />, info: <p>Cotizaciones en borrador, enviadas, vistas por el cliente o en negociación.</p>, matches: (row) => OPEN_QUOTE.includes(row.status) },
+    { id: "expiring", label: "Vencen en 3 días", tone: "warn", icon: <Hourglass size={19} />, info: <p>Cotizaciones cuya fecha de vigencia es hoy o cae en los próximos tres días.</p>, matches: (row) => row.days_left !== null && row.days_left >= 0 && row.days_left <= 3 },
+    { id: "won", label: "Aprobadas o en reserva", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Cotizaciones que el cliente aprobó, incluidas las que ya pasaron a reserva.</p>, matches: (row) => ["aprobada", "convertida"].includes(row.status) },
+    { id: "lost", label: "Rechazadas o vencidas", tone: "bad", icon: <TimerOff size={19} />, info: <p>Cotizaciones que el cliente rechazó o que pasaron su fecha de vigencia sin aprobarse.</p>, matches: (row) => ["rechazada", "vencida"].includes(row.status) },
   ];
 
   const filters: FilterConfig<QuoteRow>[] = [

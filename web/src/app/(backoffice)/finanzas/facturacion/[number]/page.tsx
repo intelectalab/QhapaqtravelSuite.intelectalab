@@ -97,7 +97,7 @@ export default async function ComprobantePage({ params }: PageProps<"/finanzas/f
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={UserRound} tone="t1" label="Cliente" value={<span className="text-[16px]">{invoice.customer.name}</span>} note={`${invoice.customer.doc_type} ${invoice.customer.doc_number}`} info="Adquirente del comprobante y su documento de identidad." />
-        <TintTile icon={Route} tone="t4" label="Reserva" value={<Link href={`/reservas/${invoice.reservation.code}`} className="text-[16px] hover:underline">{invoice.reservation.code}</Link>} note={invoice.receivable ?? undefined} info="Reserva facturada. La nota es la cuenta por cobrar de la que sale el comprobante." />
+        <TintTile icon={Route} tone="t4" label="Reserva" value={<Link href={`/reservas/${invoice.reservation.code}`} className="text-[16px] hover:underline">{invoice.reservation.code}</Link>} note={invoice.receivable ?? undefined} info="Reserva facturada." />
         <TintTile icon={CalendarDays} tone="violet" label="Emisión" value={<span className="text-[16px]">{formatDate(invoice.issue_date)}</span>} note={invoice.issued_by ?? undefined} info="Fecha de emisión y usuario que lo emitió." />
         <TintTile icon={Wallet} tone="sun" label="Total" value={<span data-testid="invoice-total" data-amount={amountAttr(invoice.total)} className={cn("text-[16px]", credit && "text-bad")}>{credit ? "− " : ""}{formatMoney(invoice.total, invoice.currency)}</span>} note={invoice.delivered ? "Entregado al cliente" : invoice.currency !== "PEN" && invoice.fx_rate ? `TC ${invoice.fx_rate}` : undefined} info="Importe total del comprobante con IGV si es gravado. Las notas de crédito restan y las de débito suman." />
       </section>

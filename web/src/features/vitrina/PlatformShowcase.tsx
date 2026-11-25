@@ -51,8 +51,8 @@ function ListingsQueue({ listings, kpis }: { listings: ShowcaseListing[]; kpis: 
     },
   ];
   const metrics: MetricFilter<ShowcaseListing>[] = [
-    { id: "pending", label: "Por moderar", tone: "sun", icon: <ShieldCheck size={19} />, note: `${kpis.published} publicadas en la vitrina`, info: <p>Publicaciones que las agencias enviaron a revisión y esperan tu decisión. Al presionarla ves solo esas publicaciones.</p>, matches: (row) => row.status === "en_revision" },
-    { id: "rejected", label: "Rechazadas", tone: "bad", icon: <XCircle size={19} />, info: <p>Publicaciones rechazadas con su motivo, a la espera de que la agencia las corrija. Al presionarla ves solo esas publicaciones.</p>, matches: (row) => row.status === "rechazado" },
+    { id: "pending", label: "Por moderar", tone: "sun", icon: <ShieldCheck size={19} />, note: `${kpis.published} publicadas en la vitrina`, info: <p>Publicaciones que las agencias enviaron a revisión y esperan tu decisión.</p>, matches: (row) => row.status === "en_revision" },
+    { id: "rejected", label: "Rechazadas", tone: "bad", icon: <XCircle size={19} />, info: <p>Publicaciones rechazadas con su motivo, a la espera de que la agencia las corrija.</p>, matches: (row) => row.status === "rechazado" },
   ];
   return <DataTable screen="plataforma-vitrina-moderacion" rows={listings} columns={columns} getKey={(row) => row.code} entityLabel="publicaciones" searchText={(row) => `${row.title} ${row.agency.name} ${row.city}`} searchPlaceholder="Buscar tour o agencia" metrics={metrics} emptyTitle="Sin publicaciones por revisar" />;
 }
@@ -89,9 +89,9 @@ function AgenciesTable({ agencies, kpis }: { agencies: Agency[]; kpis: Moderatio
     { id: "actions", header: "", cell: (row) => <AgencyActions agency={row} /> },
   ];
   const metrics: MetricFilter<Agency>[] = [
-    { id: "review", label: "Por verificar", tone: "sun", icon: <ShieldCheck size={19} />, note: `de ${kpis.agencies} agencias en la vitrina`, info: <p>Agencias que esperan la verificación de su RUC y su licencia antes de publicar. La nota cuenta todas las agencias de la vitrina, con o sin cuenta de KipuControl. Al presionarla ves solo las que faltan verificar.</p>, matches: (row) => row.status === "en_revision" },
-    { id: "account", label: "Con cuenta", tone: "t1", icon: <Building2 size={19} />, info: <p>Agencias de la vitrina que además tienen cuenta en KipuControl. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.has_account },
-    { id: "fees", label: "Cargos y comisiones", tone: "ok", icon: <Percent size={19} />, display: formatMoney(kpis.fees, "PEN"), info: <p>Suma de cargos por asistente y comisiones de tours de pago de todas las reservas no canceladas. Al presionarla ves las agencias que generan cargos.</p>, matches: (row) => Number(row.fees) > 0 },
+    { id: "review", label: "Por verificar", tone: "sun", icon: <ShieldCheck size={19} />, note: `de ${kpis.agencies} agencias en la vitrina`, info: <p>Agencias que esperan la verificación de su RUC y su licencia antes de publicar. La nota cuenta todas las agencias de la vitrina, con o sin cuenta de KipuControl.</p>, matches: (row) => row.status === "en_revision" },
+    { id: "account", label: "Con cuenta", tone: "t1", icon: <Building2 size={19} />, info: <p>Agencias de la vitrina que además tienen cuenta en KipuControl.</p>, matches: (row) => row.has_account },
+    { id: "fees", label: "Cargos y comisiones", tone: "ok", icon: <Percent size={19} />, display: formatMoney(kpis.fees, "PEN"), info: <p>Suma de cargos por asistente y comisiones de tours de pago de todas las reservas no canceladas.</p>, matches: (row) => Number(row.fees) > 0 },
   ];
   const sorts: SortOption<Agency>[] = [{ id: "bookings", label: "Reservas", type: "number", value: (row) => row.bookings }];
   return <DataTable screen="plataforma-vitrina-agencias" rows={agencies} columns={columns} getKey={(row) => row.code} entityLabel="agencias" searchText={(row) => `${row.name} ${row.email} ${row.city} ${row.ruc ?? ""}`} searchPlaceholder="Buscar agencia, correo o RUC" metrics={metrics} sorts={sorts} emptyTitle="Sin agencias" />;

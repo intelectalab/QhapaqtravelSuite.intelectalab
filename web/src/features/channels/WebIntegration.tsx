@@ -401,8 +401,8 @@ export function DomainsTable({ rows, canManage }: { rows: WebDomain[]; canManage
     },
   ];
   const metrics: MetricFilter<WebDomain>[] = [
-    { id: "ok", label: "Verificados", tone: "ok", icon: <ShieldCheck size={19} />, info: <p>Dominios con el registro TXT comprobado en su DNS: son los únicos donde responde el widget. Al presionarla, la tabla muestra solo esos dominios.</p>, matches: (row) => row.status === "verificado" },
-    { id: "pending", label: "Pendientes", tone: "warn", icon: <Globe size={19} />, info: <p>Dominios agregados que todavía no se verifican: crea el registro TXT en tu DNS y pulsa Verificar. Al presionarla, la tabla muestra esos dominios.</p>, matches: (row) => row.status !== "verificado" },
+    { id: "ok", label: "Verificados", tone: "ok", icon: <ShieldCheck size={19} />, info: <p>Dominios con el registro TXT comprobado en su DNS: son los únicos donde responde el widget.</p>, matches: (row) => row.status === "verificado" },
+    { id: "pending", label: "Pendientes", tone: "warn", icon: <Globe size={19} />, info: <p>Dominios agregados que todavía no se verifican: crea el registro TXT en tu DNS y pulsa Verificar.</p>, matches: (row) => row.status !== "verificado" },
   ];
   return <DataTable screen="canales-web-dominios" rows={rows} columns={columns} getKey={(row) => row.id} entityLabel="dominios" searchText={(row) => `${row.domain} ${row.cms ?? ""}`} searchPlaceholder="Buscar dominio" metrics={metrics} toolbarEnd={canManage ? <AddDomainAction /> : undefined} emptyTitle="Sin dominios" />;
 }
@@ -495,10 +495,10 @@ export function EventsSection({ events, kpis }: { events: WebEvent[]; kpis: WebO
   const filters: FilterConfig<WebEvent>[] = [{ id: "event", label: "Evento", options: [...new Set(events.map((row) => row.event))].map((value) => ({ value, label: EVENT_LABELS[value] ?? value })), value: (row) => row.event }];
   const sorts: SortOption<WebEvent>[] = [{ id: "at", label: "Fecha", type: "date", value: (row) => row.at }];
   const metrics: MetricFilter<WebEvent>[] = [
-    { id: "views", label: "Vistas de página", tone: "t4", icon: <Users size={19} />, note: `${formatNumber(kpis.events)} eventos de ${formatNumber(kpis.sessions)} sesiones en total`, info: <p>La nota cuenta todos los eventos del sitio y del widget y las sesiones distintas que enviaron al menos uno, con el consentimiento del visitante; la tabla muestra los 50 más recientes. Al presionarla, la tabla muestra solo las vistas de página.</p>, matches: (row) => row.event === "page_view" },
-    { id: "items", label: "Productos vistos", tone: "violet", icon: <Activity size={19} />, info: <p>Eventos de un visitante que abrió la ficha de un producto. Al presionarla, la tabla muestra solo esos eventos.</p>, matches: (row) => row.event === "view_item" },
-    { id: "handoffs", label: "Traspasos al checkout", tone: "sun", icon: <MousePointerClick size={19} />, display: formatNumber(kpis.handoffs), note: kpis.sessions > 0 ? `${formatPercent((kpis.handoffs / kpis.sessions) * 100, 1)} de las sesiones` : "Reservas iniciadas desde el widget", info: <p>Veces que el widget pasó una selección al checkout, sobre todas las sesiones. Al presionarla, la tabla muestra los eventos recientes de inicio de checkout.</p>, matches: (row) => row.event === "begin_checkout" },
-    { id: "purchases", label: "Compras", tone: "ok", icon: <PackageCheck size={19} />, info: <p>Eventos de compra registrados desde el sitio o el widget. Al presionarla, la tabla muestra solo esos eventos.</p>, matches: (row) => row.event === "purchase" },
+    { id: "views", label: "Vistas de página", tone: "t4", icon: <Users size={19} />, note: `${formatNumber(kpis.events)} eventos de ${formatNumber(kpis.sessions)} sesiones en total`, info: <p>La nota cuenta todos los eventos del sitio y del widget y las sesiones distintas que enviaron al menos uno, con el consentimiento del visitante; la tabla muestra los 50 más recientes.</p>, matches: (row) => row.event === "page_view" },
+    { id: "items", label: "Productos vistos", tone: "violet", icon: <Activity size={19} />, info: <p>Eventos de un visitante que abrió la ficha de un producto.</p>, matches: (row) => row.event === "view_item" },
+    { id: "handoffs", label: "Traspasos al checkout", tone: "sun", icon: <MousePointerClick size={19} />, display: formatNumber(kpis.handoffs), note: kpis.sessions > 0 ? `${formatPercent((kpis.handoffs / kpis.sessions) * 100, 1)} de las sesiones` : "Reservas iniciadas desde el widget", info: <p>Veces que el widget pasó una selección al checkout, sobre todas las sesiones.</p>, matches: (row) => row.event === "begin_checkout" },
+    { id: "purchases", label: "Compras", tone: "ok", icon: <PackageCheck size={19} />, info: <p>Eventos de compra registrados desde el sitio o el widget.</p>, matches: (row) => row.event === "purchase" },
   ];
   return (
     <div className="flex flex-col gap-6">

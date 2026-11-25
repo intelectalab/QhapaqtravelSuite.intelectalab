@@ -207,9 +207,9 @@ export function NotificationTemplatesTable({ data }: { data: NotificationsOvervi
     { id: "actions", header: "", align: "right", mobile: "detail", cell: (rule) => (data.can_manage ? <RowActions><TemplateEditor event={rule.event} label={rule.label} /></RowActions> : null) },
   ];
   const metrics: MetricFilter<NotificationRule>[] = [
-    { id: "routes", label: "Avisos encendidos", tone: "violet", icon: <BellRing size={19} />, display: data.kpis.routes, note: "Combinaciones evento y canal", info: <p>Suma de los canales encendidos en cada evento de la matriz; un evento con correo y WhatsApp cuenta dos. Al presionarla ves los eventos con al menos un canal encendido.</p>, matches: (rule) => Object.values(rule.channels).some(Boolean) },
-    { id: "custom", label: "Con texto propio", tone: "t1", icon: <PenLine size={19} />, info: <p>Eventos con al menos una plantilla escrita por tu agencia en algún canal. Al presionarla ves solo esos eventos.</p>, matches: customized },
-    { id: "system", label: "Solo del sistema", tone: "mute", icon: <FileText size={19} />, info: <p>Eventos que usan el texto que trae el sistema en todos sus canales. Al presionarla ves solo esos eventos.</p>, matches: (rule) => !customized(rule) },
+    { id: "routes", label: "Avisos encendidos", tone: "violet", icon: <BellRing size={19} />, display: data.kpis.routes, note: "Combinaciones evento y canal", info: <p>Suma de los canales encendidos en cada evento de la matriz; un evento con correo y WhatsApp cuenta dos.</p>, matches: (rule) => Object.values(rule.channels).some(Boolean) },
+    { id: "custom", label: "Con texto propio", tone: "t1", icon: <PenLine size={19} />, info: <p>Eventos con al menos una plantilla escrita por tu agencia en algún canal.</p>, matches: customized },
+    { id: "system", label: "Solo del sistema", tone: "mute", icon: <FileText size={19} />, info: <p>Eventos que usan el texto que trae el sistema en todos sus canales.</p>, matches: (rule) => !customized(rule) },
   ];
   const filters: FilterConfig<NotificationRule>[] = [{ id: "group", label: "Módulo", options: [...new Set(data.rules.map((rule) => rule.group))].map((group) => ({ value: group, label: group })), value: (rule) => rule.group }];
   const sorts: SortOption<NotificationRule>[] = [{ id: "label", label: "Evento", value: (rule) => rule.label }];
@@ -357,11 +357,11 @@ export function NotificationLog({ data }: { data: NotificationsOverview }) {
     },
   ];
   const metrics: MetricFilter<NotificationMessage>[] = [
-    { id: "week", label: "Enviados en 7 días", tone: "t1", icon: <Send size={19} />, display: data.kpis.sent_7d, info: <p>Avisos con estado enviado creados en los últimos 7 días, por cualquier canal. Al presionarla ves solo esos envíos.</p>, matches: (message) => message.status === "enviado" && new Date(message.at).getTime() >= weekAgo },
-    { id: "rate", label: "Tasa de entrega", tone: "ok", icon: <Percent size={19} />, display: delivery === null ? "Sin envíos" : formatPercent(delivery, 1), note: settled > 0 ? `${data.kpis.failed} fallidos de ${settled} terminados` : undefined, info: <p>Envíos que salieron bien entre todos los que ya terminaron, enviados o fallidos; los que siguen en cola no cuentan. Al presionarla ves los envíos terminados.</p>, matches: (message) => message.status !== "pendiente" },
-    { id: "sent", label: "Enviados", tone: "ok", icon: <CheckCircle2 size={19} />, info: <p>Avisos que el canal aceptó. Al presionarla ves solo esos envíos.</p>, matches: (message) => message.status === "enviado" },
-    { id: "failed", label: "Fallidos", tone: "bad", icon: <XCircle size={19} />, info: <p>Avisos que no salieron; los temporales se reintentan y los permanentes se pueden reenviar por correo. Al presionarla ves solo esos envíos.</p>, matches: (message) => message.status === "fallido" },
-    { id: "queued", label: "En cola", tone: "sun", icon: <Clock size={19} />, info: <p>Avisos que esperan su turno para salir. Al presionarla ves solo esos envíos.</p>, matches: (message) => message.status === "pendiente" },
+    { id: "week", label: "Enviados en 7 días", tone: "t1", icon: <Send size={19} />, display: data.kpis.sent_7d, info: <p>Avisos con estado enviado creados en los últimos 7 días, por cualquier canal.</p>, matches: (message) => message.status === "enviado" && new Date(message.at).getTime() >= weekAgo },
+    { id: "rate", label: "Tasa de entrega", tone: "ok", icon: <Percent size={19} />, display: delivery === null ? "Sin envíos" : formatPercent(delivery, 1), note: settled > 0 ? `${data.kpis.failed} fallidos de ${settled} terminados` : undefined, info: <p>Envíos que salieron bien entre todos los que ya terminaron, enviados o fallidos; los que siguen en cola no cuentan.</p>, matches: (message) => message.status !== "pendiente" },
+    { id: "sent", label: "Enviados", tone: "ok", icon: <CheckCircle2 size={19} />, info: <p>Avisos que el canal aceptó.</p>, matches: (message) => message.status === "enviado" },
+    { id: "failed", label: "Fallidos", tone: "bad", icon: <XCircle size={19} />, info: <p>Avisos que no salieron; los temporales se reintentan y los permanentes se pueden reenviar por correo.</p>, matches: (message) => message.status === "fallido" },
+    { id: "queued", label: "En cola", tone: "sun", icon: <Clock size={19} />, info: <p>Avisos que esperan su turno para salir.</p>, matches: (message) => message.status === "pendiente" },
   ];
   const filters: FilterConfig<NotificationMessage>[] = [
     { id: "channel", label: "Canal", options: data.options.channels, value: (message) => message.channel },

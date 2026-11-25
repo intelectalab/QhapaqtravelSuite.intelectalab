@@ -141,10 +141,10 @@ export function PaymentLinksTable({ rows, kpis, canSend = true }: { rows: Paymen
   ];
 
   const metrics: MetricFilter<PaymentLinkRow>[] = [
-    { id: "active", label: "Activos", tone: "info", icon: <Clock3 size={19} />, note: linkMoney(kpis.activo), info: <p>Links vigentes que el cliente todavía puede pagar; la nota suma sus montos por moneda. Al presionarla, la tabla muestra solo los links activos.</p>, matches: (row) => row.status === "activo" },
-    { id: "paid", label: "Pagados", tone: "ok", icon: <CircleCheck size={19} />, note: linkMoney(kpis.pagado), info: <p>Links cobrados: cada uno generó un pago aplicado a su cuota. La nota suma lo cobrado por moneda. Al presionarla, la tabla muestra esos links.</p>, matches: (row) => row.status === "pagado" },
-    { id: "expired", label: "Vencidos", tone: "warn", icon: <XCircle size={19} />, note: "Pasaron su fecha sin pago", info: <p>Links que llegaron a su vencimiento sin cobrarse; crea uno nuevo si el cliente aún debe la cuota. Al presionarla, la tabla muestra esos links.</p>, matches: (row) => row.status === "vencido" },
-    { id: "void", label: "Anulados", tone: "mute", icon: <Ban size={19} />, note: "Anulados por la agencia", info: <p>Links que la agencia anuló antes de que el cliente pagara. Al presionarla, la tabla muestra esos links.</p>, matches: (row) => row.status === "anulado" },
+    { id: "active", label: "Activos", tone: "info", icon: <Clock3 size={19} />, note: linkMoney(kpis.activo), info: <p>Links vigentes que el cliente todavía puede pagar; la nota suma sus montos por moneda.</p>, matches: (row) => row.status === "activo" },
+    { id: "paid", label: "Pagados", tone: "ok", icon: <CircleCheck size={19} />, note: linkMoney(kpis.pagado), info: <p>Links cobrados: cada uno generó un pago aplicado a su cuota. La nota suma lo cobrado por moneda.</p>, matches: (row) => row.status === "pagado" },
+    { id: "expired", label: "Vencidos", tone: "warn", icon: <XCircle size={19} />, note: "Pasaron su fecha sin pago", info: <p>Links que llegaron a su vencimiento sin cobrarse; crea uno nuevo si el cliente aún debe la cuota.</p>, matches: (row) => row.status === "vencido" },
+    { id: "void", label: "Anulados", tone: "mute", icon: <Ban size={19} />, note: "Anulados por la agencia", info: <p>Links que la agencia anuló antes de que el cliente pagara.</p>, matches: (row) => row.status === "anulado" },
   ];
 
   const statuses = [...new Set(rows.map((row) => row.status))];

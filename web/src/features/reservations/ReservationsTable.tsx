@@ -104,11 +104,11 @@ export function ReservationsTable({ rows, today, can, prices = true, costs = fal
   ];
 
   const metrics: MetricFilter<ReservationRow>[] = [
-    { id: "traveling", label: "De viaje ahora", tone: "t4", icon: <Plane size={19} />, note: `${rows.filter((row) => row.status === "en_operacion").length} en operación`, info: <p>Reservas no canceladas cuyas fechas de viaje incluyen el día de hoy. La nota cuenta las reservas en estado En operación. Al presionarla, la tabla muestra solo los viajes en curso.</p>, matches: traveling },
-    { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Reservas en estado confirmada que aún no empiezan a operarse. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.status === "confirmada" },
-    { id: "pending", label: "Pendientes de pago o proveedor", tone: "sun", icon: <Hourglass size={19} />, info: <p>Reservas que esperan el pago del cliente o la confirmación de un proveedor para confirmarse. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.status === "pendiente_pago" || row.status === "pendiente_proveedor" },
-    { id: "balance", label: "Con saldo por cobrar", tone: "warn", icon: <Wallet size={19} />, info: <p>Reservas cuyo total en soles todavía no está cobrado por completo. Al presionarla, la tabla muestra solo las que tienen saldo.</p>, matches: (row) => (row.balance_pen ?? 0) > 0 },
-    { id: "incidents", label: "Con incidencia", tone: "bad", icon: <TriangleAlert size={19} />, info: <p>Reservas con al menos una incidencia abierta en Operaciones. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.open_incidents > 0 },
+    { id: "traveling", label: "De viaje ahora", tone: "t4", icon: <Plane size={19} />, note: `${rows.filter((row) => row.status === "en_operacion").length} en operación`, info: <p>Reservas no canceladas cuyas fechas de viaje incluyen el día de hoy. La nota cuenta las reservas en estado En operación.</p>, matches: traveling },
+    { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Reservas en estado confirmada que aún no empiezan a operarse.</p>, matches: (row) => row.status === "confirmada" },
+    { id: "pending", label: "Pendientes de pago o proveedor", tone: "sun", icon: <Hourglass size={19} />, info: <p>Reservas que esperan el pago del cliente o la confirmación de un proveedor para confirmarse.</p>, matches: (row) => row.status === "pendiente_pago" || row.status === "pendiente_proveedor" },
+    { id: "balance", label: "Con saldo por cobrar", tone: "warn", icon: <Wallet size={19} />, info: <p>Reservas cuyo total en soles todavía no está cobrado por completo.</p>, matches: (row) => (row.balance_pen ?? 0) > 0 },
+    { id: "incidents", label: "Con incidencia", tone: "bad", icon: <TriangleAlert size={19} />, info: <p>Reservas con al menos una incidencia abierta en Operaciones.</p>, matches: (row) => row.open_incidents > 0 },
   ];
 
   const filters: FilterConfig<ReservationRow>[] = [

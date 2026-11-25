@@ -191,9 +191,9 @@ export function SeasonsBoard({ overview }: { overview: RatesOverview }) {
   ];
   const current = overview.current_season;
   const metrics: MetricFilter<SeasonRow>[] = [
-    { id: "now", label: "Temporada de hoy", tone: "ok", icon: <CalendarRange size={19} />, display: current ? current.name : "Tarifa base", note: current ? `×${current.factor.toFixed(2)} hasta el ${formatDate(current.date_to)}` : "Sin temporada activa", info: <p>La temporada activa que cubre la fecha de hoy; si hay varias, se aplica la de prioridad con número menor. Al presionarla, la tabla muestra todas las temporadas activas en curso.</p>, matches: (season) => season.phase === "en_curso" && season.status === "activa" },
-    { id: "next", label: "Próximas", tone: "info", icon: <CalendarClock size={19} />, info: <p>Temporadas activas que empiezan más adelante. Al presionarla, la tabla muestra esas temporadas.</p>, matches: (season) => season.phase === "proxima" && season.status === "activa" },
-    { id: "off", label: "Inactivas", tone: "mute", icon: <CalendarOff size={19} />, info: <p>Temporadas desactivadas: no ajustan ningún precio aunque sus fechas coincidan. Al presionarla, la tabla muestra esas temporadas.</p>, matches: (season) => season.status === "inactiva" },
+    { id: "now", label: "Temporada de hoy", tone: "ok", icon: <CalendarRange size={19} />, display: current ? current.name : "Tarifa base", note: current ? `×${current.factor.toFixed(2)} hasta el ${formatDate(current.date_to)}` : "Sin temporada activa", info: <p>La temporada activa que cubre la fecha de hoy; si hay varias, se aplica la de prioridad con número menor.</p>, matches: (season) => season.phase === "en_curso" && season.status === "activa" },
+    { id: "next", label: "Próximas", tone: "info", icon: <CalendarClock size={19} />, info: <p>Temporadas activas que empiezan más adelante.</p>, matches: (season) => season.phase === "proxima" && season.status === "activa" },
+    { id: "off", label: "Inactivas", tone: "mute", icon: <CalendarOff size={19} />, info: <p>Temporadas desactivadas: no ajustan ningún precio aunque sus fechas coincidan.</p>, matches: (season) => season.status === "inactiva" },
   ];
   const filters: FilterConfig<SeasonRow>[] = [{ id: "type", label: "Tipo", options: [...new Set(overview.seasons.map((season) => season.type))].map((value) => ({ value, label: value })), value: (season) => season.type }];
 

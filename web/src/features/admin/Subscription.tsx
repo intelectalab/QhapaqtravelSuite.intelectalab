@@ -186,8 +186,8 @@ export function InvoicesTable({ invoices, manage = false }: { invoices: Platform
     },
   ];
   const metrics: MetricFilter<PlatformInvoice>[] = [
-    { id: "paid", label: "Pagadas", tone: "ok", icon: <CheckCircle2 size={19} />, info: <p>Facturas de la plataforma cobradas con éxito. Al presionarla ves solo esas facturas.</p>, matches: (invoice) => invoice.status === "paid" },
-    { id: "due", label: "Por pagar o fallidas", tone: "bad", icon: <XCircle size={19} />, info: <p>Facturas emitidas que siguen abiertas o cuyo cobro falló. Al presionarla ves solo esas facturas.</p>, matches: (invoice) => ["open", "failed"].includes(invoice.status) },
+    { id: "paid", label: "Pagadas", tone: "ok", icon: <CheckCircle2 size={19} />, info: <p>Facturas de la plataforma cobradas con éxito.</p>, matches: (invoice) => invoice.status === "paid" },
+    { id: "due", label: "Por pagar o fallidas", tone: "bad", icon: <XCircle size={19} />, info: <p>Facturas emitidas que siguen abiertas o cuyo cobro falló.</p>, matches: (invoice) => ["open", "failed"].includes(invoice.status) },
   ];
   const filters: FilterConfig<PlatformInvoice>[] = [{ id: "status", label: "Estado", options: Object.entries(INVOICE_STATUS).map(([value, item]) => ({ value, label: item.label })), value: (invoice) => invoice.status }];
   const sorts: SortOption<PlatformInvoice>[] = [

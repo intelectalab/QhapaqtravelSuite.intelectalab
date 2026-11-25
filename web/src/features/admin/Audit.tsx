@@ -92,9 +92,9 @@ export function AuditTable({ data, initialSearch }: { data: AuditOverview; initi
     },
   ];
   const metrics: MetricFilter<AuditEntry>[] = [
-    { id: "critical", label: "Críticos", tone: "bad", icon: <ShieldAlert size={19} />, info: <p>Eventos marcados como críticos en el periodo: inicios de sesión, cambios de permisos, aprobaciones, descuentos, anulaciones y exportaciones. Al presionarla ves solo esos eventos.</p>, matches: (event) => event.critical },
-    { id: "denied", label: "Accesos denegados", tone: "warn", icon: <Ban size={19} />, info: <p>Intentos de entrar a una pantalla o hacer una acción sin el permiso necesario. Al presionarla ves solo esos eventos.</p>, matches: (event) => event.action.includes("denegad") },
-    { id: "today", label: "Hoy", tone: "t1", icon: <CalendarDays size={19} />, info: <p>Eventos registrados hoy, en la hora de Lima. Al presionarla ves solo los de hoy.</p>, matches: (event) => isToday(event.at) },
+    { id: "critical", label: "Críticos", tone: "bad", icon: <ShieldAlert size={19} />, info: <p>Eventos marcados como críticos en el periodo: inicios de sesión, cambios de permisos, aprobaciones, descuentos, anulaciones y exportaciones.</p>, matches: (event) => event.critical },
+    { id: "denied", label: "Accesos denegados", tone: "warn", icon: <Ban size={19} />, info: <p>Intentos de entrar a una pantalla o hacer una acción sin el permiso necesario.</p>, matches: (event) => event.action.includes("denegad") },
+    { id: "today", label: "Hoy", tone: "t1", icon: <CalendarDays size={19} />, info: <p>Eventos registrados hoy, en la hora de Lima.</p>, matches: (event) => isToday(event.at) },
     {
       id: "peak",
       label: "Día de más actividad",
@@ -104,7 +104,7 @@ export function AuditTable({ data, initialSearch }: { data: AuditOverview; initi
       note: peak ? `${formatNumber(peak.total)} eventos · promedio ${formatNumber(average)} por día` : `Promedio ${formatNumber(average)} por día`,
       info: (
         <>
-          <p className="mb-2">Día con más eventos de las últimas dos semanas; la nota compara con el promedio diario del periodo (con «Todo», el de los últimos 30 días). Al presionarla ves los eventos de ese día.</p>
+          <p className="mb-2">Día con más eventos de las últimas dos semanas; la nota compara con el promedio diario del periodo (con «Todo», el de los últimos 30 días).</p>
           <div className="w-[270px]">
             <AuditActivity daily={data.daily} />
           </div>
@@ -121,7 +121,7 @@ export function AuditTable({ data, initialSearch }: { data: AuditOverview; initi
       note: top && data.kpis.total > 0 ? `${Math.round((top.total / data.kpis.total) * 100)} % de los eventos` : undefined,
       info: (
         <>
-          <p className="mb-2">Tipos de registro con más eventos en el periodo. Al presionarla ves los eventos del primero.</p>
+          <p className="mb-2">Tipos de registro con más eventos en el periodo.</p>
           <div className="w-[270px]">
             <TopEntities items={data.top_entities} total={data.kpis.total} />
           </div>

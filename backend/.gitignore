@@ -25,3 +25,4 @@ Thumbs.db
 /storage/phpstan
 /storage/openapi.generated.json
 /storage/phpstan-tests
+/api.json

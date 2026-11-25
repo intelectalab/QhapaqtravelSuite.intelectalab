@@ -128,11 +128,11 @@ export function SupplierVouchersView({ data }: { data: SupplierVouchers }) {
     },
   ];
   const metrics: MetricFilter<SupplierVoucher>[] = [
-    { id: "today", label: "Para hoy", icon: <CalendarClock size={19} />, tone: "t1", display: data.kpis.today, note: "Vouchers vigentes con servicio hoy", info: <p>Vouchers emitidos a tu nombre, aún sin usar, cuya fecha de servicio es hoy. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "emitido" && row.days_to === 0 },
-    { id: "issued", label: "Vigentes", icon: <Ticket size={19} />, tone: "info", info: <p>Vouchers emitidos a tu nombre que todavía no se usan. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "emitido" },
-    { id: "month", label: "Utilizados este mes", icon: <BadgeCheck size={19} />, tone: "ok", display: data.kpis.used_month, note: "Prueba de prestación para tu pago", info: <p>Vouchers registrados como utilizados durante el mes en curso, por tu recepción o por la agencia. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "utilizado" && row.used_at !== null && row.used_at.slice(0, 7) === data.today.slice(0, 7) },
-    { id: "used", label: "Utilizados", icon: <CheckCircle2 size={19} />, tone: "t3", info: <p>Todos los vouchers ya utilizados, de cualquier mes. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "utilizado" },
-    { id: "void", label: "Anulados", icon: <XCircle size={19} />, tone: "bad", info: <p>Vouchers que la agencia anuló; ya no sirven para prestar el servicio. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "anulado" },
+    { id: "today", label: "Para hoy", icon: <CalendarClock size={19} />, tone: "t1", display: data.kpis.today, note: "Vouchers vigentes con servicio hoy", info: <p>Vouchers emitidos a tu nombre, aún sin usar, cuya fecha de servicio es hoy.</p>, matches: (row) => row.status === "emitido" && row.days_to === 0 },
+    { id: "issued", label: "Vigentes", icon: <Ticket size={19} />, tone: "info", info: <p>Vouchers emitidos a tu nombre que todavía no se usan.</p>, matches: (row) => row.status === "emitido" },
+    { id: "month", label: "Utilizados este mes", icon: <BadgeCheck size={19} />, tone: "ok", display: data.kpis.used_month, note: "Prueba de prestación para tu pago", info: <p>Vouchers registrados como utilizados durante el mes en curso, por tu recepción o por la agencia.</p>, matches: (row) => row.status === "utilizado" && row.used_at !== null && row.used_at.slice(0, 7) === data.today.slice(0, 7) },
+    { id: "used", label: "Utilizados", icon: <CheckCircle2 size={19} />, tone: "t3", info: <p>Todos los vouchers ya utilizados, de cualquier mes.</p>, matches: (row) => row.status === "utilizado" },
+    { id: "void", label: "Anulados", icon: <XCircle size={19} />, tone: "bad", info: <p>Vouchers que la agencia anuló; ya no sirven para prestar el servicio.</p>, matches: (row) => row.status === "anulado" },
   ];
   const filters: FilterConfig<SupplierVoucher>[] = [{ id: "status", label: "Estado", options: [...new Set(data.items.map((row) => row.status))].map((value) => ({ value, label: supplierStatus(value, "voucher").label })), value: (row) => row.status }];
   const sorts: SortOption<SupplierVoucher>[] = [

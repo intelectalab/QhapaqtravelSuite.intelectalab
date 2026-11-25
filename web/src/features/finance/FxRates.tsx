@@ -115,7 +115,7 @@ export function FxHistoryTable({ rows, currencies }: { rows: FxEntry[]; currenci
     ),
     info: (
       <>
-        <p className="mb-2">Tipo de cambio vigente en soles por unidad, {currency.source ? `según ${currency.source}` : "sin fuente todavía"}, y su variación frente al registro anterior. Al presionarla ves solo el historial de esta moneda.</p>
+        <p className="mb-2">Tipo de cambio vigente en soles por unidad, {currency.source ? `según ${currency.source}` : "sin fuente todavía"}, y su variación frente al registro anterior.</p>
         {currency.trend.length > 1 && (
           <div className="w-[240px]" style={toneStyle(TONES[index % TONES.length])}>
             <span className="text-[var(--tint)]">
@@ -207,9 +207,9 @@ export function CurrenciesTable({ data }: { data: CurrenciesOverview }) {
     },
   ];
   const metrics: MetricFilter<CurrencyRow>[] = [
-    { id: "charge", label: "De cobro", tone: "t1", icon: <Coins size={19} />, info: <p>Monedas en las que el sitio y el checkout pueden cobrar. Al presionarla ves solo esas monedas.</p>, matches: (row) => row.is_charge },
-    { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Monedas que se muestran en el sitio, el widget y las cotizaciones. Al presionarla ves solo esas monedas.</p>, matches: (row) => row.active },
-    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CircleOff size={19} />, info: <p>Monedas apagadas que no se muestran en ningún lugar. Al presionarla ves solo esas monedas.</p>, matches: (row) => !row.active },
+    { id: "charge", label: "De cobro", tone: "t1", icon: <Coins size={19} />, info: <p>Monedas en las que el sitio y el checkout pueden cobrar.</p>, matches: (row) => row.is_charge },
+    { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Monedas que se muestran en el sitio, el widget y las cotizaciones.</p>, matches: (row) => row.active },
+    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CircleOff size={19} />, info: <p>Monedas apagadas que no se muestran en ningún lugar.</p>, matches: (row) => !row.active },
   ];
   return <DataTable screen="admin-monedas" rows={data.currencies} columns={columns} getKey={(row) => row.code} entityLabel="monedas" searchText={(row) => `${row.code} ${row.name}`} searchPlaceholder="Buscar moneda" metrics={metrics} />;
 }

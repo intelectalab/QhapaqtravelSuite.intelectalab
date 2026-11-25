@@ -119,7 +119,7 @@ export function AuditTable({ events }: { events: AuditEvent[] }) {
   const critical = events.filter((event) => event.critical).length;
   const actors = new Set(events.map((event) => event.actor ?? "Sistema")).size;
   const metrics: MetricFilter<AuditEvent>[] = [
-    { id: "critical", label: "Críticos", tone: "bad", icon: <ShieldAlert size={19} />, note: `${events.length > 0 ? `${Math.round((critical / events.length) * 100)} % de ` : ""}${formatNumber(events.length)} eventos · ${formatNumber(actors)} ${actors === 1 ? "persona o proceso" : "personas y procesos"}`, info: <p>Suspensiones, cambios de plan, anulaciones, accesos denegados y demás acciones marcadas como críticas al registrarse; la nota compara con los eventos de la tabla (los 500 más recientes) y cuenta quiénes los dejaron. Al presionarla ves solo los críticos.</p>, matches: (event) => event.critical },
+    { id: "critical", label: "Críticos", tone: "bad", icon: <ShieldAlert size={19} />, note: `${events.length > 0 ? `${Math.round((critical / events.length) * 100)} % de ` : ""}${formatNumber(events.length)} eventos · ${formatNumber(actors)} ${actors === 1 ? "persona o proceso" : "personas y procesos"}`, info: <p>Suspensiones, cambios de plan, anulaciones, accesos denegados y demás acciones marcadas como críticas al registrarse; la nota compara con los eventos de la tabla (los 500 más recientes) y cuenta quiénes los dejaron.</p>, matches: (event) => event.critical },
     {
       id: "peak",
       label: "Día de más actividad",
@@ -129,7 +129,7 @@ export function AuditTable({ events }: { events: AuditEvent[] }) {
       note: peak ? `${formatNumber(peak.total)} eventos · últimas 2 semanas` : undefined,
       info: (
         <>
-          <p className="mb-2">Eventos registrados por día en las últimas dos semanas, en hora de Lima. Al presionarla ves los eventos del día con más actividad.</p>
+          <p className="mb-2">Eventos registrados por día en las últimas dos semanas, en hora de Lima.</p>
           <div className="w-[270px]">
             <AuditActivity daily={daily} />
           </div>
@@ -146,7 +146,7 @@ export function AuditTable({ events }: { events: AuditEvent[] }) {
       note: top[0] && events.length > 0 ? `${Math.round((top[0].total / events.length) * 100)} % de los eventos` : undefined,
       info: (
         <>
-          <p className="mb-2">Tipos de registro con más eventos. Al presionarla ves los eventos del primero.</p>
+          <p className="mb-2">Tipos de registro con más eventos.</p>
           <div className="w-[270px]">
             <TopEntities items={top} total={events.length} />
           </div>

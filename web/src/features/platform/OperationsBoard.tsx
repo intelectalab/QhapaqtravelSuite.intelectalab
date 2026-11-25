@@ -215,9 +215,9 @@ const healthColumns: Column<TenantHealthRow>[] = [
 ];
 
 const healthMetrics: MetricFilter<TenantHealthRow>[] = [
-  { id: "ok", label: "Sin incidencias", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Agencias sin errores abiertos ni tareas con aviso. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.health === "ok" },
-  { id: "atencion", label: "Requieren atención", tone: "warn", icon: <AlertTriangle size={19} />, info: <p>Agencias con algún error abierto o una tarea con aviso que conviene revisar. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.health === "atencion" },
-  { id: "critico", label: "Críticas", tone: "bad", icon: <XCircle size={19} />, info: <p>Agencias con fallas que afectan su operación y piden acción inmediata. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.health === "critico" },
+  { id: "ok", label: "Sin incidencias", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Agencias sin errores abiertos ni tareas con aviso.</p>, matches: (row) => row.health === "ok" },
+  { id: "atencion", label: "Requieren atención", tone: "warn", icon: <AlertTriangle size={19} />, info: <p>Agencias con algún error abierto o una tarea con aviso que conviene revisar.</p>, matches: (row) => row.health === "atencion" },
+  { id: "critico", label: "Críticas", tone: "bad", icon: <XCircle size={19} />, info: <p>Agencias con fallas que afectan su operación y piden acción inmediata.</p>, matches: (row) => row.health === "critico" },
 ];
 
 const healthSorts: SortOption<TenantHealthRow>[] = [
@@ -293,10 +293,10 @@ const errorColumns: Column<IntegrationError>[] = [
 ];
 
 const errorMetrics: MetricFilter<IntegrationError>[] = [
-  { id: "open", label: "Errores abiertos", tone: "bad", icon: <Plug size={19} />, info: <p>Errores de integración, notificación o tareas de las agencias que aún no se resuelven: los que se reintentan y los de falla definitiva. Al presionarla ves solo los abiertos.</p>, matches: (error) => error.status !== "resuelto" },
-  { id: "retrying", label: "Reintentando", tone: "warn", icon: <RefreshCw size={19} />, info: <p>Errores temporales que se reintentan solos con espera creciente. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "reintentando" },
-  { id: "failed", label: "Falla definitiva", tone: "bad", icon: <XCircle size={19} />, info: <p>Errores que agotaron sus reintentos o no se pueden reintentar; se resuelven a mano. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "fallo_definitivo" },
-  { id: "resolved", label: "Resueltos", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Errores que se resolvieron con un reintento correcto o que alguien marcó como resueltos. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "resuelto" },
+  { id: "open", label: "Errores abiertos", tone: "bad", icon: <Plug size={19} />, info: <p>Errores de integración, notificación o tareas de las agencias que aún no se resuelven: los que se reintentan y los de falla definitiva.</p>, matches: (error) => error.status !== "resuelto" },
+  { id: "retrying", label: "Reintentando", tone: "warn", icon: <RefreshCw size={19} />, info: <p>Errores temporales que se reintentan solos con espera creciente.</p>, matches: (error) => error.status === "reintentando" },
+  { id: "failed", label: "Falla definitiva", tone: "bad", icon: <XCircle size={19} />, info: <p>Errores que agotaron sus reintentos o no se pueden reintentar; se resuelven a mano.</p>, matches: (error) => error.status === "fallo_definitivo" },
+  { id: "resolved", label: "Resueltos", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Errores que se resolvieron con un reintento correcto o que alguien marcó como resueltos.</p>, matches: (error) => error.status === "resuelto" },
 ];
 
 const errorSorts: SortOption<IntegrationError>[] = [{ id: "at", label: "Fecha", type: "date", value: (error) => error.at }];

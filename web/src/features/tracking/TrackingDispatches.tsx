@@ -58,7 +58,7 @@ export function DispatchesTable({ rows, canManage, kpis }: { rows: Dispatch[]; c
         ) : null,
     },
   ];
-  const card = (status: "enviado" | "fallido" | "sin_consentimiento" | "duplicado", icon: ReactNode, info: string, note?: string): MetricFilter<Dispatch> => ({ id: status, label: DISPATCH_STATUS[status].label, tone: DISPATCH_STATUS[status].tone, icon, note, info: <p>{info} Al presionarla, la tabla muestra solo esos envíos.</p>, matches: (row: Dispatch) => row.status === status });
+  const card = (status: "enviado" | "fallido" | "sin_consentimiento" | "duplicado", icon: ReactNode, info: string, note?: string): MetricFilter<Dispatch> => ({ id: status, label: DISPATCH_STATUS[status].label, tone: DISPATCH_STATUS[status].tone, icon, note, info: <p>{info}</p>, matches: (row: Dispatch) => row.status === status });
   const metrics: MetricFilter<Dispatch>[] = [
     card("enviado", <Send size={19} />, "Envíos aceptados por los proveedores, según el registro de envíos; la nota cuenta los de las últimas 24 horas y los que el proveedor deduplicó por event_id.", `${formatNumber(kpis.sent_24h)} en 24 h · ${formatNumber(kpis.deduplicated_24h)} deduplicadas`),
     card("fallido", <AlertTriangle size={19} />, "Envíos con error. Los que todavía se pueden reintentar (hasta 10 intentos) se reintentan con el mismo event_id; se guardan 90 días.", `${formatNumber(kpis.failed)} se pueden reintentar`),

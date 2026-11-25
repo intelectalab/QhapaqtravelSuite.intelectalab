@@ -126,10 +126,10 @@ export function GiftCardsTable({ rows, targets, kpis }: { rows: GiftCardRow[]; t
   ];
 
   const metrics: MetricFilter<GiftCardRow>[] = [
-    { id: "active", label: "Vales activos", tone: "ok", icon: <Gift size={19} />, note: bothCurrencies(kpis.activa.balance_pen, kpis.activa.balance_usd), info: <p>Vales que se pueden canjear hoy; la nota suma su saldo por moneda. Al presionarla, la tabla muestra solo los vales activos.</p>, matches: (row) => row.status === "activa" },
-    { id: "redeemed", label: "Canjeado", tone: "info", icon: <HandCoins size={19} />, display: bothCurrencies(kpis.redeemed.pen, kpis.redeemed.usd), info: <p>Suma de todos los canjes registrados contra cuotas o reservas. Al presionarla, la tabla muestra los vales que ya usaron parte o todo su saldo.</p>, matches: (row) => row.used_pct > 0 },
-    { id: "used", label: "Agotados", tone: "mute", icon: <CircleCheck size={19} />, note: "Saldo usado por completo", info: <p>Vales cuyo saldo llegó a cero con los canjes. Al presionarla, la tabla muestra solo esos vales.</p>, matches: (row) => row.status === "agotada" },
-    { id: "closed", label: "Vencidos o anulados", tone: "warn", icon: <Wallet size={19} />, note: "Ya no se pueden canjear", info: <p>Vales que pasaron su fecha de vencimiento o que la agencia anuló. Al presionarla, la tabla muestra esos vales.</p>, matches: (row) => row.status === "vencida" || row.status === "anulada" },
+    { id: "active", label: "Vales activos", tone: "ok", icon: <Gift size={19} />, note: bothCurrencies(kpis.activa.balance_pen, kpis.activa.balance_usd), info: <p>Vales que se pueden canjear hoy; la nota suma su saldo por moneda.</p>, matches: (row) => row.status === "activa" },
+    { id: "redeemed", label: "Canjeado", tone: "info", icon: <HandCoins size={19} />, display: bothCurrencies(kpis.redeemed.pen, kpis.redeemed.usd), info: <p>Suma de todos los canjes registrados contra cuotas o reservas.</p>, matches: (row) => row.used_pct > 0 },
+    { id: "used", label: "Agotados", tone: "mute", icon: <CircleCheck size={19} />, note: "Saldo usado por completo", info: <p>Vales cuyo saldo llegó a cero con los canjes.</p>, matches: (row) => row.status === "agotada" },
+    { id: "closed", label: "Vencidos o anulados", tone: "warn", icon: <Wallet size={19} />, note: "Ya no se pueden canjear", info: <p>Vales que pasaron su fecha de vencimiento o que la agencia anuló.</p>, matches: (row) => row.status === "vencida" || row.status === "anulada" },
   ];
 
   const filters: FilterConfig<GiftCardRow>[] = [

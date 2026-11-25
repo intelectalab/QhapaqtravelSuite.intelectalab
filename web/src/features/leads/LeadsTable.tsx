@@ -144,11 +144,11 @@ const buildColumns = (catalogs: CrmCatalogs | null): Column<LeadRow>[] => [
 const limaDay = (value: Date) => value.toLocaleDateString("en-CA", { timeZone: TIME_ZONE });
 
 const buildMetrics = (today: string): MetricFilter<LeadRow>[] => [
-  { id: "today", label: "Nuevos hoy", tone: "t2", icon: <CalendarPlus size={19} />, info: <p>Leads registrados hoy, en la hora de la agencia, por cualquier fuente. Al presionarla, la tabla muestra solo los de hoy.</p>, matches: (lead) => limaDay(new Date(lead.created_at)) === today },
-  { id: "new", label: "Sin contactar", tone: "info", icon: <PhoneCall size={19} />, info: <p>Leads en estado nuevo: nadie los contactó todavía. Al presionarla, la tabla muestra a quién llamar primero.</p>, matches: (lead) => lead.status === "nuevo" },
-  { id: "contacted", label: "Contactados", tone: "accent", icon: <Sparkles size={19} />, info: <p>Leads con un primer contacto registrado que aún no se califican. Al presionarla, la tabla muestra solo esos.</p>, matches: (lead) => lead.status === "contactado" },
-  { id: "qualified", label: "Calificados", tone: "violet", icon: <Target size={19} />, info: <p>Leads calificados como venta posible, listos para convertirse en cliente y oportunidad. Al presionarla, la tabla muestra solo esos.</p>, matches: (lead) => lead.status === "calificado" },
-  { id: "converted", label: "Convertidos", tone: "ok", icon: <CircleCheckBig size={19} />, info: <p>Leads que ya pasaron a cliente y oportunidad. Al presionarla, la tabla muestra solo esos.</p>, matches: (lead) => lead.status === "convertido" },
+  { id: "today", label: "Nuevos hoy", tone: "t2", icon: <CalendarPlus size={19} />, info: <p>Leads registrados hoy, en la hora de la agencia, por cualquier fuente.</p>, matches: (lead) => limaDay(new Date(lead.created_at)) === today },
+  { id: "new", label: "Sin contactar", tone: "info", icon: <PhoneCall size={19} />, info: <p>Leads en estado nuevo: nadie los contactó todavía.</p>, matches: (lead) => lead.status === "nuevo" },
+  { id: "contacted", label: "Contactados", tone: "accent", icon: <Sparkles size={19} />, info: <p>Leads con un primer contacto registrado que aún no se califican.</p>, matches: (lead) => lead.status === "contactado" },
+  { id: "qualified", label: "Calificados", tone: "violet", icon: <Target size={19} />, info: <p>Leads calificados como venta posible, listos para convertirse en cliente y oportunidad.</p>, matches: (lead) => lead.status === "calificado" },
+  { id: "converted", label: "Convertidos", tone: "ok", icon: <CircleCheckBig size={19} />, info: <p>Leads que ya pasaron a cliente y oportunidad.</p>, matches: (lead) => lead.status === "convertido" },
 ];
 
 const csv: CsvExport<LeadRow> = {

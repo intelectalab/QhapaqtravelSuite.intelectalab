@@ -116,9 +116,9 @@ export function WhatsappBoard({ overview }: { overview: WhatsappOverview }) {
         searchText={(template) => `${template.name} ${template.body} ${template.purpose_label}`}
         searchPlaceholder="Buscar por nombre o texto"
         metrics={[
-          { id: "aprobada", label: "Aprobadas", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${kpis.total} plantillas · ${account ? `${account.phone ?? account.name}${account.mode ? ` (${account.mode})` : ""}` : "número sin conectar"}`, info: <p>Plantillas que Meta aprobó; son las únicas que se pueden enviar fuera de la ventana de 24 horas. La nota muestra la cuenta de WhatsApp Business registrada en la bandeja omnicanal (en modo de prueba los envíos se simulan). Al presionarla ves solo las aprobadas.</p>, matches: (template) => template.status === "aprobada" },
-          { id: "enviada", label: "En revisión", tone: "sun", icon: <Clock3 size={19} />, info: <p>Plantillas enviadas a Meta, nuevas o editadas, que esperan respuesta. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.status === "enviada" },
-          { id: "rechazada", label: "Rechazadas", tone: "bad", icon: <XCircle size={19} />, info: <p>Plantillas que Meta rechazó; edita el texto para volver a enviarlas. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.status === "rechazada" },
+          { id: "aprobada", label: "Aprobadas", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${kpis.total} plantillas · ${account ? `${account.phone ?? account.name}${account.mode ? ` (${account.mode})` : ""}` : "número sin conectar"}`, info: <p>Plantillas que Meta aprobó; son las únicas que se pueden enviar fuera de la ventana de 24 horas. La nota muestra la cuenta de WhatsApp Business registrada en la bandeja omnicanal (en modo de prueba los envíos se simulan).</p>, matches: (template) => template.status === "aprobada" },
+          { id: "enviada", label: "En revisión", tone: "sun", icon: <Clock3 size={19} />, info: <p>Plantillas enviadas a Meta, nuevas o editadas, que esperan respuesta.</p>, matches: (template) => template.status === "enviada" },
+          { id: "rechazada", label: "Rechazadas", tone: "bad", icon: <XCircle size={19} />, info: <p>Plantillas que Meta rechazó; edita el texto para volver a enviarlas.</p>, matches: (template) => template.status === "rechazada" },
         ]}
         filters={[
           { id: "purpose", label: "Uso", options: labelOptions(catalogs.purposes), value: (template) => template.purpose },

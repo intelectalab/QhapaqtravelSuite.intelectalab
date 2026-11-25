@@ -130,7 +130,7 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
       icon: <Target size={19} />,
       display: formatMoney(kpis.open_pen, "PEN", { compact: true }),
       note: `${formatMoney(kpis.weighted_pen, "PEN", { compact: true })} ponderado`,
-      info: <p>Suma en soles de las oportunidades abiertas, de calificación a negociación. La nota multiplica cada una por la probabilidad de su etapa: es lo que se espera cerrar. Al presionarla, la tabla muestra solo las abiertas.</p>,
+      info: <p>Suma en soles de las oportunidades abiertas, de calificación a negociación. La nota multiplica cada una por la probabilidad de su etapa: es lo que se espera cerrar.</p>,
       matches: (item) => OPEN_STAGES.includes(item.stage),
     },
     {
@@ -139,7 +139,7 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
       tone: "ok",
       icon: <Trophy size={19} />,
       display: formatMoney(kpis.won_month_pen, "PEN", { compact: true }),
-      info: <p>Monto en soles de las oportunidades ganadas con fecha de cierre en el mes en curso. Al presionarla, la tabla muestra esas oportunidades.</p>,
+      info: <p>Monto en soles de las oportunidades ganadas con fecha de cierre en el mes en curso.</p>,
       matches: (item) => item.stage === "ganada" && (item.closed_at ?? "").startsWith(month),
     },
     {
@@ -149,7 +149,7 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
       icon: <Percent size={19} />,
       display: kpis.close_rate === null ? "Sin cierres" : `${kpis.close_rate} %`,
       note: "Ganadas sobre cerradas",
-      info: <p>Oportunidades ganadas entre todas las cerradas, ganadas y perdidas. Las abiertas no cuentan. Al presionarla, la tabla muestra las cerradas.</p>,
+      info: <p>Oportunidades ganadas entre todas las cerradas, ganadas y perdidas. Las abiertas no cuentan.</p>,
       matches: (item) => item.stage === "ganada" || item.stage === "perdida",
     },
     {
@@ -157,7 +157,7 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
       label: "Cierre vencido",
       tone: "bad",
       icon: <CalendarX size={19} />,
-      info: <p>Oportunidades abiertas cuya fecha de cierre esperada ya pasó. Al presionarla, la tabla muestra las que hay que mover o reprogramar.</p>,
+      info: <p>Oportunidades abiertas cuya fecha de cierre esperada ya pasó.</p>,
       matches: (item) => OPEN_STAGES.includes(item.stage) && item.expected_close_date < today,
     },
   ];

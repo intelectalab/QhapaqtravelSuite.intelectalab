@@ -104,7 +104,7 @@ export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview;
       icon: <CalendarRange size={19} />,
       display: formatNumber(kpis.month),
       note: `${plural(ofMonth.filter((row) => row.type_code === "reclamo").length, "reclamo", "reclamos")} · ${plural(ofMonth.filter((row) => row.type_code === "queja").length, "queja", "quejas")}`,
-      info: <p>Hojas de reclamación y queja recibidas desde el día 1 del mes. Al presionarla, la tabla muestra solo las de este mes.</p>,
+      info: <p>Hojas de reclamación y queja recibidas desde el día 1 del mes.</p>,
       matches: (row) => row.received_on.startsWith(month),
     },
     {
@@ -113,11 +113,11 @@ export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview;
       tone: "info",
       icon: <Inbox size={19} />,
       note: amounts.length ? `${amounts.map(([currency, amount]) => formatMoney(amount, currency, { compact: true })).join(" · ")} en reclamo` : undefined,
-      info: <p>Hojas recibidas o en revisión que aún no tienen respuesta. La nota suma el monto del bien contratado que declaró el consumidor en esas hojas. Al presionarla, la tabla muestra solo esas.</p>,
+      info: <p>Hojas recibidas o en revisión que aún no tienen respuesta. La nota suma el monto del bien contratado que declaró el consumidor en esas hojas.</p>,
       matches: isOpen,
     },
-    { id: "soon", label: "Por vencer", tone: "warn", icon: <Hourglass size={19} />, info: <p>Hojas sin responder cuyo plazo legal entra en la ventana de alerta de {settings.alert_days} días hábiles. Al presionarla, la tabla muestra las que hay que responder primero.</p>, matches: (row) => row.deadline === "por_vencer" },
-    { id: "late", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, info: <p>Hojas sin responder cuyo plazo de {settings.response_days} días hábiles ya pasó. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.deadline === "vencido" },
+    { id: "soon", label: "Por vencer", tone: "warn", icon: <Hourglass size={19} />, info: <p>Hojas sin responder cuyo plazo legal entra en la ventana de alerta de {settings.alert_days} días hábiles.</p>, matches: (row) => row.deadline === "por_vencer" },
+    { id: "late", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, info: <p>Hojas sin responder cuyo plazo de {settings.response_days} días hábiles ya pasó.</p>, matches: (row) => row.deadline === "vencido" },
     {
       id: "on-time",
       label: "Respondidas a tiempo",
@@ -125,7 +125,7 @@ export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview;
       icon: <TimerReset size={19} />,
       display: kpis.on_time_pct !== null ? `${kpis.on_time_pct} %` : "Sin datos",
       note: kpis.avg_days !== null ? `${kpis.avg_days} días hábiles en promedio` : `Plazo de ${settings.response_days} días hábiles`,
-      info: <p>Hojas respondidas dentro del plazo de {settings.response_days} días hábiles, entre todas las respondidas. La nota es el tiempo promedio desde que se recibe hasta que se responde, sin contar fines de semana ni feriados. {late === 0 ? "Ninguna respuesta salió fuera del plazo." : `${plural(late, "respuesta salió", "respuestas salieron")} fuera del plazo.`} Al presionarla, la tabla muestra las {plural(answered.length, "hoja respondida", "hojas respondidas")}.</p>,
+      info: <p>Hojas respondidas dentro del plazo de {settings.response_days} días hábiles, entre todas las respondidas. La nota es el tiempo promedio desde que se recibe hasta que se responde, sin contar fines de semana ni feriados. {late === 0 ? "Ninguna respuesta salió fuera del plazo." : `${plural(late, "respuesta salió", "respuestas salieron")} fuera del plazo.`}</p>,
       matches: isAnswered,
     },
   ];

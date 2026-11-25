@@ -156,7 +156,7 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
       icon: <Coins size={19} />,
       display: formatMoney(real),
       note: goal > 0 ? `${formatPercent((real / goal) * 100, 0)} de ${compact(goal)} · proyecta ${compact(projection)}` : `Proyecta ${compact(projection)}`,
-      info: <p>Reservas confirmadas creadas en el período por los asesores con meta activa o cerrada, en soles con el tipo de cambio de cada reserva, frente a la suma de sus metas. La proyección suma lo vendido y las oportunidades abiertas que cierran en el período, por su probabilidad. Al presionarla, la tabla muestra esas metas.</p>,
+      info: <p>Reservas confirmadas creadas en el período por los asesores con meta activa o cerrada, en soles con el tipo de cambio de cada reserva, frente a la suma de sus metas. La proyección suma lo vendido y las oportunidades abiertas que cierran en el período, por su probabilidad.</p>,
       matches: isLive,
     },
     { id: "risk", label: "En riesgo", tone: "bad", icon: <AlertTriangle size={19} />, display: risk, note: "Proyección bajo el 100 %", info: <p>Metas de asesor cuya proyección no alcanza la meta: en riesgo desde el 80 %, crítico por debajo.</p>, matches: (row) => isLive(row) && (row.health === "en_riesgo" || row.health === "critico") },
@@ -166,7 +166,7 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
       tone: "sun",
       icon: <Award size={19} />,
       display: formatMoney(bonus),
-      info: <p>Bono base de cada meta por el tramo que alcanza lo vendido hasta hoy (no la proyección): {overview.policy.tiers.map((tier) => `${tier.min} % paga ${tier.pay} %`).join(", ")}. Al presionarla, la tabla muestra las metas con bono; el monto está bajo lo vendido.</p>,
+      info: <p>Bono base de cada meta por el tramo que alcanza lo vendido hasta hoy (no la proyección): {overview.policy.tiers.map((tier) => `${tier.min} % paga ${tier.pay} %`).join(", ")}.</p>,
       matches: (row) => isLive(row) && (row.bonus?.estimated ?? 0) > 0,
     },
   ];

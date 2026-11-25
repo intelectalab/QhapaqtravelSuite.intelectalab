@@ -242,7 +242,7 @@ export function CmsTable({ overview }: { overview: CmsOverview }) {
       ),
     },
   ];
-  const metrics: MetricFilter<CmsContent>[] = CMS_FLOW.map((status) => ({ id: status, label: channelStatus(status).label, tone: channelStatus(status).tone, icon: FLOW_CARD[status].icon, info: <p>{FLOW_CARD[status].info} Al presionarla, la tabla muestra solo esos contenidos.</p>, matches: (row: CmsContent) => row.status === status }));
+  const metrics: MetricFilter<CmsContent>[] = CMS_FLOW.map((status) => ({ id: status, label: channelStatus(status).label, tone: channelStatus(status).tone, icon: FLOW_CARD[status].icon, info: <p>{FLOW_CARD[status].info}</p>, matches: (row: CmsContent) => row.status === status }));
   const filters: FilterConfig<CmsContent>[] = [
     { id: "type", label: "Tipo", options: [...new Set(rows.map((row) => row.type))].sort((a, b) => a.localeCompare(b, "es")).map((value) => ({ value, label: value })), value: (row) => row.type },
     { id: "status", label: "Estado", options: CMS_FLOW.map((value) => ({ value, label: channelStatus(value).label })), value: (row) => row.status },

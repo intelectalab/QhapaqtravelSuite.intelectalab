@@ -207,10 +207,10 @@ export function PriceRulesBoard({ page }: { page: PriceRulesPage }) {
                   searchText={(rule) => `${rule.code} ${rule.name} ${rule.product?.name ?? ""}`}
                   searchPlaceholder="Buscar por nombre o producto"
                   metrics={[
-                    { id: "activas", label: "Reglas activas", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${counts.total} reglas`, info: <p>Reglas encendidas que hoy ajustan el precio por ocupación, anticipación, día, temporada o demanda. Al presionarla, la tabla muestra solo esas reglas.</p>, matches: (rule) => rule.active },
-                    { id: "inactivas", label: "Inactivas", tone: "mute", icon: <CirclePause size={19} />, info: <p>Reglas guardadas que no se aplican. Puedes probarlas en el simulador antes de activarlas. Al presionarla, la tabla muestra esas reglas.</p>, matches: (rule) => !rule.active },
-                    { id: "alza", label: "Mayor alza", tone: "violet", icon: <Gauge size={19} />, display: `${topRaise} %`, info: <p>El ajuste positivo más alto entre las reglas activas, antes de aplicar el techo. Al presionarla, la tabla muestra la regla o reglas activas con ese ajuste.</p>, matches: (rule) => rule.active && topRaise > 0 && Number(rule.adjust_pct) === topRaise },
-                    { id: "vigencia", label: "Con vigencia", tone: "info", icon: <CalendarDays size={19} />, info: <p>Reglas limitadas a un rango de fechas de viaje. Al presionarla, la tabla muestra esas reglas.</p>, matches: (rule) => Boolean(rule.valid_from || rule.valid_to) },
+                    { id: "activas", label: "Reglas activas", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${counts.total} reglas`, info: <p>Reglas encendidas que hoy ajustan el precio por ocupación, anticipación, día, temporada o demanda.</p>, matches: (rule) => rule.active },
+                    { id: "inactivas", label: "Inactivas", tone: "mute", icon: <CirclePause size={19} />, info: <p>Reglas guardadas que no se aplican. Puedes probarlas en el simulador antes de activarlas.</p>, matches: (rule) => !rule.active },
+                    { id: "alza", label: "Mayor alza", tone: "violet", icon: <Gauge size={19} />, display: `${topRaise} %`, info: <p>El ajuste positivo más alto entre las reglas activas, antes de aplicar el techo.</p>, matches: (rule) => rule.active && topRaise > 0 && Number(rule.adjust_pct) === topRaise },
+                    { id: "vigencia", label: "Con vigencia", tone: "info", icon: <CalendarDays size={19} />, info: <p>Reglas limitadas a un rango de fechas de viaje.</p>, matches: (rule) => Boolean(rule.valid_from || rule.valid_to) },
                   ]}
                   filters={[{ id: "basis", label: "Base", options: labelOptions(catalogs.bases), value: (rule) => rule.basis }]}
                   sorts={[{ id: "priority", label: "Prioridad", type: "number", value: (rule) => rule.priority }]}

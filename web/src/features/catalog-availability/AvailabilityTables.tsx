@@ -71,8 +71,8 @@ export function RangesTable({ overview, toolbarEnd }: { overview: AvailabilityOv
       : []),
   ];
   const metrics: MetricFilter<RangeRow>[] = [
-    { id: "now", label: "Vigentes hoy", tone: "ok", icon: <CalendarCheck size={19} />, info: <p>Rangos de venta disponibles cuyas fechas incluyen hoy. Al presionarla, la tabla muestra solo esos rangos.</p>, matches: (range) => range.phase === "en_curso" && range.status === "disponible" },
-    { id: "closed", label: "Cierres", tone: "bad", icon: <CalendarOff size={19} />, info: <p>Rangos que cierran la venta en fechas de hoy en adelante. Al presionarla, la tabla muestra esos cierres.</p>, matches: (range) => range.status !== "disponible" && range.phase !== "pasado" },
+    { id: "now", label: "Vigentes hoy", tone: "ok", icon: <CalendarCheck size={19} />, info: <p>Rangos de venta disponibles cuyas fechas incluyen hoy.</p>, matches: (range) => range.phase === "en_curso" && range.status === "disponible" },
+    { id: "closed", label: "Cierres", tone: "bad", icon: <CalendarOff size={19} />, info: <p>Rangos que cierran la venta en fechas de hoy en adelante.</p>, matches: (range) => range.status !== "disponible" && range.phase !== "pasado" },
   ];
   const filters: FilterConfig<RangeRow>[] = [
     { id: "product", label: "Producto", options: unique(overview.ranges.map((range) => range.product.name)), value: (range) => range.product.name },
@@ -166,10 +166,10 @@ export function HoldsTable({ overview }: { overview: AvailabilityOverview }) {
   const isActive = (hold: HoldRow) => hold.status === "hold" && !hold.expired;
   const active = overview.holds.filter(isActive);
   const metrics: MetricFilter<HoldRow>[] = [
-    { id: "hold", label: "En hold", tone: "sun", icon: <Hourglass size={19} />, note: `${active.reduce((sum, hold) => sum + hold.quantity, 0)} cupos retenidos`, info: <p>Bloqueos vigentes que retienen cupos sin confirmar; la nota suma sus cupos. Restan de los libres hasta que se confirman, se liberan o vencen. Al presionarla, la tabla muestra solo esos bloqueos.</p>, matches: isActive },
-    { id: "expired", label: "Vencidos sin liberar", tone: "bad", icon: <TimerOff size={19} />, info: <p>Bloqueos que pasaron su hora límite y siguen restando cupos hasta que se expiran. Al presionarla, la tabla muestra esos bloqueos.</p>, matches: (hold) => hold.status === "hold" && hold.expired },
-    { id: "confirmed", label: "Confirmados", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Bloqueos que se confirmaron como venta y ya suman a los vendidos de su salida. Al presionarla, la tabla muestra esos bloqueos.</p>, matches: (hold) => hold.status === "confirmada" },
-    { id: "released", label: "Liberados", tone: "mute", icon: <Undo2 size={19} />, info: <p>Bloqueos liberados a mano o al cancelar, que devolvieron sus cupos a la salida. Al presionarla, la tabla muestra esos bloqueos.</p>, matches: (hold) => hold.status === "liberada" },
+    { id: "hold", label: "En hold", tone: "sun", icon: <Hourglass size={19} />, note: `${active.reduce((sum, hold) => sum + hold.quantity, 0)} cupos retenidos`, info: <p>Bloqueos vigentes que retienen cupos sin confirmar; la nota suma sus cupos. Restan de los libres hasta que se confirman, se liberan o vencen.</p>, matches: isActive },
+    { id: "expired", label: "Vencidos sin liberar", tone: "bad", icon: <TimerOff size={19} />, info: <p>Bloqueos que pasaron su hora límite y siguen restando cupos hasta que se expiran.</p>, matches: (hold) => hold.status === "hold" && hold.expired },
+    { id: "confirmed", label: "Confirmados", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Bloqueos que se confirmaron como venta y ya suman a los vendidos de su salida.</p>, matches: (hold) => hold.status === "confirmada" },
+    { id: "released", label: "Liberados", tone: "mute", icon: <Undo2 size={19} />, info: <p>Bloqueos liberados a mano o al cancelar, que devolvieron sus cupos a la salida.</p>, matches: (hold) => hold.status === "liberada" },
   ];
   const filters: FilterConfig<HoldRow>[] = [{ id: "status", label: "Estado", options: Object.entries(HOLD_STATUS).map(([value, item]) => ({ value, label: item.label })), value: (hold) => hold.status }];
   return <DataTable screen="cupos-holds" rows={overview.holds} columns={columns} getKey={(hold) => hold.ref} entityLabel="bloqueos" searchText={(hold) => `${hold.ref} ${hold.reference} ${hold.product.name ?? ""} ${hold.departure?.ref ?? ""}`} searchPlaceholder="Buscar referencia o salida" metrics={metrics} filters={filters} csv={{
