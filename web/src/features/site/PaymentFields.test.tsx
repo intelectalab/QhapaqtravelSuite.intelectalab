@@ -65,4 +65,13 @@ describe("medios de pago del checkout", () => {
     expect(screen.getByRole("radio", { name: /Plin/ })).toBeDisabled();
     expect(screen.getByText("Plin no está disponible para esta reserva.")).toBeInTheDocument();
   });
+
+  it("con la pasarela de la agencia no pide la tarjeta aquí: queda listo y avisa que se paga en su formulario seguro", () => {
+    const onChange = vi.fn<(value: PaymentValue) => void>();
+    render(<PaymentFields methods={methods} accounts={accounts} walletPhone={null} onChange={onChange} gateway={{ provider: "izipay", label: "Izipay", mode: "produccion", embedded: true }} />);
+
+    expect(onChange.mock.calls.at(-1)?.[0]).toEqual({ method: "tarjeta", ready: true });
+    expect(screen.queryByLabelText("Número de tarjeta")).not.toBeInTheDocument();
+    expect(screen.getByText(/Pagarás en el formulario seguro de Izipay/)).toBeInTheDocument();
+  });
 });

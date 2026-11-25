@@ -17,6 +17,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class TrackingTagWorkflow
@@ -61,6 +62,7 @@ final class TrackingTagWorkflow
                 'updated_at' => now(),
             ];
             $scope->db()->table($scope->tags)->insert($row);
+            $this->forget($scope);
             $this->log($scope, $provider, $code, $submit ? 'enviar_revision' : 'crear', null, $this->summary($provider, $values, $row['status']), $actor);
 
             return $code;
@@ -333,7 +335,9 @@ final class TrackingTagWorkflow
 
     private function forget(TagScope $scope): void
     {
-        Cache::forget(self::cacheKey($scope, $this->context->id()));
+        $key = self::cacheKey($scope, $this->context->id());
+        Cache::forget($key);
+        DB::connection($scope->connection)->afterCommit(fn () => Cache::forget($key));
     }
 
     private function log(TagScope $scope, string $provider, string $code, string $action, ?string $before, ?string $after, Authenticatable $actor): void

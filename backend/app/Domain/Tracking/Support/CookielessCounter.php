@@ -185,37 +185,22 @@ final class CookielessCounter
 
     private function bump(AnalyticsScope $scope, array $dims, array $metrics): void
     {
-        $platform = $scope->isPlatform();
-        $table = $scope->table;
-        $columns = ['visits', 'visitors', 'pageviews', 'bounces', 'engaged_seconds', 'conversions', 'revenue'];
-        $values = array_map(fn (string $column) => $metrics[$column] ?? 0, $columns);
-        $dimColumns = $platform ? ['day', 'site', 'path', 'agency_id', 'source', 'medium', 'campaign', 'device', 'country'] : ['day', 'path', 'source', 'medium', 'campaign', 'device', 'country'];
-        $dimValues = array_map(fn (string $column) => $dims[$column] ?? null, $dimColumns);
-        $conflict = $platform
-            ? "(day, site, path, coalesce(agency_id, '00000000-0000-0000-0000-000000000000'::uuid), source, medium, campaign, device, country)"
-            : '(tenant_id, day, path, source, medium, campaign, device, country)';
-        $updates = implode(', ', array_map(fn (string $column) => "{$column} = {$table}.{$column} + excluded.{$column}", $columns));
-        $all = [...$dimColumns, ...$columns];
+        $row = [];
 
-        DB::connection($scope->connection)->statement(
-            "insert into {$table} (".implode(', ', $all).', computed_at) values ('.implode(', ', array_fill(0, count($all), '?')).", now()) on conflict {$conflict} do update set {$updates}, computed_at = now()",
-            [...$dimValues, ...$values],
-        );
+        foreach ($scope->dimensions() as $column) {
+            $row[$column] = $dims[$column] ?? null;
+        }
+
+        foreach (WebAnalyticsRollup::METRICS as $column) {
+            $row[$column] = $metrics[$column] ?? 0;
+        }
+
+        DB::connection($scope->connection)->table($scope->hits)->insert([...$row, 'occurred_at' => now()]);
     }
 
     private function unbounce(AnalyticsScope $scope, array $dims): void
     {
-        $query = DB::connection($scope->connection)->table($scope->table)->where('bounces', '>', 0);
-
-        foreach ($dims as $column => $value) {
-            $query->where($column, $value);
-        }
-
-        if ($scope->isPlatform() && ! isset($dims['agency_id'])) {
-            $query->whereNull('agency_id');
-        }
-
-        $query->update(['bounces' => DB::raw('bounces - 1')]);
+        $this->bump($scope, $dims, ['bounces' => -1]);
     }
 
     private function remember(array $keys, string $hash, string $path, int $at): void

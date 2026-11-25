@@ -1,7 +1,7 @@
 "use client";
 
 import * as Switch from "@radix-ui/react-switch";
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 import { cn } from "@/lib/cn";
 
 interface SwitchFieldProps {
@@ -10,7 +10,7 @@ interface SwitchFieldProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
-  hint?: string;
+  hint?: ReactNode;
   testId?: string;
 }
 

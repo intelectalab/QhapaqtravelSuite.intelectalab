@@ -29,6 +29,35 @@ final class SiteAccountPayment
         private readonly CardPayments $cards,
     ) {}
 
+    public function session(PortalAccount $account, string $code): array
+    {
+        if ($account->isPassenger()) {
+            throw ApiException::forbidden('PORTAL_CUSTOMER_ONLY', 'Los pagos los hace quien compró el viaje.');
+        }
+
+        [$receivable, $amount] = $this->payable($account, $code, false);
+
+        return [...$this->cards->openSession('receivable', (string) $receivable->code, (string) $amount, (string) $receivable->currency, (string) ($account->user->email ?? ''), null), 'receivable' => (string) $receivable->code];
+    }
+
+    private function payable(PortalAccount $account, string $code, bool $lock): array
+    {
+        $query = DB::table('fin_receivables')->where('code', $code)->where('client_id', $account->client->id)->whereNull('deleted_at');
+        $receivable = ($lock ? $query->lockForUpdate() : $query)->first();
+
+        if ($receivable === null || in_array($receivable->status, ['cancelada', 'pagada'], true)) {
+            throw ApiException::notFound('No encontramos una cuota pendiente con ese código en tu cuenta.');
+        }
+
+        $amount = SiteAccountDirectory::payable($receivable, SiteAccountDirectory::pending((string) $receivable->id));
+
+        if (! $amount->isPositive()) {
+            throw ApiException::conflict('SIT-BR-20', 'Ya informaste un pago que cubre esta cuota; lo estamos validando.');
+        }
+
+        return [$receivable, $amount];
+    }
+
     public function pay(PortalAccount $account, string $code, array $data): array
     {
         if ($account->isPassenger()) {
@@ -38,18 +67,7 @@ final class SiteAccountPayment
         $payment = CheckoutRules::retry($data);
 
         return DB::transaction(function () use ($account, $code, $payment): array {
-            $receivable = DB::table('fin_receivables')->where('code', $code)->where('client_id', $account->client->id)->whereNull('deleted_at')->lockForUpdate()->first();
-
-            if ($receivable === null || in_array($receivable->status, ['cancelada', 'pagada'], true)) {
-                throw ApiException::notFound('No encontramos una cuota pendiente con ese código en tu cuenta.');
-            }
-
-            $pending = SiteAccountDirectory::pending((string) $receivable->id);
-            $amount = SiteAccountDirectory::payable($receivable, $pending);
-
-            if (! $amount->isPositive()) {
-                throw ApiException::conflict('SIT-BR-20', 'Ya informaste un pago que cubre esta cuota; lo estamos validando.');
-            }
+            [$receivable, $amount] = $this->payable($account, $code, true);
 
             $method = (string) $payment['method'];
             CheckoutTerms::assertMethod($method, (string) $receivable->currency);

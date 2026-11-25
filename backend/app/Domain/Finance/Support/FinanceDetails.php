@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\DB;
 
 final class FinanceDetails
 {
-    public function __construct(private readonly Consolidation $money, private readonly PaymentMethods $methods) {}
+    public const RULE_TOLERANCE = '0.05';
+
+    public function __construct(private readonly Consolidation $money, private readonly PaymentMethods $methods, private readonly CommissionDirectory $commissions) {}
 
     public function receivable(string $code, User $viewer): ?array
     {
@@ -118,7 +120,7 @@ final class FinanceDetails
             return null;
         }
 
-        $expected = $row->rule_pct !== null ? Decimal::of($row->base_amount)->multipliedBy((string) $row->rule_pct)->dividedBy(100, 2, RoundingMode::HALF_UP) : null;
+        $current = $this->currentRule($row);
 
         return [
             'code' => $row->code, 'kind' => $row->kind, 'status' => $row->status, 'currency' => $row->currency, 'fx_rate' => (string) $row->fx_rate, 'lock_version' => (int) $row->lock_version,
@@ -126,10 +128,34 @@ final class FinanceDetails
             'beneficiary' => $row->user_name ?? $row->agency_name, 'beneficiary_kind' => $row->beneficiary_user_id ? 'asesor' : 'agencia',
             'approved_at' => $row->approved_at, 'approved_by' => $row->approved_name, 'paid_at' => $row->paid_at, 'payment_method' => $row->payment_method, 'payment_ref' => $row->payment_ref, 'observation' => $row->observation,
             'reservation' => $row->reservation_code ? ['code' => $row->reservation_code, 'title' => $row->reservation_title] : null,
-            'current_rule' => $row->rule_pct !== null ? ['pct' => (string) $row->rule_pct, 'active' => (bool) $row->rule_active, 'condition' => $row->rule_condition, 'expected' => (string) $expected, 'difference' => (string) Decimal::of($row->amount)->minus($expected)->toScale(2)] : null,
+            'current_rule' => $current,
             'history' => $this->statusHistory('commission', $row->id),
             'audit' => $this->audit('Comisión', $row->code),
             'can' => ['recalculate' => $viewer->can('finance.commissions') && $viewer->can('finance.payments.register')],
+        ];
+    }
+
+    private function currentRule(object $row): ?array
+    {
+        $reservation = $row->reservation_id === null ? null : $this->commissions->reservations()->where('b.id', $row->reservation_id)->first(CommissionDirectory::RESERVATION_COLUMNS);
+        $terms = $reservation === null ? null : $this->commissions->terms($reservation, $this->commissions->currentRules());
+
+        if ($terms === null && $row->rule_pct === null) {
+            return null;
+        }
+
+        $pct = $terms['pct'] ?? (string) $row->rule_pct;
+        $expected = $terms !== null ? Decimal::of($terms['amount']) : Decimal::of($row->base_amount)->multipliedBy($pct)->dividedBy(100, 2, RoundingMode::HALF_UP);
+        $difference = Decimal::of($row->amount)->minus($expected)->toScale(2);
+        $alert = $difference->abs()->isGreaterThan(self::RULE_TOLERANCE) && ! in_array($row->status, ['pagada', 'anulada'], true);
+
+        return [
+            'pct' => (string) Decimal::of($pct)->strippedOfTrailingZeros(),
+            'active' => $terms !== null || (bool) $row->rule_active,
+            'condition' => $terms['description'] ?? $row->rule_condition,
+            'expected' => (string) $expected,
+            'difference' => (string) $difference,
+            'alert' => $alert ? 'FIN-BR-30: el monto difiere en '.Decimal::display($difference->abs(), (string) $row->currency).' de lo que da la regla vigente. Recalcula la comisión antes de aprobarla o pagarla.' : null,
         ];
     }
 

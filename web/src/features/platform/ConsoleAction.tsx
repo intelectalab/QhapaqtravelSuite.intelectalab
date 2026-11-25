@@ -38,6 +38,7 @@ export function ConsoleAction({ id, label, icon, title, description, submitLabel
       submitLabel={submitLabel}
       action={action}
       initial={initial}
+      successToast={(state) => state.notice ?? "Cambios guardados."}
       trigger={
         rowTone
           ? (open) => <RowIcon tone={rowTone} label={label} icon={icon} onClick={open} />

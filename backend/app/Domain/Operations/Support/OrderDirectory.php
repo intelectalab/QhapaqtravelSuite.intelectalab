@@ -25,7 +25,7 @@ final class OrderDirectory
 
     public function __construct(private readonly OpsCommon $common, private readonly ResourceDirectory $resources, private readonly EvidenceStore $evidences, private readonly RoomingPrefill $prefill) {}
 
-    public function list(User $viewer): array
+    public function list(User $viewer, ?string $code = null): array
     {
         $today = $this->common->today();
         $orders = DB::table('ops_orders as o')
@@ -33,6 +33,7 @@ final class OrderDirectory
             ->join('crm_clients as c', 'c.id', '=', 'r.client_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'o.coordinator_id')
             ->whereNull('o.deleted_at')
+            ->when($code !== null, fn ($query) => $query->where('o.code', $code))
             ->orderBy('o.date_from')
             ->get(['o.id', 'o.code', 'o.lock_version', 'o.title', 'o.status', 'o.date_from', 'o.date_to', 'o.created_at', 'o.cancel_reason', 'r.id as reservation_id', 'r.code as reservation_code', 'r.status as reservation_status', 'r.channel as reservation_channel', 'c.name as client_name', 'u.id as coordinator_id', 'u.name as coordinator_name', 'u.avatar_color as coordinator_color']);
         $ids = $orders->pluck('id');

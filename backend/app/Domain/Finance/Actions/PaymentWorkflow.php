@@ -142,6 +142,7 @@ final class PaymentWorkflow
 
     private function apply(object $payment, string $receivableCode, User $actor): void
     {
+        ReceivableLedger::lockReservationFirst($payment->reservation_id);
         $receivable = DB::table('fin_receivables')->where('code', $receivableCode)->whereNull('deleted_at')->lockForUpdate()->first();
 
         if ($receivable === null || $receivable->reservation_id !== $payment->reservation_id || $receivable->currency !== $payment->currency) {

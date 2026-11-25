@@ -14,7 +14,13 @@ final class PaymentMethodController
 {
     use ResolvesActor;
 
-    private const MESSAGES = ['label.required' => 'Escribe el nombre del medio de cobro.', 'label.min' => 'El nombre debe tener al menos 3 caracteres.', 'label.max' => 'El nombre no puede pasar de 80 caracteres.'];
+    private const MESSAGES = ['label.required' => 'Escribe el nombre del medio de cobro.', 'label.min' => 'El nombre debe tener al menos 3 caracteres.', 'label.max' => 'El nombre no puede pasar de 80 caracteres.', 'destination.*' => 'Elige a qué cuenta llega este medio.', 'bank.*' => 'Elige el banco que recibe este medio.', 'currency.*' => 'La moneda de la cuenta es soles, dólares o la del cobro.'];
+
+    private const DESTINATION_RULES = [
+        'destination' => ['sometimes', 'nullable', 'in:bank,gateway,petty_cash,none'],
+        'bank' => ['nullable', 'required_if:destination,bank', 'string', 'max:40'],
+        'currency' => ['nullable', 'in:PEN,USD'],
+    ];
 
     public function index(Request $request, PaymentMethodCatalog $catalog): JsonResponse
     {
@@ -26,6 +32,7 @@ final class PaymentMethodController
         $data = $request->validate([
             'label' => ['required', 'string', 'min:3', 'max:80'],
             'requires_reference' => ['sometimes', 'boolean'],
+            ...self::DESTINATION_RULES,
         ], self::MESSAGES);
 
         return response()->json(['data' => ['code' => $catalog->create($data, $this->actor($request))]], 201);
@@ -37,6 +44,7 @@ final class PaymentMethodController
             'label' => ['sometimes', 'string', 'min:3', 'max:80'],
             'requires_reference' => ['sometimes', 'boolean'],
             'active' => ['sometimes', 'boolean'],
+            ...self::DESTINATION_RULES,
         ], self::MESSAGES);
 
         return response()->json(['data' => ['code' => $catalog->update($code, $data, $this->actor($request))]]);

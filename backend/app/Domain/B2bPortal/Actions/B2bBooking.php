@@ -258,7 +258,7 @@ final class B2bBooking
             'kind' => 'agencia_b2b',
             'beneficiary_agency_id' => $account->agency->id,
             'rule_id' => DB::table('fin_commission_rules')->where('condition', 'b2b_convenio')->value('id'),
-            'rule_description' => "Convenio B2B: {$quote['commission_pct']} % sobre el total neto",
+            'rule_description' => "Tarifa B2B del producto: {$quote['commission_pct']} % sobre el total neto",
             'base_amount' => $quote['net_total'],
             'pct' => $quote['commission_pct'],
             'amount' => $quote['commission'],

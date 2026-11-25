@@ -18,6 +18,13 @@ final class ReceivableLedger
 
     public function __construct(private readonly Consolidation $money, private readonly AuditLogger $audit, private readonly SyncServicePayables $payables, private readonly WebOrderSettlement $web) {}
 
+    public static function lockReservationFirst(?string $reservationId): void
+    {
+        if ($reservationId !== null) {
+            DB::table('booking_reservations')->where('id', $reservationId)->lock('for no key update')->first(['id']);
+        }
+    }
+
     public static function balance(object $row): BigDecimal
     {
         return Decimal::of($row->amount)->minus(Decimal::of($row->paid_amount));

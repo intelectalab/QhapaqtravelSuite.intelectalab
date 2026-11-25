@@ -6,7 +6,9 @@ namespace App\Domain\Finance\Support;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Money\Decimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class CommissionDirectory
@@ -19,13 +21,21 @@ final class CommissionDirectory
         'Bono por meta' => ['Planilla del mes', 'Transferencia BCP'],
     ];
 
-    public const RESERVATION_COLUMNS = ['b.id', 'b.code', 'b.channel', 'b.owner_id', 'b.currency', 'b.fx_rate', 'b.total_amount', 'c.segment_code', 'a.id as agency_id', 'a.commission_pct'];
+    public const RESERVATION_COLUMNS = ['b.id', 'b.code', 'b.channel', 'b.owner_id', 'b.currency', 'b.fx_rate', 'b.total_amount', 'c.segment_code', 'a.id as agency_id', 'a.commission_pct', 'b.b2b_terms'];
 
     public const CONDITIONS = ['directo_ecommerce' => 'Venta directa y e-commerce', 'corporativo_grupos' => 'Corporativo y grupos', 'b2b_convenio' => 'Agencia B2B con convenio'];
 
     private const KIND_LABELS = ['vendedor' => 'Vendedor', 'agencia_b2b' => 'Agencia B2B', 'Bono por meta' => 'Bono por meta'];
 
     public function __construct(private readonly Consolidation $money) {}
+
+    public static function frozenPct(mixed $terms): ?string
+    {
+        $decoded = is_string($terms) ? json_decode($terms, true) : $terms;
+        $pct = is_array($decoded) ? ($decoded['commission_pct'] ?? null) : null;
+
+        return is_numeric($pct) ? (string) $pct : null;
+    }
 
     public function overview(User $viewer): array
     {
@@ -109,5 +119,42 @@ final class CommissionDirectory
             ->join('crm_clients as c', 'c.id', '=', 'b.client_id')
             ->leftJoin('channel_b2b_agencies as a', fn ($join) => $join->on('a.crm_client_id', '=', 'b.client_id')->whereNull('a.deleted_at'))
             ->whereNull('b.deleted_at');
+    }
+
+    public function currentRules(): Collection
+    {
+        $today = now()->toDateString();
+
+        return DB::table('fin_commission_rules')->where('active', true)->where('valid_from', '<=', $today)
+            ->where(fn ($query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $today))
+            ->orderBy('valid_from')->get(['id', 'condition', 'pct', 'base_type'])->keyBy('condition');
+    }
+
+    public function terms(object $reservation, Collection $rules): ?array
+    {
+        $total = Decimal::money($reservation->total_amount);
+        $isAgency = $reservation->channel === 'B2B' && $reservation->agency_id !== null;
+        if (! $isAgency && $reservation->owner_id === null) {
+            return null;
+        }
+
+        $corporate = in_array($reservation->channel, ['Corporativo', 'Grupos'], true) || $reservation->segment_code === 'Corporativo';
+        $rule = $rules->get($isAgency ? 'b2b_convenio' : ($corporate ? 'corporativo_grupos' : 'directo_ecommerce'));
+        $frozen = $isAgency ? self::frozenPct($reservation->b2b_terms ?? null) : null;
+        $pct = Decimal::of($isAgency ? ($frozen ?? $reservation->commission_pct) : ($rule->pct ?? ($corporate ? '2.5' : '3')))->strippedOfTrailingZeros();
+        $onTotal = $isAgency || $reservation->currency === 'USD' || ($rule->base_type ?? null) === 'total';
+        $base = $onTotal ? $total : Decimal::withoutIgv($total);
+        $description = $isAgency ? ($frozen !== null ? 'Tarifa B2B del producto' : 'Convenio B2B').": {$pct} % sobre el total de la reserva" : ($corporate ? 'Vendedor corporativo o grupos' : 'Vendedor venta directa').": {$pct} % sobre ".($reservation->currency === 'USD' ? 'el total (exportación, sin IGV)' : ($onTotal ? 'el total de la reserva' : 'la venta neta sin IGV'));
+
+        return [
+            'kind' => $isAgency ? 'agencia_b2b' : 'vendedor',
+            'user' => $isAgency ? null : $reservation->owner_id,
+            'agency' => $isAgency ? $reservation->agency_id : null,
+            'rule_id' => $rule->id ?? null,
+            'description' => $description,
+            'base' => (string) $base,
+            'pct' => (string) $pct,
+            'amount' => (string) $base->multipliedBy($pct)->dividedBy(100, 2, RoundingMode::HALF_UP),
+        ];
     }
 }

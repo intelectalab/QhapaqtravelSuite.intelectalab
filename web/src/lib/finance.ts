@@ -467,11 +467,13 @@ export interface PaymentMethodRow {
   accounts: { PEN: string | null; USD: string | null };
   destination: RoutingDestination | null;
   bank: string | null;
+  currency: "PEN" | "USD" | null;
   updated_at: string | null;
 }
 
 export interface PaymentMethodCatalog {
   rows: PaymentMethodRow[];
+  banks: string[];
   can: { manage: boolean };
 }
 
@@ -817,7 +819,7 @@ export interface CommissionDetail {
   payment_ref: string | null;
   observation: string | null;
   reservation: { code: string; title: string } | null;
-  current_rule: { pct: string; active: boolean; condition: string | null; expected: string; difference: string } | null;
+  current_rule: { pct: string; active: boolean; condition: string | null; expected: string; difference: string; alert: string | null } | null;
   history: History;
   audit: Audit;
   lock_version: number;

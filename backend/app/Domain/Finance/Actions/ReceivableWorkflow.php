@@ -262,7 +262,9 @@ final class ReceivableWorkflow
 
     private function open(string $code): object
     {
-        $receivable = DB::table('fin_receivables')->where(Str::isUuid($code) ? 'id' : 'code', $code)->whereNull('deleted_at')->lockForUpdate()->first();
+        $column = Str::isUuid($code) ? 'id' : 'code';
+        ReceivableLedger::lockReservationFirst(DB::table('fin_receivables')->where($column, $code)->whereNull('deleted_at')->value('reservation_id'));
+        $receivable = DB::table('fin_receivables')->where($column, $code)->whereNull('deleted_at')->lockForUpdate()->first();
 
         if ($receivable === null) {
             throw ApiException::notFound('La cuota no existe.');

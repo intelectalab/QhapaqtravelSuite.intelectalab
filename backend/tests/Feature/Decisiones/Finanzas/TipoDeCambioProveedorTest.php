@@ -21,8 +21,8 @@ it('la consola lista el catálogo de tipo de cambio con el simulado validado y l
 
     expect($byCode['SIMULADO']['status'])->toBe('validado')
         ->and($byCode['BCRP']['status'])->toBe('por_validar')
-        ->and($byCode['SUNAT']['credentials'][0]['set'])->toBeFalse()
-        ->and($byCode['SUNAT']['credentials_complete'])->toBeFalse()
+        ->and($byCode['SUNAT']['credentials'])->toBe([])
+        ->and($byCode['SUNAT']['credentials_complete'])->toBeTrue()
         ->and(collect($data['drivers'])->pluck('value')->all())->toContain('sunat', 'bcrp', 'api')
         ->and($data['simulated'])->toBeTrue();
 });

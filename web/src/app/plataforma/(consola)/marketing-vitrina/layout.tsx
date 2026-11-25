@@ -1,4 +1,4 @@
-import { BookOpen, Building2, Eye, Rocket, Target } from "lucide-react";
+import { BookOpen, Building2, Eye, Mail, MessagesSquare, Newspaper, PanelTop, Rocket, Target } from "lucide-react";
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
@@ -12,7 +12,7 @@ export default function MarketingVitrinaLayout({ children }: { children: ReactNo
     <>
       <PageHeader
         title="Marketing de la vitrina"
-        subtitle="Visitas, campañas y conversiones de Rutas Libres, su blog y las altas desde la landing de KipuControl."
+        subtitle="Visitas y conversiones de Rutas Libres, y la captación de la landing de KipuControl: altas, blog, comentarios, popups y boletín."
         info={<InfoTip>Las visitas se cuentan sin cookies en la vitrina y el blog. Las etiquetas de la vitrina se activan solo con la aprobación de otro Super Admin.</InfoTip>}
       />
       <SectionLayout
@@ -28,7 +28,13 @@ export default function MarketingVitrinaLayout({ children }: { children: ReactNo
                 { href: `${BASE}/etiquetas`, label: "Etiquetas y conversiones", icon: <Target size={16} /> },
                 { href: `${BASE}/blog`, label: "Blog en Payload", icon: <BookOpen size={16} /> },
               ] },
-              { title: "Captación", items: [{ href: `${BASE}/altas`, label: "Altas desde la landing", icon: <Rocket size={16} /> }] },
+              { title: "Landing de KipuControl", items: [
+                { href: `${BASE}/altas`, label: "Altas desde la landing", icon: <Rocket size={16} /> },
+                { href: `${BASE}/articulos`, label: "Artículos del blog", icon: <Newspaper size={16} /> },
+                { href: `${BASE}/comentarios`, label: "Comentarios", icon: <MessagesSquare size={16} /> },
+                { href: `${BASE}/popups`, label: "Popups", icon: <PanelTop size={16} /> },
+                { href: `${BASE}/boletin`, label: "Boletín", icon: <Mail size={16} /> },
+              ] },
             ]}
           />
         }

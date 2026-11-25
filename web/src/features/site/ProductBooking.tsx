@@ -98,11 +98,15 @@ export function AvailabilityCalendar() {
 
   useEffect(() => {
     if (lastSeats.current === seats) return;
-    lastSeats.current = seats;
-    startLoading(async () => {
-      const loaded = await Promise.all(months.map((month) => loadMonth(agencia, slug, month.month, seats)));
-      setMonths(loaded.map((month, i) => month ?? months[i]));
-    });
+    const timer = setTimeout(() => {
+      lastSeats.current = seats;
+      startLoading(async () => {
+        const loaded = await Promise.all(months.map((month) => loadMonth(agencia, slug, month.month, seats)));
+        if (lastSeats.current !== seats) return;
+        setMonths(loaded.map((month, i) => month ?? months[i]));
+      });
+    }, QUOTE_DELAY);
+    return () => clearTimeout(timer);
   }, [seats, agencia, slug, months, setMonths]);
 
   const visible = months.slice(index, index + 2);
@@ -123,7 +127,7 @@ export function AvailabilityCalendar() {
   };
 
   return (
-    <div className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5">
+    <div data-testid="bk-calendar" className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-[13px] text-fg-2">
           {t.booking.pricePerAdult} <b className="text-fg">{t.booking.travelers(seats)}</b>
@@ -172,6 +176,10 @@ export function AvailabilityCalendar() {
 
 const SOLD_OUT = ["agotado", "sin_cupo"];
 
+const PAX_LIMITS = { adults: 40, children: 20, infants: 10 };
+
+const QUOTE_DELAY = 250;
+
 function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; selected: string | null; onSelect: (date: string, available: boolean) => void }) {
   const first = new Date(`${month.month}-01T12:00:00`);
   const { t, dateLocale } = useSite();
@@ -200,6 +208,8 @@ function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; select
             <button
               key={day.date}
               type="button"
+              data-testid={`bk-day:${day.date}`}
+              data-status={day.status}
               disabled={!day.sellable && !SOLD_OUT.includes(day.status)}
               aria-disabled={!day.sellable}
               onClick={() => onSelect(day.date, day.sellable)}
@@ -240,22 +250,30 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
   const { slug, product, date, pax, setPax, days, extras, setExtras, mode, setMode, config } = useBooking();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paxErrors, setPaxErrors] = useState<string[]>([]);
+  const latestQuote = useRef(0);
   const [promo, setPromo] = useState("");
   const [appliedPromo, setAppliedPromo] = useState("");
   const [quoting, startQuote] = useTransition();
   const [adding, startAdding] = useTransition();
   const day = date ? days.get(date) : undefined;
-  const max = product.group.max;
   const seats = pax.adults + pax.children;
+  const ages = product.pax_rules ?? { adult_min_age: 12, child_min_age: Math.max(2, product.ages.min), child_max_age: 11, infant_max_age: 1, infant_pays: false };
 
   useEffect(() => {
     if (!date) return;
-    startQuote(async () => {
-      const result = await quoteProduct(agencia, slug, { date, ...pax, promo: appliedPromo || undefined, extras, payment_mode: mode ?? undefined });
-      setQuote(result.quote);
-      setError(result.error);
-      if (result.quote) onQuote?.(result.quote, { product: slug, date, ...pax, extras });
-    });
+    const ticket = ++latestQuote.current;
+    const timer = setTimeout(() => {
+      startQuote(async () => {
+        const result = await quoteProduct(agencia, slug, { date, ...pax, promo: appliedPromo || undefined, extras, payment_mode: mode ?? undefined });
+        if (ticket !== latestQuote.current) return;
+        setQuote(result.quote);
+        setError(result.error);
+        setPaxErrors(result.paxErrors);
+        if (result.quote) onQuote?.(result.quote, { product: slug, date, ...pax, extras });
+      });
+    }, QUOTE_DELAY);
+    return () => clearTimeout(timer);
   }, [agencia, slug, date, pax, appliedPromo, extras, mode, onQuote]);
 
   const toggleLine = (line: QuoteLine) => setExtras({ ...extras, removed: line.removed ? extras.removed.filter((key) => key !== line.key) : [...extras.removed, line.key] });
@@ -307,9 +325,9 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
       </a>
 
       <div className="mt-3 divide-y divide-line rounded-control border border-line">
-        <PaxRow label={t.booking.adults} hint={t.booking.adultsHint} value={pax.adults} min={1} max={Math.max(1, max - pax.children)} onChange={(adults) => setPax({ ...pax, adults, infants: Math.min(pax.infants, adults) })} />
-        {product.ages.children && <PaxRow label={t.booking.children} hint={t.booking.childrenHint(Math.max(2, product.ages.min))} value={pax.children} min={0} max={Math.max(0, max - pax.adults)} onChange={(children) => setPax({ ...pax, children })} />}
-        {product.ages.infants && <PaxRow label={t.booking.infants} hint={t.booking.infantsHint} value={pax.infants} min={0} max={pax.adults} onChange={(infants) => setPax({ ...pax, infants })} />}
+        <PaxRow kind="adt" label={t.booking.adults} hint={t.booking.adultsHint(ages.adult_min_age)} value={pax.adults} min={0} max={PAX_LIMITS.adults} onChange={(adults) => setPax({ ...pax, adults })} />
+        {product.ages.children && <PaxRow kind="chd" label={t.booking.children} hint={t.booking.childrenHint(ages.child_min_age, ages.child_max_age)} value={pax.children} min={0} max={PAX_LIMITS.children} onChange={(children) => setPax({ ...pax, children })} />}
+        {product.ages.infants && <PaxRow kind="inf" label={t.booking.infants} hint={t.booking.infantsHint(ages.infant_max_age, ages.infant_pays)} value={pax.infants} min={0} max={PAX_LIMITS.infants} onChange={(infants) => setPax({ ...pax, infants })} />}
       </div>
       <p className="mt-2 text-[11.5px] text-fg-3">
         {t.booking.group(product.group.min, product.group.max)}{product.ages.min > 0 ? t.booking.minAge(product.ages.min) : ""}.
@@ -341,7 +359,14 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
             {t.booking.calculating}
           </p>
         )}
-        {date && error && <p className="rounded-xl bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] px-3.5 py-3 text-[13px] text-bad">{error}</p>}
+        {date && error && paxErrors.length > 0 && (
+          <ul data-testid="bk-pax-error" className="grid gap-1 rounded-xl bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] px-3.5 py-3 text-[13px] text-bad">
+            {paxErrors.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        )}
+        {date && error && paxErrors.length === 0 && <p className="rounded-xl bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] px-3.5 py-3 text-[13px] text-bad">{error}</p>}
         {current && !error && (
           <dl className={cn("grid gap-1.5 text-[13px] transition-opacity", quoting && "opacity-60")}>
             <QuoteLines lines={current.lines} currency={current.currency} onToggle={current.can_remove ? toggleLine : undefined} />
@@ -404,7 +429,7 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
         )}
       </div>
 
-      <button type="button" onClick={reserve} disabled={!current || Boolean(error) || adding} data-site-cta className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:pointer-events-none disabled:opacity-50">
+      <button type="button" onClick={reserve} disabled={!current || Boolean(error) || adding} data-site-cta data-testid="bk-continue" className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:pointer-events-none disabled:opacity-50">
         {adding ? <Loader2 size={17} className="animate-spin" /> : <ShoppingBag size={17} />}
         {reserveLabel ?? t.booking.reserve}
       </button>
@@ -419,15 +444,15 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
   );
 }
 
-function PaxRow({ label, hint, value, min, max, onChange }: { label: string; hint: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+function PaxRow({ kind, label, hint, value, min, max, onChange }: { kind: "adt" | "chd" | "inf"; label: string; hint: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
   const { t } = useSite();
   return (
     <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
       <span>
         <b className="block text-[13.5px] font-semibold text-fg">{label}</b>
-        <span className="text-[11.5px] text-fg-3">{hint}</span>
+        <span data-testid={`bk-pax-age-label:${kind}`} className="text-[11.5px] text-fg-3">{hint}</span>
       </span>
-      <Stepper value={value} min={min} max={max} onChange={onChange} label={label.toLowerCase()} removeLabel={t.common.remove(label.toLowerCase())} addLabel={t.common.add(label.toLowerCase())} />
+      <Stepper value={value} min={min} max={max} onChange={onChange} label={label.toLowerCase()} removeLabel={t.common.remove(label.toLowerCase())} addLabel={t.common.add(label.toLowerCase())} testId={kind} />
     </div>
   );
 }

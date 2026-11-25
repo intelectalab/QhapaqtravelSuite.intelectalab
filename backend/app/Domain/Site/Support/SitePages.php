@@ -217,6 +217,7 @@ final class SitePages
                 'pickup' => $product->pickup_text,
                 'group' => ['min' => (int) $product->minimum_passengers, 'max' => (int) $product->maximum_passengers],
                 'ages' => ['min' => (int) $product->minimum_age, 'max' => (int) $product->maximum_age, 'children' => (int) $product->minimum_age < 12, 'infants' => (int) $product->minimum_age === 0],
+                'pax_rules' => $this->booking->paxRules($product, $card['first_date'] ?? $today->toDateString()),
                 'advance_days' => (int) $product->booking_advance_min_days,
                 'breadcrumbs' => $this->breadcrumbs($product),
                 'promotions' => $product->promotions,

@@ -74,20 +74,34 @@ final class SiteQuote
 
     public function quote(stdClass $product, string $date, int $adults, int $children, int $infants, ?string $promoCode = null, array $extras = [], bool $strict = false, ?string $mode = null, ?string $method = null, ?string $currency = null): array
     {
-        $errors = $this->rules($product, $adults, $children, $infants);
         $availability = $this->catalog->availability();
         $day = $availability->day($product, $date, $adults + $children, $this->catalog->today());
+        $pax = ['adt' => $adults, 'chd' => $children, 'inf' => $infants];
+        $ruleErrors = $this->booking->paxErrors($product, $date, $pax);
+
+        if ($day['price'] !== null && SiteBooking::serviceUnits($product, $day['price']['basis'], $pax) !== null) {
+            $ruleErrors = array_values(array_filter($ruleErrors, fn (string $error): bool => ! str_contains($error, 'pasajeros por reserva')));
+        }
+
+        if ($ruleErrors !== []) {
+            throw ApiException::unprocessable('SIT-BR-05', $ruleErrors[0], ['errors' => ['pax' => $ruleErrors]]);
+        }
+
+        $errors = $this->rules($product, $adults, $children, $infants);
+
+        if ($errors !== []) {
+            throw ApiException::unprocessable('SIT-BR-05', $errors[0], ['errors' => ['pax' => $errors]]);
+        }
 
         if (! $availability->sellable($day)) {
             $errors[] = $day['note'] ?? 'La fecha elegida no está disponible: '.mb_strtolower(SiteAvailability::LABELS[$day['status']]).'.';
         }
 
         if ($errors !== [] || $day['price'] === null) {
-            throw ApiException::unprocessable('SIT-BR-05', $errors[0] ?? 'La fecha elegida no tiene tarifa publicada.', ['errors' => ['pax' => $errors]]);
+            throw ApiException::unprocessable('SIT-BR-05', $errors[0] ?? 'La fecha elegida no tiene tarifa publicada.', ['errors' => ['date' => $errors]]);
         }
 
         $price = $day['price'];
-        $pax = ['adt' => $adults, 'chd' => $children, 'inf' => $infants];
         $units = SiteBooking::serviceUnits($product, $price['basis'], $pax);
         $perService = $units !== null;
         $override = $this->currency->override((string) $product->id, isset($price['rate_id']) ? (string) $price['rate_id'] : null, (string) $price['currency'], $currency);

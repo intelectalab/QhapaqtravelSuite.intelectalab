@@ -170,6 +170,7 @@ services:
       E2E_TOTP_SECRET: JBSWY3DPEHPK3PXP
       E2E_MAILPIT_URL: http://mailpit:8025
       E2E_FROZEN_TODAY: "2026-09-29"
+      E2E_WIDGET_PUBLIC_KEY: pk_live_ah_7Qm2x9LkR4
       E2E_DB_RESET_CMD: ""
     depends_on: [ web-e2e, mailpit ]
 

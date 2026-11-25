@@ -180,7 +180,7 @@ export default async function OportunidadPage({ params }: PageProps<"/crm/oportu
             title="Cotizaciones"
             aside={
               canQuote ? (
-                <Button href={`/cotizaciones/nueva?oportunidad=${encodeURIComponent(opportunity.code)}`} size="sm" variant="secondary" icon={<FilePlus2 size={15} />}>
+                <Button href={`/cotizaciones/nueva?oportunidad=${encodeURIComponent(opportunity.code)}`} size="sm" variant="secondary" icon={<FilePlus2 size={15} />} data-testid="opportunity-create-quote">
                   Crear cotización
                 </Button>
               ) : undefined

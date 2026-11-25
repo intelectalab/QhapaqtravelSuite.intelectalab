@@ -23,7 +23,9 @@ final class OrderController
 
     public function index(Request $request): JsonResponse
     {
-        $list = $this->directory->list($this->user($request));
+        $filter = $request->query('filter');
+        $code = is_array($filter) && is_scalar($filter['code'] ?? null) ? trim((string) $filter['code']) : null;
+        $list = $this->directory->list($this->user($request), $code === '' ? null : $code);
 
         return response()->json(CursorPage::respondItems($request, $list['items']->all(), Arr::except($list, 'items')));
     }

@@ -172,3 +172,25 @@ it('GET public/reviews en modo widget devuelve reseñas externas de plataformas 
     expect($this->getJson('/api/v1/public/reviews?widget=1', siteOf())->assertOk()->json('data.settings.count'))->toBeGreaterThan(0);
     expect($this->getJson('/api/v1/public/reviews?count=50', siteOf()))->toBeApiError(422);
 });
+
+it('el precio del sitio responde primero con la regla de pasajeros del motor y separa los errores de fecha', function () {
+    $slug = panelSlug();
+    $date = panelDate($slug);
+
+    $children = $this->postJson('/api/v1/public/price-quote', ['product' => $slug, 'date' => $date, 'adults' => 2, 'children' => 5], siteOf())->assertStatus(422);
+    expect($children->json('message'))->toBe('Máximo 2 niño(s) de 4 a 10 años por cada adulto.')
+        ->and($children->json('details.errors.pax'))->toContain('Máximo 2 niño(s) de 4 a 10 años por cada adulto.');
+
+    $adults = $this->postJson('/api/v1/public/price-quote', ['product' => $slug, 'date' => $date, 'adults' => 0, 'children' => 1], siteOf())->assertStatus(422);
+    expect($adults->json('message'))->toStartWith('Se requiere al menos 1 adulto(s)');
+
+    $closed = $this->postJson('/api/v1/public/price-quote', ['product' => $slug, 'date' => '2026-01-05', 'adults' => 2], siteOf())->assertStatus(422);
+    expect($closed->json('details.errors.date'))->not->toBeEmpty()
+        ->and($closed->json('details.errors.pax'))->toBeNull();
+});
+
+it('la ficha pública trae las edades de las reglas de pasajeros del producto', function () {
+    $rules = $this->getJson('/api/v1/public/products/'.panelSlug(), siteOf())->assertOk()->json('data.product.pax_rules');
+
+    expect($rules)->toBe(['adult_min_age' => 11, 'child_min_age' => 4, 'child_max_age' => 10, 'infant_max_age' => 3, 'infant_pays' => false]);
+});

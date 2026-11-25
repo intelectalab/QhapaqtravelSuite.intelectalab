@@ -16,6 +16,7 @@ Route::prefix('public')->name('public.me.')->controller(SiteAccountController::c
     Route::get('me/vouchers/{code}.pdf', 'voucherPdf')->name('vouchers.pdf');
     Route::get('me/receivables', 'receivables')->name('receivables.index');
     Route::post('me/receivables/{id}/payments', 'pay')->middleware('throttle:10,1')->name('receivables.payments.store');
+    Route::post('me/receivables/{id}/payment-session', 'paymentSession')->middleware('throttle:10,1')->name('receivables.payment-session');
     Route::get('me/wishlist', 'wishlist')->name('wishlist.index');
     Route::put('me/wishlist/{product}', 'wish')->name('wishlist.update');
     Route::delete('me/wishlist/{product}', 'unwish')->name('wishlist.destroy');

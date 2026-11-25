@@ -1,6 +1,12 @@
 <?php
 
+use App\Domain\Shared\Jobs\JobCatalog;
 use App\Domain\Tracking\Actions\RecordCookieConsent;
+use App\Domain\Tracking\Support\AnalyticsScope;
+use App\Domain\Tracking\Support\WebAnalyticsRollup;
+use App\Jobs\AggregatePlatformWebAnalytics;
+use App\Jobs\AggregateWebAnalytics;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +43,7 @@ it('VIS-01 y VIS-02: cuenta la visita sin cookies, suma páginas vistas y deja d
     segHit(['path' => '/checkout', 'kind' => 'conversion', 'value' => 2380])->assertStatus(202);
     segHit(['path' => '/'], ['User-Agent' => 'Googlebot/2.1 (+http://www.google.com/bot.html)'])->assertJsonPath('data.counted', false);
 
+    segAggregate();
     actingAsSeed('U01');
     $overview = $this->getJson('/api/v1/analytics/web/overview?days=7')->assertOk()->json('data');
 
@@ -63,6 +70,7 @@ it('VIS-01 y VIS-02: cuenta la visita sin cookies, suma páginas vistas y deja d
 
 it('VIS-03: la fuente sale de la UTM, del referente o queda como directo', function () {
     segHit(['path' => '/', 'referrer' => 'https://www.instagram.com/rutas'], ['User-Agent' => segBrowser(SEG_BROWSER.' Instagram')])->assertStatus(202);
+    segAggregate();
     actingAsSeed('U01');
 
     $sources = $this->getJson('/api/v1/analytics/web/sources?days=7')->assertOk()->json('data');
@@ -75,6 +83,7 @@ it('VIS: el CHECK impide más visitantes que visitas', function () {
 
 it('exporta el CSV del periodo y la exportación queda auditada', function () {
     segHit(['path' => '/'])->assertStatus(202);
+    segAggregate();
     actingAsSeed('U01');
 
     $response = $this->get('/api/v1/analytics/web/export?days=7');
@@ -135,10 +144,54 @@ it('SEG-01 y SEG-05: el sitio recibe Consent Mode denegado y en el pago no carga
 it('cuenta las visitas de la vitrina sin agencia y las muestra en la consola', function () {
     $this->postJson('/api/v1/public/analytics/hit', ['path' => '/lima', 'site' => 'vitrina', 'utm_source' => 'tiktok', 'utm_medium' => 'paid', 'utm_campaign' => 'free-tours-lima'], ['User-Agent' => segBrowser('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148')])->assertStatus(202);
 
+    segAggregate();
     actingAsPlatform();
     $overview = $this->getJson('/api/v1/platform/analytics/web/overview?site=vitrina&days=7')->assertOk()->json('data');
 
     expect($overview['kpis']['visits'])->toBe(1)
         ->and($overview['sources'][0]['campaign'])->toBe('free-tours-lima')
         ->and($overview['devices']['devices'][0]['device'])->toBe('movil');
+});
+
+it('VIS-04: el reporte lee el agregado, que el job recalcula cada hora; lo en vivo sale de los últimos 30 minutos', function () {
+    segHit(['path' => '/'])->assertStatus(202);
+    segHit(['path' => '/tours'])->assertStatus(202);
+    actingAsSeed('U01');
+
+    $before = $this->getJson('/api/v1/analytics/web/overview?days=7')->assertOk()->json('data');
+    expect($before['kpis']['visits'])->toBe(0)->and($before['realtime']['visitors'])->toBe(1)->and($before['computed_at'])->toBeNull();
+
+    $job = (new AggregateWebAnalytics)->forTenant((string) tenantA()->getKey());
+    withinTenant(tenantA(), fn () => $job->handle());
+    expect($job->runResult)->toContain('2 filas');
+
+    $after = $this->getJson('/api/v1/analytics/web/overview?days=7')->assertOk()->json('data');
+    expect($after['kpis']['visits'])->toBe(1)->and($after['kpis']['pageviews'])->toBe(2)->and($after['kpis']['bounces'])->toBe(0)->and($after['computed_at'])->not->toBeNull();
+
+    expect(JobCatalog::TENANT['JOB-WEB-5'])->toMatchArray(['class' => AggregateWebAnalytics::class, 'cron' => '0 * * * *', 'queue' => 'reports'])
+        ->and(JobCatalog::PLATFORM['PLT-VIS-1'])->toMatchArray(['class' => AggregatePlatformWebAnalytics::class, 'cron' => '0 * * * *']);
+});
+
+it('VIS-04: a las 03:00 recalcula el día anterior y depura los movimientos ya consolidados', function () {
+    $scope = AnalyticsScope::tenant((string) tenantA()->getKey());
+    $night = CarbonImmutable::now('America/Lima')->setTime(3, 0);
+    $yesterday = $night->subDay()->toDateString();
+    $old = $night->subDays(3)->toDateString();
+    $row = ['path' => '/', 'device' => 'movil', 'visits' => 1, 'visitors' => 1, 'pageviews' => 1, 'bounces' => 1];
+
+    withinTenant(tenantA(), function () use ($scope, $night, $yesterday, $old, $row): void {
+        DB::table('cms_web_analytics_hits')->insert([[...$row, 'day' => $yesterday], [...$row, 'day' => $yesterday, 'visits' => 0, 'visitors' => 0, 'bounces' => -1], [...$row, 'day' => $old]]);
+
+        expect(app(WebAnalyticsRollup::class)->run($scope, $night->setTime(14, 0)))->toHaveKey($night->toDateString())->not->toHaveKey($yesterday);
+        expect(app(WebAnalyticsRollup::class)->run($scope, $night))->toHaveKeys([$night->toDateString(), $yesterday]);
+
+        $day = DB::table('cms_web_analytics_daily')->where('day', $yesterday)->first();
+        expect((int) $day->visits)->toBe(1)->and((int) $day->pageviews)->toBe(2)->and((int) $day->bounces)->toBe(0)
+            ->and(DB::table('cms_web_analytics_hits')->where('day', $old)->exists())->toBeFalse()
+            ->and(DB::table('cms_web_analytics_hits')->where('day', $yesterday)->count())->toBe(2);
+    });
+
+    $platform = new AggregatePlatformWebAnalytics;
+    $platform->handle();
+    expect($platform->runResult)->toContain('sin visitas nuevas');
 });

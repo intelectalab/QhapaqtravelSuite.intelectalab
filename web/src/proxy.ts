@@ -5,6 +5,7 @@ import { SITE_LOCALE_COOKIE, SITE_LOCALES } from "@/lib/site-i18n";
 import { TEMPLATE_PREVIEW_COOKIE, TEMPLATE_PREVIEW_SECONDS, templatePreviewToken } from "@/lib/templatePreview";
 import { FRAMEABLE_PREFIX, HSTS_HEADER, NONCE_HEADER, WIDGET_ASSETS_PREFIX, WIDGET_PREFIX, contentSecurityPolicy, createNonce, isSecureRequest } from "@/lib/security-headers";
 import { showcasePath } from "@/lib/showcase-host";
+import { paymentSources } from "@/lib/payment-csp";
 import { widgetAncestors } from "@/lib/widget-ancestors";
 
 export async function proxy(request: NextRequest) {
@@ -19,7 +20,8 @@ export async function proxy(request: NextRequest) {
   const widget = pathname.startsWith(WIDGET_PREFIX);
   const ancestors = widget ? await widgetAncestors(request.nextUrl.searchParams.get("key"), request.headers.get("host")) : [];
   const secure = isSecureRequest(request.headers.get("x-forwarded-proto"), request.nextUrl.protocol);
-  const policy = contentSecurityPolicy(nonce, widget || pathname.startsWith(FRAMEABLE_PREFIX), ancestors, secure);
+  const payment = await paymentSources(pathname, request.headers.get("x-forwarded-host") ?? request.headers.get("host"), request.cookies.get(REALMS.agency.session)?.value ?? null);
+  const policy = contentSecurityPolicy(nonce, widget || pathname.startsWith(FRAMEABLE_PREFIX), ancestors, secure, payment);
   const response = route(request, nonce, policy);
   response.headers.set("Content-Security-Policy", policy);
   if (secure) response.headers.set(HSTS_HEADER.key, HSTS_HEADER.value);

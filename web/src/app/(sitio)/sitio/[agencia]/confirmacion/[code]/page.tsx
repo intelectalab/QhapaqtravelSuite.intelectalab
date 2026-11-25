@@ -6,6 +6,7 @@ import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HoldTimer } from "@/features/site/Cart";
 import { PageHero } from "@/features/site/Hero";
 import { OrderPayment } from "@/features/site/PayButton";
+import { parseGatewayInfo } from "@/lib/payment-gateway";
 import { TrackEvent } from "@/features/site/SiteAnalytics";
 import { TransferProofUpload } from "@/features/site/TransferProof";
 import { uploadOrderProof } from "@/app/(sitio)/sitio/[agencia]/transfer-actions";
@@ -82,7 +83,7 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
                       : `Pendiente de pago: ${formatMoney(order.due, order.currency)}${order.pay_mode === "anticipo" ? " (adelanto)" : ""}.`}
               </p>
               <div className="mt-4">
-                <OrderPayment code={order.code} label={`Pagar ${formatMoney(order.due, order.currency)}`} methods={order.methods} accounts={order.bank_accounts} walletPhone={profile.agency.phone} />
+                <OrderPayment code={order.code} label={`Pagar ${formatMoney(order.due, order.currency)}`} amountLabel={formatMoney(order.due, order.currency)} methods={order.methods} accounts={order.bank_accounts} walletPhone={profile.agency.phone} gateway={parseGatewayInfo(order.gateway)} />
               </div>
             </section>
           )}

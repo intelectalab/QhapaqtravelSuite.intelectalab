@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\Showcase\Support;
 
+use App\Domain\Integrations\Payments\AgencyPaymentGateways;
+use App\Domain\Integrations\Payments\ConnectorCatalog;
 use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Showcase\Actions\ManageGateways;
 use App\Domain\Showcase\Contracts\GatewayCredentialVault;
 use Brick\Math\RoundingMode;
@@ -20,11 +23,14 @@ final class GatewayDirectory
     {
         $stats = DB::table('fin_payment_fees')->groupBy('gateway_account_id', 'currency')
             ->selectRaw('gateway_account_id, currency, count(*) as n, sum(gross) as gross, sum(fee + fee_tax + fx_spread) as cost, sum(net) as net')->get()->groupBy('gateway_account_id');
+        $subdomain = (string) DB::connection('pgsql_platform')->table('tenants')->where('id', app(TenantContext::class)->idOrFail())->value('subdomain');
         $rows = DB::table('fin_gateway_accounts')->orderByRaw("case status when 'activa' then 0 when 'pendiente' then 1 when 'pausada' then 2 else 3 end")->orderBy('label')->get();
 
         return [
             'can_manage' => $canManage,
-            'providers' => array_map(fn (string $value, string $label) => ['value' => $value, 'label' => $label], array_keys(ManageGateways::PROVIDERS), array_values(ManageGateways::PROVIDERS)),
+            'providers' => array_map(fn (string $value, string $label) => ['value' => $value, 'label' => $label, 'connector' => ConnectorCatalog::has($value)], array_keys(ManageGateways::PROVIDERS), array_values(ManageGateways::PROVIDERS)),
+            'connectors' => ConnectorCatalog::form(),
+            'active_connector' => app(AgencyPaymentGateways::class)->account()?->id,
             'igv_pct' => GatewayFees::IGV_PCT,
             'items' => $rows->map(fn (object $row) => [
                 'id' => $row->id,
@@ -44,9 +50,26 @@ final class GatewayDirectory
                 'pass_fee_to_customer' => (bool) $row->pass_fee_to_customer,
                 'has_credentials' => $row->credentials_ref !== null,
                 'credentials_in_vault' => $row->credentials_ref !== null && $this->vault->has((string) $row->credentials_ref),
+                ...$this->connection($row, $subdomain),
                 'addon_required' => $row->addon_required,
                 'totals' => $this->totals($stats->get($row->id)),
             ])->values()->all(),
+        ];
+    }
+
+    private function connection(object $row, string $subdomain): array
+    {
+        if (! ConnectorCatalog::has((string) $row->provider)) {
+            return ['connector' => false, 'credentials_set' => [], 'webhook_url' => null, 'check' => null];
+        }
+
+        $secrets = $row->credentials_ref === null ? [] : ($this->vault->get((string) $row->credentials_ref) ?? []);
+
+        return [
+            'connector' => true,
+            'credentials_set' => array_values(array_filter(ConnectorCatalog::required((string) $row->provider), fn (string $key) => trim((string) ($secrets[$key] ?? '')) !== '')),
+            'webhook_url' => ConnectorCatalog::CONNECTORS[$row->provider]['webhook'] && $subdomain !== '' ? AgencyPaymentGateways::webhookUrl((string) $row->provider, (string) $row->id, $subdomain) : null,
+            'check' => $row->checked_at === null ? null : ['status' => $row->check_status, 'message' => $row->check_message, 'checked_at' => Carbon::parse((string) $row->checked_at)->toIso8601String()],
         ];
     }
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { Building2, CreditCard, Smartphone } from "lucide-react";
+import { Building2, CreditCard, LockKeyhole, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
+import type { GatewayInfo } from "@/lib/payment-gateway";
 import { tokenizeCard, type CheckoutTerms } from "@/lib/site";
 import { FieldError } from "./FormBits";
 
@@ -17,7 +18,7 @@ export interface PaymentValue {
 
 const ICONS: Record<string, typeof CreditCard> = { tarjeta: CreditCard, transferencia: Building2, yape: Smartphone, plin: Smartphone };
 
-export function PaymentFields({ methods, accounts, walletPhone, onChange, errors = {} }: { methods: CheckoutTerms["methods"]; accounts: CheckoutTerms["bank_accounts"]; walletPhone: string | null; onChange: (value: PaymentValue) => void; errors?: Record<string, string> }) {
+export function PaymentFields({ methods, accounts, walletPhone, onChange, errors = {}, gateway }: { methods: CheckoutTerms["methods"]; accounts: CheckoutTerms["bank_accounts"]; walletPhone: string | null; onChange: (value: PaymentValue) => void; errors?: Record<string, string>; gateway?: GatewayInfo }) {
   const [method, setMethod] = useState(methods[0]?.value ?? "tarjeta");
   const [number, setNumber] = useState("");
   const [holder, setHolder] = useState("");
@@ -28,13 +29,17 @@ export function PaymentFields({ methods, accounts, walletPhone, onChange, errors
   const expiryOk = /^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry);
   const cardError = number.replace(/\D/g, "").length >= 13 && !card.valid ? "El número de tarjeta no es válido." : undefined;
 
+  const embedded = gateway?.embedded === true;
+
   useEffect(() => {
-    if (method === "tarjeta") {
+    if (method === "tarjeta" && embedded) {
+      onChange({ method, ready: true });
+    } else if (method === "tarjeta") {
       onChange({ method, card_token: card.token, card_holder: holder.trim(), ready: card.valid && expiryOk && cvv.length >= 3 && holder.trim().length >= 3 });
     } else {
       onChange({ method, operation_ref: operation.trim(), ready: operation.trim().length >= 4 });
     }
-  }, [method, card.token, card.valid, holder, expiryOk, cvv, operation, onChange]);
+  }, [method, embedded, card.token, card.valid, holder, expiryOk, cvv, operation, onChange]);
 
   return (
     <div className="grid gap-4">
@@ -54,7 +59,14 @@ export function PaymentFields({ methods, accounts, walletPhone, onChange, errors
       </div>
       {methods.some((option) => option.available === false) && <p className="-mt-2 text-[12px] text-fg-3">{methods.find((option) => option.available === false)?.note}</p>}
 
-      {method === "tarjeta" && (
+      {method === "tarjeta" && embedded && (
+        <p className="flex items-start gap-2 rounded-xl bg-surface-2 px-3.5 py-3 text-[13px] text-fg-2">
+          <LockKeyhole size={15} className="mt-0.5 flex-none text-brand" />
+          Pagarás en el formulario seguro de {gateway?.label}. Los datos de la tarjeta van directo a la pasarela.
+        </p>
+      )}
+
+      {method === "tarjeta" && !embedded && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <TextField label="Número de tarjeta" inputMode="numeric" autoComplete="cc-number" maxLength={23} value={number} onChange={(event) => setNumber(event.target.value.replace(/[^\d ]/g, ""))} placeholder="0000 0000 0000 0000" />

@@ -1,8 +1,10 @@
 "use client";
 
 import { CircleCheck, CreditCard, Gift, LockKeyhole, Search, Smartphone } from "lucide-react";
-import { useActionState, useState } from "react";
-import { buyGiftCard, giftCardBalance, payLink, type PublicStepResult } from "@/app/(sitio)/crecimiento-actions";
+import { useActionState, useCallback, useRef, useState } from "react";
+import { buyGiftCard, buyGiftCardWithGateway, giftCardBalance, openGiftPaymentSession, openLinkPaymentSession, payLink, payLinkWithGateway, type PublicStepResult } from "@/app/(sitio)/crecimiento-actions";
+import { GatewayCardForm } from "@/features/payments/GatewayCardForm";
+import { LOCAL_GATEWAY, type GatewayInfo, type PayResult } from "@/lib/payment-gateway";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { TextArea } from "@/components/ui/TextArea";
@@ -42,10 +44,16 @@ function CardFields({ installments }: { installments: number }) {
   );
 }
 
-export function PublicPayView({ agencia, token, link }: { agencia: string; token: string; link: PublicPayLink }) {
+export function PublicPayView({ agencia, token, link, gateway = LOCAL_GATEWAY }: { agencia: string; token: string; link: PublicPayLink; gateway?: GatewayInfo }) {
   const [method, setMethod] = useState(link.methods[0]?.key ?? "card");
   const [state, run, pending] = useActionState(payLink.bind(null, agencia, token), initial);
-  const paid = link.status === "pagado" || state.data?.result === "aprobado";
+  const [gatewayPaid, setGatewayPaid] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const receipt = email.trim() || null;
+  const openSession = useCallback(() => openLinkPaymentSession(agencia, token, receipt), [agencia, token, receipt]);
+  const onToken = useCallback(async (card: string, sessionId: string): Promise<PayResult> => payLinkWithGateway(agencia, token, { card_token: card, session_id: sessionId, email: receipt }), [agencia, token, receipt]);
+  const viaGateway = method === "card" && gateway.embedded;
+  const paid = link.status === "pagado" || state.data?.result === "aprobado" || gatewayPaid !== null;
 
   return (
     <div className="mx-auto grid w-full max-w-[560px] gap-5 px-4 py-10">
@@ -61,7 +69,7 @@ export function PublicPayView({ agencia, token, link }: { agencia: string; token
         <div className="grid justify-items-center gap-2 rounded-2xl bg-[color-mix(in_srgb,var(--ok)_10%,var(--surface))] px-5 py-8 text-center">
           <CircleCheck size={36} className="text-ok" />
           <p className="text-[15px] font-semibold">Pago recibido</p>
-          <p className="text-[13px] text-fg-2">{state.data?.message ?? "La agencia ya tiene la confirmación. Gracias."}</p>
+          <p className="text-[13px] text-fg-2">{gatewayPaid || state.data?.message || "La agencia ya tiene la confirmación. Gracias."}</p>
         </div>
       ) : link.status !== "activo" ? (
         <p className="rounded-2xl bg-surface-2 px-5 py-6 text-center text-[13.5px] text-fg-2">{link.status === "vencido" ? "Este link venció. Pide a la agencia uno nuevo." : "Este link ya no está disponible."}</p>
@@ -84,9 +92,9 @@ export function PublicPayView({ agencia, token, link }: { agencia: string; token
             ))}
           </div>
           <input type="hidden" name="method" value={method} />
-          {method === "card" ? <CardFields installments={link.installments_max} /> : <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[13px] text-fg-2">Te llevaremos a {link.methods.find((item) => item.key === method)?.label} para aprobar el pago. Confirmamos el link apenas la pasarela nos avise.</p>}
-          <TextField label="Correo para el comprobante (opcional)" name="email" type="email" maxLength={190} />
-          <Button type="submit" variant="primary" disabled={pending}>{pending ? "Procesando…" : `Pagar ${formatMoney(link.amount, link.currency)}`}</Button>
+          {viaGateway ? null : method === "card" ? <CardFields installments={link.installments_max} /> : <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[13px] text-fg-2">Te llevaremos a {link.methods.find((item) => item.key === method)?.label} para aprobar el pago. Confirmamos el link apenas la pasarela nos avise.</p>}
+          <TextField label="Correo para el comprobante (opcional)" name="email" type="email" maxLength={190} value={email} onChange={(event) => setEmail(event.target.value)} />
+          {viaGateway ? <GatewayCardForm info={gateway} amountLabel={formatMoney(link.amount, link.currency)} openSession={openSession} onToken={onToken} onPaid={(message) => setGatewayPaid(message ?? "Pago recibido.")} /> : <Button type="submit" variant="primary" disabled={pending}>{pending ? "Procesando…" : `Pagar ${formatMoney(link.amount, link.currency)}`}</Button>}
         </form>
       )}
     </div>
@@ -95,10 +103,26 @@ export function PublicPayView({ agencia, token, link }: { agencia: string; token
 
 const AMOUNTS = ["100", "200", "300", "500"];
 
-export function GiftShopView({ agencia, agency }: { agencia: string; agency: string }) {
+const GIFT_FIELDS = ["amount", "currency", "buyer_name", "buyer_email", "recipient_name", "recipient_email", "message", "deliver_at"];
+
+export function GiftShopView({ agencia, agency, gateway = LOCAL_GATEWAY }: { agencia: string; agency: string; gateway?: GatewayInfo }) {
   const [amount, setAmount] = useState("200");
   const [currency, setCurrency] = useState("PEN");
-  const [state, run, pending] = useActionState(buyGiftCard.bind(null, agencia), initial);
+  const [submitted, run, pending] = useActionState(buyGiftCard.bind(null, agencia), initial);
+  const [bought, setBought] = useState<PublicStepResult | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const state = bought ?? submitted;
+  const values = () => Object.fromEntries(GIFT_FIELDS.map((field) => [field, String(new FormData(formRef.current ?? undefined).get(field) ?? "").trim() || null]));
+  const openSession = useCallback(async () => {
+    if (formRef.current && !formRef.current.reportValidity()) return { ok: false as const, message: "Completa los datos del vale antes de pagar." };
+    const data = values();
+    return openGiftPaymentSession(agencia, { amount: String(data.amount ?? ""), currency: String(data.currency ?? "PEN"), buyer_email: String(data.buyer_email ?? "") });
+  }, [agencia]);
+  const onToken = useCallback(async (card: string, sessionId: string): Promise<PayResult> => {
+    const result = await buyGiftCardWithGateway(agencia, { ...values(), card_token: card, session_id: sessionId });
+    if (result.ok) setBought({ message: null, done: true, data: result.data ?? null });
+    return result;
+  }, [agencia]);
   const [balance, check, checking] = useActionState(giftCardBalance.bind(null, agencia), initial);
 
   return (
@@ -116,7 +140,7 @@ export function GiftShopView({ agencia, agency }: { agencia: string; agency: str
             <p className="text-[13px] text-fg-2">{formatMoney(state.data.amount ?? "0", state.data.currency ?? "PEN")} · vence el {formatDate(state.data.expires_at ?? "")}. {state.data.message}</p>
           </div>
         ) : (
-          <form action={run} className="grid gap-4">
+          <form ref={formRef} action={run} className="grid gap-4">
             <FormError message={state.message} />
             <div className="flex flex-wrap gap-2">
               {AMOUNTS.map((value) => (
@@ -138,8 +162,14 @@ export function GiftShopView({ agencia, agency }: { agencia: string; agency: str
             </div>
             <TextArea label="Mensaje (opcional)" name="message" rows={3} maxLength={500} />
             <DateField label="Enviar el (opcional)" name="deliver_at" disablePast hint={`Lo enviamos ese día a las ${GIFT_DELIVERY_HOUR}. Si lo dejas vacío, sale apenas se pague.`} />
-            <CardFields installments={1} />
-            <Button type="submit" variant="primary" disabled={pending}>{pending ? "Procesando…" : `Comprar vale de ${formatMoney(amount || "0", currency)}`}</Button>
+            {gateway.embedded ? (
+              <GatewayCardForm info={gateway} amountLabel={formatMoney(amount || "0", currency)} openSession={openSession} onToken={onToken} />
+            ) : (
+              <>
+                <CardFields installments={1} />
+                <Button type="submit" variant="primary" disabled={pending}>{pending ? "Procesando…" : `Comprar vale de ${formatMoney(amount || "0", currency)}`}</Button>
+              </>
+            )}
           </form>
         )}
       </section>

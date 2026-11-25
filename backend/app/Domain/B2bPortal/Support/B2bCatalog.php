@@ -54,7 +54,7 @@ final class B2bCatalog
                 'p.id', 'p.code', 'p.name', 'p.short_description', 'p.long_description', 'p.duration_value', 'p.duration_unit', 'p.modality',
                 'p.minimum_passengers', 'p.maximum_passengers', 'p.minimum_age', 'p.booking_advance_min_days', 'p.booking_advance_max_days',
                 'p.operating_weekdays', 'p.availability_model', 'p.main_provider_id', 't.name as type_name', 'd.name as destination',
-                'r.price as net', 'r.currency', 'r.is_credit', 'r.valid_to as rate_valid_to', 'r.conditions', 'r.restrictions',
+                'r.price as net', 'r.currency', 'r.commission_pct as rate_commission_pct', 'r.is_credit', 'r.valid_to as rate_valid_to', 'r.conditions', 'r.restrictions',
             ]);
 
         $ids = $rows->pluck('id')->all();
@@ -62,7 +62,7 @@ final class B2bCatalog
         $images = DB::table('catalog_product_media')->whereIn('product_id', $ids)->orderByDesc('is_main')->orderBy('sort_order')->get(['product_id', 'storage_path'])->groupBy('product_id');
 
         return $this->products = $rows->map(function (stdClass $row) use ($images, $account): stdClass {
-            $row->commission_pct = $row->net !== null ? (string) $account->agency->commission_pct : null;
+            $row->commission_pct = $row->net !== null ? (string) ($row->rate_commission_pct ?? $account->agency->commission_pct) : null;
             $row->image = $images->get($row->id)?->first()?->storage_path;
             $row->days = $row->duration_unit === 'días' ? max(1, (int) ceil((float) $row->duration_value)) : 1;
             $row->reason = $this->reason($row, $account);

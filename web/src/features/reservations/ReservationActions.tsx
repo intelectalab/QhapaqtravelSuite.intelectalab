@@ -187,6 +187,7 @@ export function ReservationCancelAction({ reservation, preview, defaultOpen, fro
       submitLabel="Cancelar reserva"
       defaultOpen={defaultOpen}
       confirmTestId="cancellation-confirm"
+      successToast="Reserva cancelada."
       trigger={(open) =>
         fromRequest ? (
           <Button size="sm" icon={<Ban size={15} />} onClick={open} data-testid="reservation-cancel-from-request" className="text-bad">

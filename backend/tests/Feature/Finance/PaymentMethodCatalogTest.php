@@ -66,3 +66,23 @@ it('solo quien configura la agencia cambia el catálogo', function () {
     expect($this->patchJson('/api/v1/treasury/payment-methods/yape', ['label' => 'Yape empresa']))->toBeApiError(403);
     expect($this->deleteJson('/api/v1/treasury/payment-methods/yape'))->toBeApiError(403);
 });
+
+it('elige desde el panel del medio la cuenta de tesorería que lo recibe, y la regla queda auditada', function () {
+    actingAsSeed('U01');
+    $catalog = $this->getJson('/api/v1/treasury/payment-methods')->assertOk()->json('data');
+    expect($catalog['banks'])->not->toBeEmpty();
+    $bank = $catalog['banks'][0];
+
+    $code = $this->postJson('/api/v1/treasury/payment-methods', ['label' => 'Efectivo en counter', 'requires_reference' => false, 'destination' => 'petty_cash'])->assertCreated()->json('data.code');
+    expect(collect($this->getJson('/api/v1/treasury/payment-methods')->json('data.rows'))->firstWhere('code', $code))->toMatchArray(['destination' => 'petty_cash', 'bank' => null]);
+
+    $this->patchJson("/api/v1/treasury/payment-methods/{$code}", ['destination' => 'bank', 'bank' => mb_strtolower($bank), 'currency' => 'PEN'])->assertOk();
+    $row = collect($this->getJson('/api/v1/treasury/payment-methods')->json('data.rows'))->firstWhere('code', $code);
+    expect($row)->toMatchArray(['destination' => 'bank', 'bank' => $bank, 'currency' => 'PEN'])->and($row['accounts']['PEN'])->not->toBeNull();
+    expect(collect($this->getJson('/api/v1/treasury/settings')->json('data.payment_routing'))->firstWhere('method', $code)['destination'])->toBe('bank');
+
+    expect($this->patchJson("/api/v1/treasury/payment-methods/{$code}", ['destination' => 'bank']))->toBeApiError(422);
+    expect($this->patchJson("/api/v1/treasury/payment-methods/{$code}", ['destination' => 'bank', 'bank' => 'Banco que no existe']))->toBeApiError(422);
+    expect($this->patchJson('/api/v1/treasury/payment-methods/credito_b2b', ['destination' => 'bank', 'bank' => $bank]))->toBeApiError(422, 'TES-BR-04');
+    expect(withinTenant(tenantA(), fn () => DB::table('audit_events')->where('entity', 'Configuración de tesorería')->where('entity_id', 'tesoreria')->where('action', 'editar')->exists()))->toBeTrue();
+});

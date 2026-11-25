@@ -48,6 +48,16 @@ it('WG-01: la configuración pública del widget se resuelve con la clave públi
     $this->getJson('/api/v1/public/widget/config', ['X-KipuControl-Key' => 'pk_live_no_existe'])->assertStatus(401);
 });
 
+it('la configuración del widget también reconoce el producto por su referencia del kit', function () {
+    $product = widgetProduct();
+    $ref = withinTenant(tenantA(), fn () => DB::table('catalog_products')->where('code', $product->code)->value('ref'));
+
+    $data = $this->getJson("/api/v1/public/widget/config?product={$ref}", ['X-KipuControl-Key' => widgetKey()])->assertOk()->json('data');
+
+    expect($ref)->not->toBeNull()
+        ->and($data['product']['code'])->toBe($product->code);
+});
+
 it('el traspaso del widget crea la selección y el carrito la toma una sola vez; al comprar queda convertida', function () {
     $product = widgetProduct();
     $date = widgetDate($product->slug);

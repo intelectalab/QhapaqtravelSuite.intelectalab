@@ -26,7 +26,7 @@ final class PublicTrackingController
         $scope = $site !== null ? TagScope::platform() : TagScope::tenant();
 
         return response()->json(['data' => $tags->for($scope, $this->context->id(), $path, $site === 'landing' ? null : $site)])
-            ->header('Cache-Control', 'public, max-age=60');
+            ->header('Cache-Control', 'public, max-age='.SiteTags::CLIENT_CACHE_SECONDS);
     }
 
     public function hit(Request $request, CookielessCounter $counter): JsonResponse

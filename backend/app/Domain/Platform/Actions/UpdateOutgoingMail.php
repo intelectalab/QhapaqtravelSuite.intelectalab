@@ -96,10 +96,14 @@ final class UpdateOutgoingMail
         return $this->settings->summary();
     }
 
-    public function sendTest(string $to, PlatformUser $actor): array
+    public function sendTest(string $to, PlatformUser $actor, ?array $draft = null, ?string $password = null): array
     {
-        $connection = $this->settings->connection()
-            ?? throw ApiException::unprocessable('CFG-MAIL-03', 'Activa y guarda el correo de salida antes de enviar una prueba.');
+        $connection = $draft === null ? $this->settings->connection() : $this->draftConnection($draft, $password);
+        if ($connection === null) {
+            throw ApiException::unprocessable('CFG-MAIL-03', $draft === null
+                ? 'Activa y guarda el correo de salida antes de enviar una prueba.'
+                : 'Para enviar una prueba completa el servidor, el puerto, el usuario, la contraseña y el remitente.');
+        }
 
         $email = (new Email)
             ->from(new Address($connection['from_address'], $connection['from_name']))
@@ -121,6 +125,21 @@ final class UpdateOutgoingMail
         $this->session->log(UpdatePlatformSettings::ENTITY, 'Correo de prueba', 'probar', null, "enviado a {$to}", $actor);
 
         return $this->settings->summary();
+    }
+
+    private function draftConnection(array $draft, ?string $password): ?array
+    {
+        $values = [
+            'host' => mb_strtolower(trim((string) ($draft['host'] ?? ''))),
+            'port' => isset($draft['port']) && $draft['port'] !== '' ? (int) $draft['port'] : null,
+            'encryption' => (string) ($draft['encryption'] ?? 'ssl'),
+            'username' => trim((string) ($draft['username'] ?? '')),
+            'from_address' => mb_strtolower(trim((string) ($draft['from_address'] ?? ''))),
+            'from_name' => trim((string) ($draft['from_name'] ?? '')),
+        ];
+        $effective = $password === null || $password === '' ? $this->settings->password() : $password;
+
+        return $this->settings->complete($values, $effective) ? $this->settings->connectionFrom($values, $effective) : null;
     }
 
     private function text(string $field, mixed $value): ?string

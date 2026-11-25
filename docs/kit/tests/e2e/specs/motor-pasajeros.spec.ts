@@ -22,7 +22,7 @@ async function setPax(page: import('@playwright/test').Page, target: { adt: numb
 
 test.describe('Motor · reglas de pasajeros por adulto @fase1 @motor', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(R.widget(PRD011.code, '?lang=es&currency=PEN'));
+    await page.goto(R.widget(PRD011.code, `?lang=es&currency=PEN&key=${pk['X-KipuControl-Key']}`));
     await page.getByTestId(T.bkDay('2026-10-12')).click();
   });
 

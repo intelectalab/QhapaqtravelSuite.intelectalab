@@ -116,6 +116,7 @@ export const SITE_LINKS = [
   { href: "/software/modulos", label: "Módulos" },
   { href: "/software/planes", label: "Planes" },
   { href: "/software/agencias", label: "Agencias" },
+  { href: "/software/blog", label: "Blog" },
   { href: "/software/contacto", label: "Contacto" },
 ];
 

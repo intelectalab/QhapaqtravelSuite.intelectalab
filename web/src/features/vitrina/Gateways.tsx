@@ -1,8 +1,12 @@
 "use client";
 
-import { Calculator, CreditCard, FileUp, KeyRound, Percent, Plus, Settings2, Wallet } from "lucide-react";
-import { useState } from "react";
-import { importSettlement, saveGateway } from "@/app/(backoffice)/finanzas/pasarelas/actions";
+import { Calculator, CircleAlert, CircleCheck, CreditCard, FileUp, KeyRound, Loader2, Percent, PlugZap, Plus, Settings2, Wallet, Webhook } from "lucide-react";
+import { useState, useTransition } from "react";
+import { importSettlement, saveGateway, testGateway } from "@/app/(backoffice)/finanzas/pasarelas/actions";
+import { Button } from "@/components/ui/Button";
+import { toast } from "@/components/ui/Toast";
+import { CodeSnippet } from "@/features/channels/ChannelUi";
+import { cn } from "@/lib/cn";
 import { DataTable } from "@/components/table/DataTable";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -13,7 +17,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
-import type { GatewayAccount, GatewayFee, GatewayFeesOverview, GatewaysOverview } from "@/lib/vitrina";
+import type { GatewayAccount, GatewayConnector, GatewayFee, GatewayFeesOverview, GatewaysOverview } from "@/lib/vitrina";
 import { initialStep, Meter, VitrinaBadge } from "./VitrinaUi";
 
 const cents = (value: number) => Math.round(value * 100) / 100;
@@ -22,9 +26,40 @@ function sumBy(totals: GatewayFeesOverview["totals"], key: "gross" | "fee" | "fe
   return totals.map((total) => formatMoney(total[key], total.currency)).join(" · ") || "—";
 }
 
+function CredentialFields({ connector, gateway }: { connector: GatewayConnector | undefined; gateway?: GatewayAccount }) {
+  const saved = new Set(gateway?.credentials_set ?? []);
+  if (!connector) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <TextField label="Client ID" name="cred_client_id" autoComplete="off" />
+        <TextField label="Secreto" name="cred_secret" type="password" autoComplete="new-password" revealable />
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-3">
+      {connector.fields.map((field) => (
+        <TextField
+          key={field.key}
+          label={field.label}
+          name={`cred_${field.key}`}
+          autoComplete={field.secret ? "new-password" : "off"}
+          type={field.secret ? "password" : "text"}
+          revealable={field.secret}
+          maxLength={400}
+          placeholder={saved.has(field.key) ? "Guardada · escribe solo para cambiarla" : undefined}
+          hint={field.hint}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function GatewayFormAction({ gateway, overview }: { gateway?: GatewayAccount; overview: GatewaysOverview }) {
   const [tax, setTax] = useState(gateway?.tax_on_fee ?? false);
   const [pass, setPass] = useState(gateway?.pass_fee_to_customer ?? false);
+  const [provider, setProvider] = useState(gateway?.provider ?? (overview.connectors?.[0]?.provider ?? "pasarela_local"));
+  const connector = overview.connectors?.find((item) => item.provider === provider);
   return (
     <PanelAction<StepResult>
       label={gateway ? "Configurar" : "Conectar pasarela"}
@@ -45,7 +80,7 @@ export function GatewayFormAction({ gateway, overview }: { gateway?: GatewayAcco
           <input type="hidden" name="pass_fee_to_customer" value={pass ? "1" : "0"} />
           {!gateway && (
             <div className="grid grid-cols-2 gap-3">
-              <SelectField label="Pasarela" name="provider" options={overview.providers} defaultValue="pasarela_local" />
+              <SelectField label="Pasarela" name="provider" options={overview.providers} value={provider} onChange={setProvider} />
               <SelectField label="Moneda" name="currency" options={[{ value: "PEN", label: "Soles (PEN)" }, { value: "USD", label: "Dólares (USD)" }]} defaultValue="PEN" />
             </div>
           )}
@@ -64,12 +99,9 @@ export function GatewayFormAction({ gateway, overview }: { gateway?: GatewayAcco
           <SwitchField label={`Cobra IGV (${overview.igv_pct} %) sobre la comisión`} name="tax_switch" checked={tax} onCheckedChange={setTax} />
           <SwitchField label="Trasladar la comisión al cliente como recargo" name="pass_switch" checked={pass} onCheckedChange={setPass} hint="El recargo se muestra en el checkout antes de pagar y figura en el comprobante." />
           <div className="rounded-tile border border-line p-3.5">
-            <p className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold"><KeyRound size={14} /> Credenciales {gateway?.has_credentials ? <span className="font-normal text-ok">· registradas</span> : null}</p>
-            <div className="grid grid-cols-2 gap-3">
-              <TextField label="Client ID" name="client_id" autoComplete="off" />
-              <TextField label="Secreto" name="secret" type="password" autoComplete="new-password" revealable />
-            </div>
-            <p className="mt-1.5 text-[12px] text-fg-3">{gateway?.has_credentials ? "Déjelas vacías para conservar las actuales." : "Obligatorias para activar en producción."}</p>
+            <p className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold"><KeyRound size={14} /> Credenciales {connector ? `de ${connector.label}` : ""} {gateway?.has_credentials ? <span className="font-normal text-ok">· registradas</span> : null}</p>
+            <CredentialFields connector={connector} gateway={gateway} />
+            <p className="mt-2 text-[12px] text-fg-3">{connector ? "Usa las credenciales del modo elegido: las de prueba en Pruebas y las de producción en Producción. Al guardarlas probamos la conexión." : gateway?.has_credentials ? "Déjalas vacías para conservar las actuales." : "Obligatorias para activar en producción."}</p>
           </div>
         </>
       )}
@@ -77,7 +109,50 @@ export function GatewayFormAction({ gateway, overview }: { gateway?: GatewayAcco
   );
 }
 
+function ConnectionPanel({ gateway, connector, active, canManage }: { gateway: GatewayAccount; connector: GatewayConnector; active: boolean; canManage: boolean }) {
+  const [pending, start] = useTransition();
+  const check = gateway.check;
+  return (
+    <div className="grid gap-2.5 rounded-tile bg-surface-2 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className={cn("inline-flex items-center gap-1.5 text-[12.5px] font-semibold", check?.status === "ok" ? "text-ok" : check ? "text-bad" : "text-fg-3")} title={check?.message}>
+          {check?.status === "ok" ? <CircleCheck size={14} /> : check ? <CircleAlert size={14} /> : <PlugZap size={14} />}
+          {check ? (check.status === "ok" ? `Conexión correcta · ${formatDate(check.checked_at)}` : "La última prueba falló") : "Sin probar"}
+        </span>
+        {canManage && (
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={pending || !gateway.has_credentials}
+            icon={pending ? <Loader2 size={14} className="animate-spin" /> : <PlugZap size={14} />}
+            onClick={() =>
+              start(async () => {
+                const result = await testGateway(gateway.id);
+                toast(result.message, result.ok ? "ok" : "bad");
+              })
+            }
+          >
+            Probar conexión
+          </Button>
+        )}
+      </div>
+      {check?.status === "error" && <p className="text-[12px] text-bad">{check.message}</p>}
+      {active && <p className="text-[12px] font-medium text-fg-2">Esta cuenta cobra las tarjetas del sitio, los links de pago, el portal y los vales.</p>}
+      {gateway.webhook_url ? (
+        <div className="grid gap-1.5">
+          <span className="flex items-center gap-1.5 text-[12px] font-semibold text-fg-2"><Webhook size={13} />URL de notificaciones</span>
+          <CodeSnippet code={gateway.webhook_url} />
+          <p className="text-[11.5px] text-fg-3">{connector.webhook_hint}</p>
+        </div>
+      ) : (
+        <p className="text-[11.5px] text-fg-3">{connector.webhook_hint}</p>
+      )}
+    </div>
+  );
+}
+
 function GatewayCard({ gateway, overview }: { gateway: GatewayAccount; overview: GatewaysOverview }) {
+  const connector = gateway.connector ? overview.connectors?.find((item) => item.provider === gateway.provider) : undefined;
   const conditions = [`${gateway.fee_pct} %`, Number(gateway.fee_fixed) > 0 ? `+ ${formatMoney(gateway.fee_fixed, gateway.fee_currency)}` : null, gateway.tax_on_fee ? "+ IGV" : null].filter(Boolean).join(" ");
   return (
     <article className="lift flex flex-col gap-3 rounded-tile border border-line bg-surface p-4">
@@ -98,6 +173,7 @@ function GatewayCard({ gateway, overview }: { gateway: GatewayAccount; overview:
         </div>
       ))}
       {gateway.pass_fee_to_customer && <p className="text-[12px] text-fg-2">La comisión se traslada al cliente como recargo visible.</p>}
+      {connector && <ConnectionPanel gateway={gateway} connector={connector} active={overview.active_connector === gateway.id} canManage={overview.can_manage} />}
       {overview.can_manage && <footer className="mt-auto flex justify-end"><GatewayFormAction gateway={gateway} overview={overview} /></footer>}
     </article>
   );

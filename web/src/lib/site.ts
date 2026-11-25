@@ -1,4 +1,5 @@
 import type { SiteBannerData, SiteDesign } from "@/lib/site-design";
+import type { GatewayInfo } from "@/lib/payment-gateway";
 import type { TemplatePreview } from "@/lib/templatePreview";
 
 export interface Money {
@@ -299,6 +300,7 @@ export interface ProductDetail {
     pickup: string | null;
     group: { min: number; max: number };
     ages: { min: number; max: number; children: boolean; infants: boolean };
+    pax_rules?: { adult_min_age: number; child_min_age: number; child_max_age: number; infant_max_age: number; infant_pays: boolean };
     advance_days: number;
     breadcrumbs: { name: string; slug: string }[];
     promotions: Promotion[];
@@ -563,6 +565,7 @@ export interface CheckoutTerms {
   adelanto_unavailable: string | null;
   methods: { value: string; label: string; currency?: string | null; available?: boolean; note?: string | null }[];
   bank_accounts: { bank: string | null; name: string; currency: string; account_number: string; cci: string | null }[];
+  gateway?: GatewayInfo;
   group: { adt: number; chd: number; inf: number };
   first_date: string;
   companions: { when: string; require_document: boolean };
@@ -618,6 +621,7 @@ export interface SiteOrder {
   pay_later?: boolean;
   due: string;
   methods: { value: string; label: string }[];
+  gateway?: GatewayInfo;
   bank_accounts: CheckoutTerms["bank_accounts"];
   proof?: { uploaded_at: string; file_name: string; count: number } | null;
   auto_cancel_at?: string | null;

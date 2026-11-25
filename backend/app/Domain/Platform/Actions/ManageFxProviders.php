@@ -9,6 +9,7 @@ use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Support\FxProviderCatalog;
 use App\Domain\Platform\Support\IntegrationSecrets;
 use App\Domain\Shared\Errors\ApiException;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -126,7 +127,7 @@ final class ManageFxProviders
             try {
                 $check = $this->adapters->for($provider)->healthcheck();
                 $simulated = (bool) ($check->payload['simulated'] ?? false);
-                [$ok, $result] = [$check->ok, $check->ok ? ($simulated ? 'Respuesta correcta del proveedor simulado.' : 'Conexión correcta.') : ($check->message ?? 'El proveedor rechazó la prueba.')];
+                [$ok, $result] = [$check->ok, $check->ok ? ($simulated ? 'Respuesta correcta del proveedor simulado.' : $this->published($check->payload)) : ($check->message ?? 'El proveedor rechazó la prueba.')];
             } catch (Throwable $e) {
                 [$ok, $result] = [false, mb_substr($e->getMessage(), 0, 240)];
             }
@@ -151,6 +152,17 @@ final class ManageFxProviders
         }
 
         throw ApiException::notFound('El proveedor de tipo de cambio no existe.');
+    }
+
+    private function published(array $payload): string
+    {
+        if (! isset($payload['currency'], $payload['date'], $payload['buy'], $payload['sell'])) {
+            return 'Conexión correcta.';
+        }
+
+        $fmt = fn (string $rate): string => rtrim(rtrim(number_format((float) $rate, 3, '.', ''), '0'), '.');
+
+        return sprintf('Conexión correcta: %s compra %s y venta %s, publicado el %s.', $payload['currency'], $fmt((string) $payload['buy']), $fmt((string) $payload['sell']), Carbon::parse((string) $payload['date'])->format('d/m/Y'));
     }
 
     private function note(mixed $note): ?string

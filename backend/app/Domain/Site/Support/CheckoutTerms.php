@@ -49,6 +49,13 @@ final class CheckoutTerms
         }
     }
 
+    public static function gateway(): array
+    {
+        $info = app(CardPayments::class)->info();
+
+        return ['provider' => $info['provider'], 'label' => $info['label'], 'mode' => $info['mode'], 'embedded' => $info['embedded']];
+    }
+
     public static function bankAccounts(): array
     {
         return DB::table('fin_treasury_accounts')->where('kind', 'bank')->where('status', 'active')->whereNotNull('account_number')->orderBy('currency')->get(['bank', 'name', 'currency', 'account_number', 'cci'])
@@ -129,6 +136,7 @@ final class CheckoutTerms
             'modes' => $modes,
             'adelanto_unavailable' => $depositOn && ! $adelanto ? 'El adelanto no está disponible para esta compra: algún servicio no lo admite o su saldo vencería antes de hoy.' : null,
             'methods' => self::methods($currency),
+            'gateway' => self::gateway(),
             'bank_accounts' => self::bankAccounts(),
             'group' => $group,
             'first_date' => $lines->min(fn (array $line): string => (string) $line['item']->service_date),

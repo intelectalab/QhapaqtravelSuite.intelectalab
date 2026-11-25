@@ -9,16 +9,23 @@ import { Faq } from "@/features/software/Faq";
 import { buildFaq } from "@/features/software/faq";
 import { PlansExplorer } from "@/features/software/PlansExplorer";
 import { PageHero, Section, SectionHead } from "@/features/software/Section";
+import { softwareNodes } from "@/features/software/seo";
+import { StructuredData } from "@/features/site/StructuredData";
+import { softwareOrigin } from "@/lib/server/landing-content";
 import { formatMoney } from "@/lib/format";
 import { trialDays } from "@/lib/software";
 
-export const metadata: Metadata = {
-  title: "Planes y precios",
-  description: "Planes de KipuControl para agencias de viaje: precios mensuales y anuales en soles, límites, funciones y adicionales.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Planes y precios",
+    description: "Planes de KipuControl para agencias de viaje: precios mensuales y anuales en soles, límites, funciones y adicionales.",
+    alternates: { canonical: `${await softwareOrigin()}/software/planes` },
+  };
+}
 
 export default async function PlanesPage({ searchParams }: PageProps<"/software/planes">) {
-  const [{ ciclo }, catalog, options] = await Promise.all([searchParams, getPlansCatalog(), getDemoOptions()]);
+  const [{ ciclo }, catalog, options, origin] = await Promise.all([searchParams, getPlansCatalog(), getDemoOptions(), softwareOrigin()]);
+  const faq = catalog ? buildFaq(catalog).slice(0, 6) : [];
   const days = catalog ? trialDays(catalog.plans) : 0;
   const entry = catalog?.plans[0];
 
@@ -57,13 +64,14 @@ export default async function PlanesPage({ searchParams }: PageProps<"/software/
         <Section>
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
             <SectionHead eyebrow="Antes de elegir" title="Dudas frecuentes sobre planes y pagos." />
-            <Faq items={buildFaq(catalog).slice(0, 6)} />
+            <Faq items={faq} />
           </div>
         </Section>
       )}
       <div className="pt-16 sm:pt-24">
         <CallToAction days={days} title="¿No sabes qué plan elegir?" description="Cuéntanos cuántas personas venden y operan en tu agencia y te recomendamos el plan que se ajusta a tu volumen." />
       </div>
+      <StructuredData data={softwareNodes(origin, catalog, faq)} />
     </>
   );
 }

@@ -15,6 +15,7 @@ use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Portal\Support\PortalDirectory;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Site\Actions\SiteAccountPayment;
+use App\Domain\Site\Support\CardPayments;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -127,7 +128,19 @@ final class PortalController
 
     public function pay(Request $request, string $code, SiteAccountPayment $online): JsonResponse
     {
-        return $this->json($online->pay($this->customer($request), $code, $request->only(['method', 'card_token', 'card_holder', 'operation_ref'])));
+        return $this->json($online->pay($this->customer($request), $code, $request->only(['method', 'card_token', 'card_holder', 'operation_ref', 'session_id'])));
+    }
+
+    public function paymentSession(Request $request, string $code, SiteAccountPayment $online): JsonResponse
+    {
+        return response()->json(['data' => $online->session($this->customer($request), $code)], 201);
+    }
+
+    public function paymentGateway(Request $request, CardPayments $cards): JsonResponse
+    {
+        $this->customer($request);
+
+        return $this->json($cards->info());
     }
 
     public function reportPayment(Request $request, string $code, ReportPortalPayment $report): JsonResponse

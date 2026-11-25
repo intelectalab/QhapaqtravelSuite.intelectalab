@@ -140,6 +140,7 @@ return [
         ['Scripts propios', 'Un script propio pasa por revisión antes de cargarse en el sitio.'],
     ], [
         ['¿Se cargan sin permiso del visitante?', 'No. Las de marketing esperan el consentimiento, y en el pago no se carga ninguna.'],
+        ['¿Cuánto tarda en verse un cambio?', 'Menos de un minuto. Crear, editar, pausar o borrar una etiqueta queda en la auditoría con cómo estaba antes y después.'],
         ['¿Qué proveedores tengo en mi plan?', 'Starter usa Google Analytics 4, Google Tag Manager y Meta Pixel desde el navegador. Google Ads, TikTok, LinkedIn, Clarity, scripts propios y el envío desde el servidor piden Professional, Enterprise o el complemento Marketing Pro (S/ 39 al mes + IGV, en Suscripción y uso).'],
     ], ['pixel', 'analytics', 'meta', 'conversiones', 'cookies', 'marketing pro']),
     $article('canales-aventuras', 'Canales', '/canales/aventuras', 'Blog de aventuras', 'Publica historias de tus viajeros en el sitio, con su consentimiento.', [
@@ -149,12 +150,18 @@ return [
     ], [
         ['¿Qué pasa si el cliente retira el permiso?', 'La historia se despublica en el momento.'],
     ], ['aventuras', 'historias', 'blog', 'consentimiento']),
-    $article('finanzas-pasarelas', 'Finanzas', '/finanzas/pasarelas', 'Pasarelas y comisiones', 'Conecta las pasarelas de pago y revisa cuánto cobra cada una por transacción.', [
-        ['Conectar', 'Elige la pasarela y escribe sus credenciales. Se guardan cifradas y no se vuelven a mostrar.'],
+    $article('finanzas-pasarelas', 'Finanzas', '/finanzas/pasarelas', 'Pasarelas y comisiones', 'Conecta tu cuenta de Izipay, Culqi, Niubiz o Mercado Pago para cobrar con tarjeta, y revisa cuánto cobra cada pasarela por transacción.', [
+        ['Conectar', '«Conectar pasarela», elige Izipay, Culqi, Niubiz o Mercado Pago y escribe las credenciales que te dio la pasarela. Empieza en modo Pruebas con las credenciales de prueba; cuando todo funcione, cambia a Producción con las de producción. Se guardan cifradas y no se vuelven a mostrar.'],
+        ['Probar la conexión', 'Al guardar las credenciales probamos la conexión. Puedes repetirla con «Probar conexión»: si falla, la tarjeta dice por qué, por ejemplo una llave de otro modo.'],
+        ['Avisos de la pasarela', 'Copia la «URL de notificaciones» de la tarjeta y pégala en el panel de tu pasarela (en Mercado Pago copia también la clave secreta que te da). Así confirmamos los pagos aunque el cliente cierre el navegador. Niubiz no la necesita.'],
+        ['Activar', 'Deja la cuenta en estado Activa. Desde ese momento, las tarjetas del sitio, los links de pago, el portal del cliente, los vales de regalo y la venta en ruta se cobran por esa cuenta.'],
         ['Comisiones', 'Revisa la comisión de cada cobro e importa la liquidación de la pasarela.'],
     ], [
+        ['¿Qué credenciales pide cada pasarela?', 'Izipay: usuario (ID de tienda), contraseña, clave pública JavaScript y clave HMAC-SHA-256. Culqi: llave pública y llave secreta. Niubiz: código de comercio, usuario y contraseña de la API. Mercado Pago: Public Key, Access Token y la clave secreta de webhooks.'],
+        ['¿Los datos de la tarjeta pasan por KipuControl?', 'No. El cliente los escribe en el formulario seguro de la pasarela y a nosotros solo nos llega una referencia del cobro y los últimos 4 dígitos.'],
+        ['¿Se nota el modo Pruebas en el sitio?', 'Sí. El formulario de pago avisa que la pasarela está en modo prueba y que no se cobra dinero real.'],
         ['¿Puedo comparar pasarelas?', 'Sí, el simulador muestra cuánto recibirías con cada una.'],
-    ], ['pasarela', 'comision', 'paypal', 'yape', 'liquidacion']),
+    ], ['pasarela', 'comision', 'izipay', 'culqi', 'niubiz', 'mercado pago', 'tarjeta', 'credenciales', 'webhook', 'paypal', 'yape', 'liquidacion']),
     $article('reportes-alertas', 'Inteligencia', '/reportes/alertas', 'Alertas de rentabilidad', 'Avisos diarios sobre cobranza, márgenes, proveedores, metas y demanda, para actuar a tiempo.', [
         ['Revisar', 'Cada alerta indica el registro, por qué apareció y una acción sugerida. El título lleva a la cotización, el servicio, la meta o el producto.'],
         ['Filtrar', 'Elige un tipo: cobranza atrasada, margen bajo, proveedor caro, meta en riesgo o demanda alta.'],
@@ -170,6 +177,7 @@ return [
         ['Exportar', 'Descarga los datos en CSV desde Professional o con Marketing Pro.'],
     ], [
         ['¿Coincide con Google Analytics?', 'No exactamente: aquí se cuenta sin cookies, así que suele mostrar algo más de visitas.'],
+        ['¿Cada cuánto se actualizan las cifras?', 'Cada hora para el día de hoy, y a las 03:00 se cierra el día anterior. Las visitas en vivo muestran los últimos 30 minutos al instante.'],
         ['¿Cuánto historial veo?', 'En Starter, los últimos 30 días sin exportación. En Professional, Enterprise o con Marketing Pro, 13 meses con exportación en CSV.'],
     ], ['visitas', 'analitica', 'trafico', 'paginas', 'marketing pro']),
 ];

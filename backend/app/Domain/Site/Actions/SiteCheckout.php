@@ -210,7 +210,7 @@ final class SiteCheckout
                 default => 'pago total',
             });
             $order = DB::table('channel_ecom_orders')->where('id', $orderId)->first();
-            $attempt = empty($payment['method']) ? null : $this->charge($order, $payment);
+            $attempt = empty($payment['method']) || ($payment['method'] === 'tarjeta' && empty($payment['card_token'])) ? null : $this->charge($order, $payment);
 
             return ['code' => $orderCode, 'token' => $accessToken, 'payment' => $attempt];
         });
@@ -240,6 +240,7 @@ final class SiteCheckout
             'pay_later' => DB::table('booking_reservation_web_snapshots')->where('order_code', $order->code)->where('payment_mode', CheckoutTerms::PAY_LATER)->exists(),
             'due' => $this->dueAmount($order),
             'methods' => CheckoutTerms::methods((string) $order->currency),
+            'gateway' => CheckoutTerms::gateway(),
             'bank_accounts' => CheckoutTerms::bankAccounts(),
             'proof' => app(TransferProofs::class)->forOrder($order),
             'auto_cancel_at' => app(TransferDeadlines::class)->cancelAt($order)?->toIso8601String(),

@@ -399,6 +399,24 @@ final class SiteBooking
         return [$nights, $tours, $transport, $errors];
     }
 
+    public function paxRules(stdClass $product, string $date): array
+    {
+        $rules = $this->engine->engine()->paxRules($this->data($product->id, $date));
+
+        return [
+            'adult_min_age' => (int) ($rules['adultMinAge'] ?? 12),
+            'child_min_age' => (int) ($rules['childMinAge'] ?? 2),
+            'child_max_age' => (int) ($rules['childMaxAge'] ?? 11),
+            'infant_max_age' => (int) ($rules['infantMaxAge'] ?? 1),
+            'infant_pays' => (bool) ($rules['infantPays'] ?? false),
+        ];
+    }
+
+    public function paxErrors(stdClass $product, string $date, array $pax): array
+    {
+        return $this->engine->engine()->validatePax($this->data($product->id, $date), $pax)->errors;
+    }
+
     public function price(stdClass $product, string $date, array $pax, string $currency, array $extras, bool $strict, ?string $mode = null, ?string $method = null, ?array $promotion = null, ?int $units = null, ?array $override = null): array
     {
         $data = $this->data($product->id, $date);

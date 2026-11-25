@@ -280,11 +280,32 @@ export interface GatewayAccount {
   credentials_in_vault: boolean;
   addon_required: string | null;
   totals: { currency: string; count: number; gross: string; cost: string; net: string }[];
+  connector?: boolean;
+  credentials_set?: string[];
+  webhook_url?: string | null;
+  check?: { status: "ok" | "error"; message: string; checked_at: string } | null;
+}
+
+export interface GatewayConnectorField {
+  key: string;
+  label: string;
+  secret: boolean;
+  hint: string;
+}
+
+export interface GatewayConnector {
+  provider: string;
+  label: string;
+  webhook: boolean;
+  webhook_hint: string;
+  fields: GatewayConnectorField[];
 }
 
 export interface GatewaysOverview {
   can_manage: boolean;
-  providers: Option[];
+  providers: (Option & { connector?: boolean })[];
+  connectors?: GatewayConnector[];
+  active_connector?: string | null;
   igv_pct: string;
   items: GatewayAccount[];
 }

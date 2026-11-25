@@ -183,7 +183,7 @@ final class CheckoutRules
 
         return Validator::make([...$data, 'method' => $method], [
             'method' => ['required', 'in:'.implode(',', array_keys(CheckoutTerms::METHODS))],
-            'card_token' => [$method === 'tarjeta' ? 'required' : 'nullable', 'regex:/^tok_(ok|51|14)_\d{4}$/'],
+            'card_token' => app(CardPayments::class)->tokenRules($method === 'tarjeta'),
             'card_holder' => ['nullable', 'string', 'max:80'],
             'session_id' => ['nullable', 'string', 'max:800'],
             'operation_ref' => [$method !== 'tarjeta' ? 'required' : 'nullable', 'string', 'min:4', 'max:40'],
@@ -197,11 +197,12 @@ final class CheckoutRules
     public static function payment(array $data, array $terms): array
     {
         $method = (string) ($data['method'] ?? '');
+        $cardNow = $method === 'tarjeta' && ! ($terms['gateway']['embedded'] ?? false);
         $values = Validator::make(['pay_mode' => 'total', ...$data], [
             'pay_mode' => ['required', 'in:'.implode(',', array_column($terms['modes'], 'value'))],
             'method' => [($data['pay_mode'] ?? null) === CheckoutTerms::PAY_LATER ? 'prohibited' : 'nullable', 'in:'.implode(',', array_keys(CheckoutTerms::METHODS))],
-            'card_token' => [$method === 'tarjeta' ? 'required' : 'nullable', 'regex:/^tok_(ok|51|14)_\d{4}$/'],
-            'card_holder' => [$method === 'tarjeta' ? 'required' : 'nullable', 'string', 'min:3', 'max:80'],
+            'card_token' => ($terms['gateway']['embedded'] ?? false) ? ['prohibited'] : app(CardPayments::class)->tokenRules($cardNow),
+            'card_holder' => [$cardNow ? 'required' : 'nullable', 'string', 'min:3', 'max:80'],
             'operation_ref' => [$method !== '' && $method !== 'tarjeta' ? 'required' : 'nullable', 'string', 'min:4', 'max:40'],
             'terms' => ['accepted'],
             'privacy' => ['accepted'],

@@ -47,6 +47,18 @@ it('G3-02 y G3-03: la lista de órdenes cuenta los servicios y la reserva candid
     }
 });
 
+it('la lista de órdenes filtra por código con filter[code]', function () {
+    $code = withinTenant(tenantA(), fn () => DB::table('ops_orders')->whereNull('deleted_at')->orderByDesc('code')->value('code'));
+    actingAsSeed('U01');
+
+    $filtered = $this->getJson('/api/v1/ops/orders?'.http_build_query(['filter' => ['code' => $code]]))->assertOk()->json('data');
+    $none = $this->getJson('/api/v1/ops/orders?'.http_build_query(['filter' => ['code' => 'OP-0000-0000']]))->assertOk()->json('data');
+
+    expect($filtered)->toHaveCount(1)
+        ->and($filtered[0]['code'])->toBe($code)
+        ->and($none)->toBe([]);
+});
+
 it('G3-13: la agenda de recursos incluye las salidas programadas', function () {
     actingAsSeed('U01');
 

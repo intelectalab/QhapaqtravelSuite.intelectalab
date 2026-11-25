@@ -205,7 +205,7 @@ final class SiteController
         $data = $request->validate([
             'product' => ['required', 'string', 'max:160'],
             'date' => ['required', 'date_format:Y-m-d'],
-            'adults' => ['required', 'integer', 'min:1', 'max:40'],
+            'adults' => ['required', 'integer', 'min:0', 'max:40'],
             'children' => ['nullable', 'integer', 'min:0', 'max:20'],
             'infants' => ['nullable', 'integer', 'min:0', 'max:10'],
             'promo' => ['nullable', 'string', 'max:40'],
@@ -252,7 +252,7 @@ final class SiteController
             'payment_mode.*' => 'La modalidad de pago no es válida.',
             ...SiteBooking::messages(),
         ]);
-        $product = $quotes->catalog()->products()->first(fn ($row): bool => in_array((string) ($data['product_id'] ?? $data['product']), [$row->id, $row->code, $row->slug], true))
+        $product = $quotes->catalog()->products()->first(fn ($row): bool => in_array((string) ($data['product_id'] ?? $data['product']), [$row->id, $row->code, $row->slug, $row->ref], true))
             ?? $quotes->product((string) ($data['product_id'] ?? $data['product']));
         $quote = $quotes->booking()->engineQuote($product, $data);
 

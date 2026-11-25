@@ -10,15 +10,22 @@ import { PanelPreview } from "@/features/software/PanelPreview";
 import { PlansExplorer } from "@/features/software/PlansExplorer";
 import { ArrowLink, Section, SectionHead } from "@/features/software/Section";
 import { SiteFrame } from "@/features/software/SiteFrame";
+import { softwareNodes } from "@/features/software/seo";
+import { StructuredData } from "@/features/site/StructuredData";
+import { softwareOrigin } from "@/lib/server/landing-content";
 import { MODULE_AREAS, MODULE_SCREEN_COUNT, trialDays } from "@/lib/software";
 
-export const metadata: Metadata = {
-  title: { absolute: "KipuControl · Software para agencias de viaje" },
-  description: "Gestión integral para agencias de viaje y operadores turísticos del Perú: leads, cotizaciones, reservas, operación y cobranza en un solo sistema.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: { absolute: "KipuControl · Software para agencias de viaje" },
+    description: "Gestión integral para agencias de viaje y operadores turísticos del Perú: leads, cotizaciones, reservas, operación y cobranza en un solo sistema.",
+    alternates: { canonical: `${await softwareOrigin()}/` },
+  };
+}
 
 export default async function Home() {
-  const [catalog, overview, signedIn] = await Promise.all([getPlansCatalog(), getOverview(), hasAgencySession()]);
+  const [catalog, overview, signedIn, origin] = await Promise.all([getPlansCatalog(), getOverview(), hasAgencySession(), softwareOrigin()]);
+  const faq = catalog ? buildFaq(catalog) : [];
   const days = catalog ? trialDays(catalog.plans) : 0;
   const stats: HeroStat[] = [
     { value: MODULE_SCREEN_COUNT, label: "pantallas en un solo sistema" },
@@ -63,12 +70,13 @@ export default async function Home() {
         <Section>
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
             <SectionHead eyebrow="Preguntas frecuentes" title="Lo que nos preguntan antes de empezar." description="¿Tienes otra duda? Escríbenos desde la página de contacto y te respondemos en el día." />
-            <Faq items={buildFaq(catalog)} />
+            <Faq items={faq} />
           </div>
         </Section>
       )}
 
       <CallToAction days={days} />
+      <StructuredData data={softwareNodes(origin, catalog, faq)} />
     </SiteFrame>
   );
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Database\Seeders\Modules;
 
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Tracking\Support\AnalyticsScope;
+use App\Domain\Tracking\Support\WebAnalyticsRollup;
 use Database\Support\KitSeeds;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
@@ -101,6 +103,8 @@ final class PlatformTrackingSeeder
                 ]);
             }
         }
+
+        app(WebAnalyticsRollup::class)->ledgerFromDaily(AnalyticsScope::platform(), Carbon::today('America/Lima')->subDay()->toDateString());
     }
 
     private function day(string $date): string

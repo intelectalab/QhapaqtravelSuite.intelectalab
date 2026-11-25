@@ -51,6 +51,7 @@ Route::prefix('finance')->name('vitrina.gateways.')->controller(GatewayControlle
         Route::get('gateways', 'index')->name('index');
         Route::post('gateways', 'store')->name('store');
         Route::patch('gateways/{id}', 'update')->name('update');
+        Route::post('gateways/{id}/test', 'test')->middleware('throttle:10,1')->name('test');
         Route::post('gateway-fees/import', 'import')->name('fees.import');
     });
     Route::get('gateway-fees', 'fees')->middleware('permission:finance.gateways.manage|finance.profitability')->name('fees.index');

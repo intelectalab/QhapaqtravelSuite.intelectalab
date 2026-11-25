@@ -40,7 +40,7 @@ final class E2ESeeder extends Seeder
 
         try {
             $this->call(DemoSeeder::class);
-            $this->addGenericTransfer();
+            $this->adjustAgencyA();
             $this->openTenantB();
         } finally {
             Carbon::setTestNow();
@@ -48,7 +48,7 @@ final class E2ESeeder extends Seeder
         }
     }
 
-    private function addGenericTransfer(): void
+    private function adjustAgencyA(): void
     {
         $tenant = Tenant::query()->where('code', 'TNT-0001')->first();
 
@@ -62,6 +62,7 @@ final class E2ESeeder extends Seeder
             DB::transaction(function () use ($tenant): void {
                 DB::select('select app_set_tenant(?::uuid)', [$tenant->getKey()]);
                 DB::table('fin_payment_methods')->updateOrInsert(['tenant_id' => $tenant->getKey(), 'code' => 'transferencia'], ['label' => 'Transferencia', 'requires_reference' => true, 'is_b2b_credit' => false, 'active' => true, 'updated_at' => now()]);
+                DB::table('catalog_products')->where('tenant_id', $tenant->getKey())->where('ref', 'PRD-011')->update(['booking_advance_min_days' => 0]);
             });
         } finally {
             app(TenantContext::class)->clear();

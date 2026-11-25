@@ -6,6 +6,7 @@ namespace App\Domain\Integrations\Support;
 
 use App\Domain\Inbox\Support\WhatsappAccounts;
 use App\Domain\Integrations\Mail\AgencyMailbox;
+use App\Domain\Integrations\Payments\AgencyPaymentGateways;
 use App\Domain\Platform\Support\OseCatalog;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,7 @@ final class AgencyIntegrations
     {
         $row = IntegrationCatalog::AGENCY[$key];
         [$status, $detail] = $this->state($key);
-        $real = IntegrationReadiness::real($key);
+        $real = IntegrationReadiness::real($key) || ($key === 'payments' && app(AgencyPaymentGateways::class)->connected());
         $enforced = IntegrationReadiness::enforced();
         $simulated = $enforced && ! ($status === 'conectado' && $real) && IntegrationReadiness::simulationAllowed($key);
 

@@ -14,7 +14,7 @@ final class FxProviderCatalog
     public const DRIVERS = [
         'simulado' => ['label' => 'Simulado de KipuControl', 'kind' => 'Simulado', 'fields' => []],
         'bcrp' => ['label' => 'BCRP · API de series estadísticas', 'kind' => 'Oficial', 'fields' => []],
-        'sunat' => ['label' => 'SUNAT · tipo de cambio publicado', 'kind' => 'Oficial', 'fields' => ['token' => 'Token de acceso']],
+        'sunat' => ['label' => 'SUNAT · tipo de cambio publicado', 'kind' => 'Oficial', 'fields' => []],
         'api' => ['label' => 'API comercial de divisas', 'kind' => 'API', 'fields' => ['api_key' => 'Clave de API']],
     ];
 

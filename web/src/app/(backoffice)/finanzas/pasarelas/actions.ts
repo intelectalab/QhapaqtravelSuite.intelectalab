@@ -1,14 +1,24 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { apiFetch } from "@/lib/server/api";
 import { sendStep, type StepResult } from "@/lib/server/resource";
 
 const text = (form: FormData, field: string) => String(form.get(field) ?? "").trim();
 
 const number = (form: FormData, field: string) => Number(text(form, field) || 0);
 
+function credentialsOf(form: FormData): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const [key, value] of form.entries()) {
+    if (key.startsWith("cred_") && typeof value === "string" && value.trim() !== "") values[key.slice(5)] = value.trim();
+  }
+  return values;
+}
+
 function terms(form: FormData): Record<string, unknown> {
-  const credentials = { client_id: text(form, "client_id"), secret: text(form, "secret") };
+  const credentials = credentialsOf(form);
   return {
     label: text(form, "label") || null,
     account_ref: text(form, "account_ref"),
@@ -20,7 +30,7 @@ function terms(form: FormData): Record<string, unknown> {
     pass_fee_to_customer: form.get("pass_fee_to_customer") === "1",
     status: text(form, "status") || "pendiente",
     mode: text(form, "mode") || "sandbox",
-    ...(credentials.client_id || credentials.secret ? { credentials } : {}),
+    ...(Object.keys(credentials).length > 0 ? { credentials } : {}),
   };
 }
 
@@ -31,6 +41,13 @@ export async function saveGateway(_state: StepResult, form: FormData): Promise<S
     : await sendStep("/finance/gateways", "POST", { ...terms(form), provider: text(form, "provider"), currency: text(form, "currency"), fee_currency: text(form, "fee_currency") || text(form, "currency") }, "No pudimos conectar la pasarela.");
   if (result.done) revalidatePath("/finanzas/pasarelas");
   return result;
+}
+
+export async function testGateway(id: string): Promise<{ ok: boolean; message: string }> {
+  const result = await apiFetch<{ status: string; message: string }>(`/finance/gateways/${encodeURIComponent(id)}/test`, { method: "POST", body: {}, headers: { "Idempotency-Key": randomUUID() } });
+  revalidatePath("/finanzas/pasarelas");
+  if (!result.ok || !result.data) return { ok: false, message: result.error?.message ?? "No pudimos probar la conexión." };
+  return { ok: result.data.status === "ok", message: result.data.message };
 }
 
 export async function importSettlement(_state: StepResult, form: FormData): Promise<StepResult> {

@@ -21,7 +21,7 @@ final class WebAnalyticsReport
 
     public const DEVICES = ['movil' => 'Móvil', 'escritorio' => 'Escritorio', 'tablet' => 'Tablet', 'otro' => 'Otro'];
 
-    public function __construct(private readonly CookielessCounter $counter) {}
+    public function __construct(private readonly CookielessCounter $counter, private readonly WebAnalyticsRollup $rollup) {}
 
     public static function period(array $input, int $retentionDays): array
     {
@@ -77,6 +77,7 @@ final class WebAnalyticsReport
             'previous' => $previous,
             'trend' => $trend,
             'realtime' => $this->counter->live($scope->liveKey($period['site'])),
+            'computed_at' => $this->rollup->computedAt($scope),
         ];
     }
 

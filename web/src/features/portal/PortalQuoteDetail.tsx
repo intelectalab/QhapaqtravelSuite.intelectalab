@@ -33,6 +33,7 @@ function ApprovePanel({ quote, clientName }: { quote: PortalQuote; clientName: s
       submitLabel="Aceptar y reservar"
       action={approveQuote.bind(null, quote.code)}
       initial={initial}
+      testId="portal-quote-approve"
     >
       {() => (
         <>
@@ -114,7 +115,7 @@ export function PortalQuoteDetail({ quote, clientName }: { quote: PortalQuote; c
               <p className="mt-1 text-[30px] font-bold leading-none tracking-tight text-[var(--tint)]">{quote.total !== null ? formatMoney(quote.total, quote.currency) : "—"}</p>
               <p className="mt-1.5 text-[12.5px] text-fg-2">{quote.tax ? `Incluye impuestos por ${formatMoney(quote.tax, quote.currency)}` : "Impuestos incluidos"}</p>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <PortalBadge status={quote.status} />
+                <PortalBadge status={quote.status} testId="portal-quote-status" />
                 <DownloadButton href={`/portal/propuestas/${quote.code}/pdf`} label="Descargar PDF" size="sm" />
               </div>
             </HeroPanel>

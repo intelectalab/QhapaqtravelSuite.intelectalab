@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Integrations\Support;
 
+use App\Domain\Integrations\Adapters\BcrpFxRateProvider;
+use App\Domain\Integrations\Adapters\SunatFxRateProvider;
 use App\Domain\Integrations\Contracts\FxRateProvider;
 use App\Domain\Integrations\Fake\FakeFxRateProvider;
 use App\Domain\Platform\Support\FxProviderCatalog;
@@ -37,6 +39,18 @@ final class FxAdapters
             return new FakeFxRateProvider(self::SIMULATED_RATES[$provider['driver']] ?? self::SIMULATED_RATES['simulado'], $provider['driver'] === 'simulado' ? 'Simulado (demo)' : $provider['name'].' (simulado)', $missing);
         }
 
-        throw new InvalidArgumentException(sprintf('Adaptador «%s» no implementado para el tipo de cambio (proveedor por definir).', $provider['driver']));
+        return match ($provider['driver']) {
+            'bcrp' => new BcrpFxRateProvider,
+            'sunat' => new SunatFxRateProvider,
+            'simulado' => $this->demo($missing),
+            default => throw new InvalidArgumentException(sprintf('Adaptador «%s» no implementado para el tipo de cambio (proveedor por definir).', $provider['driver'])),
+        };
+    }
+
+    private function demo(array $missing): FxRateProvider
+    {
+        IntegrationReadiness::refuse('fx');
+
+        return new FakeFxRateProvider(self::SIMULATED_RATES['simulado'], 'Simulado (demo)', $missing);
     }
 }

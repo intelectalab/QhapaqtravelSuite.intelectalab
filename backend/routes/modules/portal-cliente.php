@@ -21,6 +21,8 @@ Route::prefix('portal/client')->name('portal.')->controller(PortalController::cl
     Route::post('quotes/{code}/reject', 'reject')->middleware('permission:quotes.view')->name('quotes.reject');
     Route::get('receivables', 'billing')->name('billing');
     Route::post('receivables/{code}/payments', 'pay')->middleware('throttle:10,1')->name('billing.payments.store');
+    Route::post('receivables/{code}/payment-session', 'paymentSession')->middleware('throttle:10,1')->name('billing.payment-session');
+    Route::get('payment-gateway', 'paymentGateway')->name('payment-gateway');
     Route::post('receivables/{code}/payment-reports', 'reportPayment')->middleware('throttle:10,1')->name('billing.payment-reports.store');
     Route::get('profile', 'profile')->name('profile');
     Route::patch('profile', 'updateProfile')->name('profile.update');

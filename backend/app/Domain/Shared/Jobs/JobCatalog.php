@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Jobs;
 
+use App\Jobs\AggregatePlatformWebAnalytics;
+use App\Jobs\AggregateWebAnalytics;
 use App\Jobs\AiCreditsLow;
 use App\Jobs\AlertClaimDeadlines;
 use App\Jobs\ApprovalSlaCheck;
@@ -119,6 +121,7 @@ final class JobCatalog
         'JOB-WEB-1' => ['class' => VerifyWidgetDomain::class, 'name' => 'Verificar dominios del widget', 'cron' => '*/10 * * * *', 'label' => 'cada 10 min', 'queue' => 'low'],
         'JOB-WEB-2' => ['class' => VerifyDomains::class, 'name' => 'Verificar dominios propios y emitir SSL', 'cron' => '*/10 * * * *', 'label' => 'cada 10 min', 'queue' => 'default'],
         'JOB-WEB-3' => ['class' => RenewCertificates::class, 'name' => 'Renovar certificados SSL', 'cron' => '30 3 * * *', 'label' => 'diario 03:30', 'queue' => 'default'],
+        'JOB-WEB-5' => ['class' => AggregateWebAnalytics::class, 'name' => 'Sumar las visitas del sitio', 'cron' => '0 * * * *', 'label' => 'cada hora; a las 03:00 también el día anterior', 'queue' => 'reports'],
         'JOB-WEB-4' => ['class' => SeoNightlyAudit::class, 'name' => 'Auditoría SEO nocturna', 'cron' => '0 2 * * *', 'label' => 'diario 02:00', 'queue' => 'reports'],
         'JOB-RES-1' => ['class' => SyncExternalReviews::class, 'name' => 'Sincronizar reseñas externas', 'cron' => '0 */6 * * *', 'label' => 'cada 6 h', 'queue' => 'integrations'],
         'JOB-IA-1' => ['class' => GrantMonthlyAiCredits::class, 'name' => 'Asignar créditos de IA del mes', 'cron' => '5 0 1 * *', 'label' => 'mensual, día 1 00:05', 'queue' => 'default'],
@@ -138,6 +141,7 @@ final class JobCatalog
         'PLT-08' => ['class' => PurgeWebhookDeliveries::class, 'name' => 'Depurar entregas de webhooks', 'cron' => '45 0 * * *', 'label' => 'diario 00:45', 'queue' => 'low'],
         'PLT-09' => ['class' => MaintainMonthlyPartitions::class, 'name' => 'Crear particiones mensuales', 'cron' => '30 1 1 * *', 'label' => 'mensual, día 1 01:30', 'queue' => 'low'],
         'PLT-VIT-1' => ['class' => ShowcaseMonthlyFees::class, 'name' => 'Facturar cargos de la vitrina', 'cron' => '0 4 1 * *', 'label' => 'mensual, día 1 04:00', 'queue' => 'critical'],
+        'PLT-VIS-1' => ['class' => AggregatePlatformWebAnalytics::class, 'name' => 'Sumar las visitas de la vitrina y el blog', 'cron' => '0 * * * *', 'label' => 'cada hora; a las 03:00 también el día anterior', 'queue' => 'reports'],
         'PLT-VIT-2' => ['class' => ShowcaseReminder::class, 'name' => 'Recordar salidas de mañana de la vitrina', 'cron' => '0 18 * * *', 'label' => 'diario 18:00', 'queue' => 'notifications'],
     ];
 

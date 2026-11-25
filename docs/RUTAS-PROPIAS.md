@@ -584,3 +584,46 @@ Agregado el 24 de noviembre de 2026. Spec 19 §2 l. 51 (pestaña «Aéreo y hote
 - `GET /quotes/{}/external-offers` (`crecimiento-a.quotes.external-offers.index`, `quotes.external_offers`): ofertas de la cotización (sin las quitadas) con `can_hold`/`can_remove`, `external_total`, `rule_enabled` (R-GDS-OFFERS) y `available`/`unavailable_message` (proveedor real o simulación permitida). Marca `vencida` las que pasaron su `offer_expires_at`. Respeta la cartera (SEC-BR-09); otra agencia, 404. Con la regla apagada responde igual (consulta de lo ya cotizado, como los vales en la decisión O2).
 - `POST /quotes/{}/external-offers/{offerId}/hold` (`crecimiento-a.quotes.external-offers.hold`, `quotes.external_offers`): transición «Retener» de la máquina de estados (`cotizada → retenida`), por el contrato `TravelInventory::hold`, que devuelve el nuevo vencimiento. Permitida en borrador, enviada, vista, negociación y aprobada; repetirla sobre una retenida no hace nada. Errores: 403 `RULE_NOT_IN_PLAN`, 409 `OFFER_NOT_HOLDABLE`, 422 `OFFER_EXPIRED` u `OFFER_HOLD_FAILED`. Auditada `retener_oferta`.
 - Sin ruta nueva: `POST /quotes/{}/external-offers/search` responde 409 `INTEGRATION_UNAVAILABLE` sin proveedor real en producción; buscar, añadir y retener piden R-GDS-OFFERS (403 con `required_permissions`), quitar no. `DELETE /quotes/{}/external-offers/{offerId}` también se permite con la cotización aprobada (máquina: `* → cancelada`) y libera la retención en el proveedor. `GET /quotes/{}/conversion-preview` suma el chequeo `external_offers` y el total con las ofertas. `POST /quotes/{}/convert` (SC-16): oferta vencida, con error o en otra moneda → 422 (`OFFER_EXPIRED`, `OFFER_ISSUE_FAILED`, `CURRENCY_MISMATCH`) sin crear nada; las cotizadas y retenidas se emiten por `TravelInventory::issue` (clave = Idempotency-Key + id de la oferta), pasan a `emitida` con `pnr` y `reservation_id`, y entran como servicios `confirmado` (código = PNR) sumados a `total_amount` y a las CxC. Si el proveedor rechaza una, se anulan las ya emitidas (`TravelInventory::void`), responde 422 `OFFER_ISSUE_FAILED` y se audita `emitir_oferta_fallida` fuera de la transacción. `GET /quotes/{}` suma `can.external_offers`.
+
+### Pasarelas reales de cada agencia · INT-02, ECO-BR-13/16, VT-10 (7 rutas nuevas)
+
+Agregado el 25 de noviembre de 2026. Conectores Izipay, Culqi, Niubiz y Mercado Pago (spec 08 §5.2, spec 13 §INT-02, spec 22 VT-10). Ninguna figura en el contrato: el contrato solo tiene la sesión del pedido web (`POST /public/orders/{code}/payment-session` ya existía) y el webhook.
+
+- `POST /finance/gateways/{id}/test` (Acción propia, `finance.gateways.manage`, 10/min): «Probar conexión». Llama al chequeo de salud de la pasarela con las credenciales del vault (Culqi `GET /v2/charges`, Mercado Pago `GET /users/me`, Izipay `Charge/SDKTest`, Niubiz token de seguridad) y guarda `checked_at`, `check_status` y `check_message` en `fin_gateway_accounts`. Auditada `probar_conexion`. Otra pasarela sin conector → 422 `VT-GATEWAY-TEST`; credenciales incompletas → 422 `VT-10`.
+- `GET /public/payment-gateway` (Lectura de pantalla, sitio público): pasarela activa de la agencia (`provider`, `label`, `mode`, `embedded`) y los dominios que la CSP debe permitir en las páginas de pago. Nunca devuelve llaves.
+- `GET /portal/client/payment-gateway` (Lectura de pantalla, portal del cliente): lo mismo para el portal; lo usan la página de pagos y la CSP.
+- `POST /public/me/receivables/{}/payment-session` (Acción propia, Mi cuenta del sitio, 10/min): abre la sesión de pago de una cuota (monto pendiente menos lo que está por validar). El pasajero no puede (403 `PORTAL_CUSTOMER_ONLY`); cuota cubierta → 409 `SIT-BR-20`.
+- `POST /portal/client/receivables/{}/payment-session` (Acción propia, portal del cliente): igual que la anterior desde el portal.
+- `POST /public/pay/{token}/payment-session` (Acción propia, link de pago): abre la sesión con el monto del link; exige que el link esté activo y acepte tarjeta.
+- `POST /public/gift-cards/payment-session` (Acción propia, tarjeta de regalo): abre la sesión con el monto y la moneda del vale; el código del vale (`VALE-…`) viaja firmado en la sesión y la compra lo reutiliza.
+
+Cambios sin ruta nueva en rutas del contrato:
+
+- `POST /webhooks/payments/{gateway}` acepta `gateway` = `izipay`, `culqi`, `mercadopago` o `niubiz` con `?agencia={subdominio}&cuenta={id de la cuenta}`. Verifica el aviso con las credenciales de esa cuenta: Izipay por `kr-hash` (HMAC-SHA-256 con la contraseña), Mercado Pago por `x-signature` (manifiesto `id:…;request-id:…;ts:…;` con la clave secreta, ventana de 10 minutos) y luego consulta el pago, Culqi consultando el cargo con la llave secreta (Culqi no firma sus webhooks). Firma inválida → 401 `WEBHOOK_SIGNATURE_INVALID`; aviso que no es de un pago → 200 `ignorado`; pasarela sin respuesta → 503 para que reintente. Es idempotente por agencia y evento (ECO-BR-13). Niubiz confirma en línea y responde `ignorado`. La pasarela `sandbox` sigue igual (solo desarrollo y pruebas).
+- `POST /public/checkout/orders` con pasarela real: `method=tarjeta` crea el pedido sin cobrar (no acepta `card_token`) y el cobro se hace después con la sesión. `GET /public/checkout/...` y `GET /public/orders/{code}` suman `gateway`.
+- `POST /public/orders/{code}/payments`, `POST /public/me/receivables/{}/payments`, `POST /portal/client/receivables/{}/payments`, `POST /public/pay/{token}/checkout` y `POST /public/gift-cards` aceptan `session_id`; con pasarela real es obligatorio y de un solo uso (409 `PAYMENT_SESSION_USED`). `card_token` admite el formato de cada pasarela (hasta 20 000 caracteres).
+- `POST /finance/gateways` y `PATCH /finance/gateways/{id}` aceptan los cuatro proveedores con sus campos de credenciales; al editar se conservan las que no se reescriben, se valida el prefijo de las llaves según el modo (422 `VT-GATEWAY-MODE`) y se prueba la conexión al guardarlas. `GET /finance/gateways` suma `connectors`, `active_connector` y por cuenta `connector`, `credentials_set` (solo nombres), `webhook_url` y `check`.
+
+### Landing de KipuControl: blog, comentarios, boletín y popups · spec 25 LND-11 a LND-14 (26 rutas nuevas)
+
+Agregado el 25 de noviembre de 2026. La spec 25 pone el blog, los comentarios, los suscriptores y los popups en colecciones de Payload; mientras no haya Payload viven en tablas propias de plataforma (`platform_blog_posts.site`, `platform_blog_comments`, `platform_blog_votes`, `platform_newsletter_subscribers`, `platform_landing_popups`). El contrato no trae estas rutas: `POST /public/newsletter` y sus hermanas son del sitio de cada agencia (spec 15, `widgetKey`), no de kipucontrol.com. Ninguna exige permiso nuevo; las de consola usan `platform.user:verified,admin.tenant.manage`.
+
+Públicas (`/public/landing/*`, sin sesión):
+- `GET blog` y `GET blog/{slug}` (Lectura de pantalla): lista con filtro por sitio, categoría, búsqueda y orden, destacado y más leídos; artículo con preguntas, comentarios aprobados en un nivel y relacionados. El correo de quien comenta nunca sale.
+- `GET popups?page=` (Lectura de pantalla): popups activos de una página. `suscribirse` no es página válida (LND-13).
+- `POST blog/{slug}/read` (Acción propia, 30/min): suma una lectura por visitante y día.
+- `POST blog/{slug}/rating` (Acción propia, 20/min): «¿Te sirvió?», un voto por visitante (hash diario).
+- `POST blog/{slug}/comments` (Acción propia, 10/min y 3 por hora por IP, 429 `LND-11`): campo trampa `website`, 2 enlaces o más → `spam`, primer comentario del correo → `pendiente`, respuesta solo a un comentario principal (422 `LND-12`).
+- `POST comments/{id}/useful` (Acción propia, 30/min): «Útil» una vez por visitante.
+- `POST newsletter` (Acción propia, 5/min): alta con doble confirmación; reenvía como mucho cada 10 minutos.
+- `POST newsletter/confirm/{token}` (Acción propia): confirma; un correo de baja → 409 `NEWSLETTER_UNSUBSCRIBED`.
+- `POST newsletter/unsubscribe` (Acción propia): baja en un clic con el token del correo; auditada.
+- `POST popups/{code}/events` (Acción propia, 60/min): cuenta una vista o una conversión.
+
+Consola (`/platform/landing/*`):
+- `GET comments`, `GET popups`, `GET subscribers`, `GET posts` (Lectura de pantalla).
+- `POST comments/{id}/moderate`, `POST comments/{id}/reply`, `DELETE comments/{id}` (Editar, borrar o cambiar estado): moderación con transiciones de la spec 25 §4, respuesta como «Equipo KipuControl» (aprueba el comentario si estaba pendiente) y borrado solo de lo no publicado.
+- `POST popups`, `PATCH popups/{code}`, `POST popups/{code}/status`, `DELETE popups/{code}` (Editar, borrar o cambiar estado): `borrador → activo ↔ pausado`; un popup activo no se borra (409 `LND-13`).
+- `POST posts`, `PATCH posts/{id}`, `POST posts/{id}/status`, `DELETE posts/{id}` (Editar, borrar o cambiar estado): artículos del blog de KipuControl; publicar exige categoría y 300 palabras (422 `LND-17`); solo se borra un borrador que nunca se publicó.
+
+Cambio en una ruta existente: `GET /showcase/posts` y `GET /showcase/posts/{slug}` (blog de Rutas Libres) ahora filtran `site = 'rutaslibres'`.

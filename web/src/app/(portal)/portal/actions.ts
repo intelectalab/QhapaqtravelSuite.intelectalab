@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/lib/server/api";
+import type { GatewaySession, PayResult, SessionResult } from "@/lib/payment-gateway";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 function refresh(...paths: string[]) {
@@ -108,6 +109,21 @@ export async function requestQuoteChanges(code: string, _state: StepResult, form
   const result = await sendStep(`/portal/client/quotes/${encodeURIComponent(code)}/update-request`, "POST", formValues(form, ["message"]), "No pudimos enviar tu pedido.");
   if (result.done) refresh("/portal/propuestas", `/portal/propuestas/${code}`, "/portal/mensajes");
   return result;
+}
+
+export async function openPortalPaymentSession(code: string): Promise<SessionResult> {
+  const result = await apiFetch<GatewaySession>(`/portal/client/receivables/${encodeURIComponent(code)}/payment-session`, { method: "POST", body: {} });
+  return result.ok && result.data ? { ok: true, session: result.data } : { ok: false, message: result.error?.message ?? "La pasarela no respondió. Intenta de nuevo en unos minutos." };
+}
+
+export async function payPortalWithGateway(code: string, card_token: string, session_id: string): Promise<PayResult> {
+  const result = await apiFetch<{ result: string; message: string }>(`/portal/client/receivables/${encodeURIComponent(code)}/payments`, { method: "POST", body: { method: "tarjeta", card_token, session_id } });
+  refresh("/portal/pagos");
+  if (!result.ok || !result.data) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { ok: false, message: firstError ?? result.error?.message ?? "No pudimos procesar el pago." };
+  }
+  return { ok: result.data.result !== "rechazado", message: result.data.message };
 }
 
 export async function payOnline(code: string, _state: StepResult, form: FormData): Promise<StepResult> {

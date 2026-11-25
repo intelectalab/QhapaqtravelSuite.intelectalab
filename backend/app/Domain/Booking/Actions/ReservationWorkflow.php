@@ -158,7 +158,7 @@ final class ReservationWorkflow
                 $this->audit->log('Voucher', $voucher->code, 'anular', 'emitido', 'anulado');
             }
 
-            foreach (DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->whereNotIn('status', ['pagada', 'cancelada'])->get(['id', 'code', 'status']) as $receivable) {
+            foreach (DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->whereNotIn('status', ['pagada', 'cancelada'])->orderBy('id')->lock('for no key update')->get(['id', 'code', 'status']) as $receivable) {
                 DB::table('fin_receivables')->where('id', $receivable->id)->update(['status' => 'cancelada', 'cancelled_at' => $now, 'cancel_reason' => 'Reserva cancelada', 'updated_by' => $actor->getKey(), 'updated_at' => $now]);
                 $this->audit->log('Cuenta por cobrar', $receivable->code, 'cancelar', $receivable->status, 'cancelada');
             }

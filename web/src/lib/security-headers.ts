@@ -6,16 +6,22 @@ export function createNonce(): string {
   return btoa(crypto.randomUUID());
 }
 
-export function contentSecurityPolicy(nonce: string, frameable = false, ancestors: string[] = [], secure = false): string {
+export type ExtraSources = Partial<Record<"script" | "style" | "connect" | "frame", string[]>>;
+
+function withSources(base: string[], extra: string[] | undefined): string {
+  return [...base, ...(extra ?? []).filter((origin) => /^https:\/\/[a-z0-9.-]+$/i.test(origin) && !base.includes(origin))].join(" ");
+}
+
+export function contentSecurityPolicy(nonce: string, frameable = false, ancestors: string[] = [], secure = false, payment: ExtraSources = {}): string {
   const scripts = [`'self'`, `'nonce-${nonce}'`, `'strict-dynamic'`, ...(isProduction ? [] : [`'unsafe-eval'`])];
   return [
     `default-src 'self'`,
-    `script-src ${scripts.join(" ")}`,
-    `style-src 'self' 'unsafe-inline'`,
+    `script-src ${withSources(scripts, payment.script)}`,
+    `style-src ${withSources([`'self'`, `'unsafe-inline'`], payment.style)}`,
     `img-src 'self' data: blob: https:`,
-    `font-src 'self' data:`,
-    `connect-src 'self'`,
-    `frame-src 'self' https://challenges.cloudflare.com`,
+    `font-src ${withSources([`'self'`, "data:"], payment.style)}`,
+    `connect-src ${withSources([`'self'`], payment.connect)}`,
+    `frame-src ${withSources([`'self'`, "https://challenges.cloudflare.com"], payment.frame)}`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

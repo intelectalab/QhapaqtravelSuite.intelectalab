@@ -6,6 +6,7 @@ namespace App\Domain\Site\Http\Controllers;
 
 use App\Domain\Finance\Actions\GiftCards;
 use App\Domain\Finance\Actions\PaymentLinks;
+use App\Domain\Site\Support\CardPayments;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,7 +21,8 @@ final class PublicPayController
     {
         $data = $request->validate([
             'method' => ['required', 'in:'.implode(',', array_keys(PaymentLinks::METHODS))],
-            'card_token' => ['required_if:method,card', 'nullable', 'string', 'max:120'],
+            'card_token' => ['required_if:method,card', 'nullable', 'string', 'max:20000'],
+            'session_id' => ['nullable', 'string', 'max:800'],
             'installments' => ['nullable', 'integer', 'between:1,24'],
             'email' => ['nullable', 'email:rfc', 'max:190'],
         ], [
@@ -44,10 +46,34 @@ final class PublicPayController
             'recipient_email' => ['nullable', 'email:rfc', 'max:190'],
             'message' => ['nullable', 'string', 'max:500'],
             'deliver_at' => ['nullable', 'date'],
-            'card_token' => ['required', 'string', 'max:120'],
+            'card_token' => ['required', 'string', 'max:20000'],
+            'session_id' => ['nullable', 'string', 'max:800'],
         ], GiftCards::messages());
 
         return response()->json(['data' => $cards->purchase($data)]);
+    }
+
+    public function linkSession(Request $request, string $token, PaymentLinks $links): JsonResponse
+    {
+        $data = $request->validate(['email' => ['nullable', 'email:rfc', 'max:190']], ['email.*' => 'Escribe un correo válido para enviarte el comprobante.']);
+
+        return response()->json(['data' => $links->paymentSession($token, $data['email'] ?? null)], 201);
+    }
+
+    public function giftCardSession(Request $request, GiftCards $cards): JsonResponse
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'regex:/^\d{1,8}(\.\d{1,2})?$/'],
+            'currency' => ['required', 'in:PEN,USD'],
+            'buyer_email' => ['required', 'email:rfc', 'max:190'],
+        ], GiftCards::messages());
+
+        return response()->json(['data' => $cards->paymentSession($data)], 201);
+    }
+
+    public function gateway(CardPayments $cards): JsonResponse
+    {
+        return response()->json(['data' => $cards->info()]);
     }
 
     public function giftCardBalance(Request $request, GiftCards $cards): JsonResponse

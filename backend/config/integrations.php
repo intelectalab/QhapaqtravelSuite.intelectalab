@@ -9,7 +9,7 @@ return [
         'messaging' => env('MESSAGING_CHANNEL', 'fake'),
         'whatsapp' => env('WHATSAPP_CLOUD', 'fake'),
         'reviews' => env('REVIEWS_PROVIDER', 'fake'),
-        'fx' => env('FX_RATE_PROVIDER', 'fake'),
+        'fx' => env('FX_RATE_PROVIDER', env('APP_ENV') === 'production' ? 'live' : 'fake'),
         'antivirus' => env('ANTIVIRUS_PROVIDER', 'fake'),
         'push' => env('PUSH_PROVIDER', 'fake'),
         'sales_ai' => env('SALES_AI_PROVIDER', 'fake'),

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Showcase\Actions;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Integrations\Payments\AgencyPaymentGateways;
+use App\Domain\Integrations\Payments\ConnectorCatalog;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -20,7 +22,7 @@ use Illuminate\Support\Str;
 
 final class ManageGateways
 {
-    public const PROVIDERS = ['pasarela_local' => 'Pasarela local (tarjetas)', 'paypal' => 'PayPal', 'yape' => 'Yape', 'plin' => 'Plin', 'otro' => 'Otra pasarela'];
+    public const PROVIDERS = ['izipay' => 'Izipay', 'culqi' => 'Culqi', 'niubiz' => 'Niubiz', 'mercadopago' => 'Mercado Pago', 'pasarela_local' => 'Pasarela local (tarjetas)', 'paypal' => 'PayPal', 'yape' => 'Yape', 'plin' => 'Plin', 'otro' => 'Otra pasarela'];
 
     public const ADDONS = ['paypal' => 'paypal_gateway'];
 
@@ -40,7 +42,8 @@ final class ManageGateways
         }
 
         $id = (string) Str::uuid7();
-        $credentials = $this->storeCredentials($id, $data['credentials'] ?? null);
+        $secrets = $this->secrets((string) $data['provider'], $data['mode'] ?? 'sandbox', [], $data['credentials'] ?? null, $data['status'] ?? 'pendiente');
+        $credentials = $this->storeCredentials($id, $secrets);
         $this->assertProduction($data['status'] ?? 'pendiente', $data['mode'] ?? 'sandbox', $credentials);
 
         try {
@@ -68,15 +71,46 @@ final class ManageGateways
 
         $this->audit->log('Pasarela', $id, 'conectar', null, self::PROVIDERS[$data['provider']].' · '.$data['account_ref'].' · '.$this->termsLabel($data).($credentials ? ' · credenciales en el vault' : ''));
 
+        if ($credentials !== null && ConnectorCatalog::has((string) $data['provider'])) {
+            $this->test($id);
+        }
+
         return $id;
+    }
+
+    public function test(string $id): array
+    {
+        $account = $this->find($id);
+
+        if (! ConnectorCatalog::has((string) $account->provider)) {
+            throw ApiException::unprocessable('VT-GATEWAY-TEST', 'La prueba de conexión está disponible para Izipay, Culqi, Niubiz y Mercado Pago.');
+        }
+
+        $gateways = app(AgencyPaymentGateways::class);
+        $connection = $gateways->find((string) $account->id);
+
+        if ($connection === null || ConnectorCatalog::missing((string) $account->provider, $connection->secrets) !== []) {
+            throw ApiException::unprocessable('VT-10', 'Registra todas las credenciales de la pasarela antes de probar la conexión.', ['field' => 'credentials']);
+        }
+
+        $result = $gateways->connector($connection)->healthcheck();
+        $status = $result->ok ? 'ok' : 'error';
+        $message = $result->ok ? 'Conexión correcta con '.ConnectorCatalog::label((string) $account->provider).($account->mode === 'produccion' ? ' en producción.' : ' en modo prueba.') : mb_substr((string) $result->message, 0, 200);
+        DB::table('fin_gateway_accounts')->where('id', $account->id)->update(['checked_at' => now(), 'check_status' => $status, 'check_message' => $message]);
+        $this->audit->log('Pasarela', (string) $account->id, 'probar_conexion', null, "{$status} · {$message}");
+
+        return ['status' => $status, 'message' => $message, 'checked_at' => now()->toIso8601String()];
     }
 
     public function update(string $id, array $data): void
     {
         $account = $this->find($id);
-        $credentials = array_key_exists('credentials', $data) && $data['credentials'] ? $this->storeCredentials($account->id, $data['credentials']) : $account->credentials_ref;
         $status = $data['status'] ?? $account->status;
         $mode = $data['mode'] ?? $account->mode;
+        $current = $account->credentials_ref ? ($this->vault->get((string) $account->credentials_ref) ?? []) : [];
+        $incoming = array_key_exists('credentials', $data) && $data['credentials'] ? $data['credentials'] : null;
+        $secrets = $this->secrets((string) $account->provider, $mode, $current, $incoming, $status);
+        $credentials = $incoming !== null || ($mode !== $account->mode && $secrets !== []) ? $this->storeCredentials($account->id, $secrets) : $account->credentials_ref;
         $this->assertProduction($status, $mode, $credentials);
         $merged = [
             'fee_pct' => $data['fee_pct'] ?? $account->fee_pct,
@@ -95,8 +129,36 @@ final class ManageGateways
             'mode' => $mode,
             'credentials_ref' => $credentials,
             'updated_at' => now(),
+            ...($credentials !== $account->credentials_ref || $mode !== $account->mode ? ['checked_at' => null, 'check_status' => null, 'check_message' => null] : []),
         ]);
         $this->audit->log('Pasarela', $account->id, 'configurar', "{$account->status} · ".$this->termsLabel((array) $account), "{$status} · ".$this->termsLabel($merged).($credentials !== $account->credentials_ref ? ' · credenciales renovadas' : ''));
+
+        if ($credentials !== $account->credentials_ref && $credentials !== null && ConnectorCatalog::has((string) $account->provider)) {
+            $this->test($account->id);
+        }
+    }
+
+    private function secrets(string $provider, string $mode, array $current, ?array $incoming, string $status): array
+    {
+        $allowed = ConnectorCatalog::has($provider) ? ConnectorCatalog::required($provider) : ['client_id', 'secret'];
+        $fresh = array_filter(array_map(fn ($v) => is_string($v) ? trim($v) : $v, array_intersect_key((array) $incoming, array_flip($allowed))), fn ($v) => is_string($v) && $v !== '');
+        $secrets = [...array_intersect_key($current, array_flip($allowed)), ...$fresh];
+
+        if (! ConnectorCatalog::has($provider)) {
+            return $secrets;
+        }
+
+        if (($error = ConnectorCatalog::modeError($provider, $mode, $secrets)) !== null) {
+            throw ApiException::unprocessable('VT-GATEWAY-MODE', $error, ['field' => 'credentials']);
+        }
+
+        $missing = ConnectorCatalog::missing($provider, $secrets);
+
+        if ($status === 'activa' && $missing !== []) {
+            throw ApiException::unprocessable('VT-10', 'Para activar '.ConnectorCatalog::label($provider).' completa: '.implode(', ', $missing).'. Se guardan cifradas y nunca se muestran.', ['field' => 'credentials']);
+        }
+
+        return $secrets;
     }
 
     public function import(array $data): array
@@ -172,15 +234,14 @@ final class ManageGateways
         return DB::table('fin_gateway_accounts')->where('id', $id)->first() ?? throw ApiException::notFound('La pasarela no existe.');
     }
 
-    private function storeCredentials(string $id, ?array $credentials): ?string
+    private function storeCredentials(string $id, array $secrets): ?string
     {
-        $secrets = array_filter((array) $credentials, fn ($v) => is_string($v) && $v !== '');
 
         if ($secrets === []) {
             return null;
         }
 
-        $reference = 'vault://gateways/'.$this->context->idOrFail().'/'.$id.'/'.now()->format('YmdHis');
+        $reference = 'vault://gateways/'.$this->context->idOrFail().'/'.$id.'/'.now()->format('YmdHis').'-'.Str::lower(Str::random(6));
         $this->vault->put($reference, $secrets);
 
         return $reference;

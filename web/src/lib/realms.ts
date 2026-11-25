@@ -22,7 +22,7 @@ export const REALMS: Record<Realm, RealmConfig> = {
     mfaPage: "/mfa",
     logout: "/salir",
     home: "/dashboard",
-    publicPaths: ["/login", "/salir", "/invitacion", "/recuperar", "/restablecer", "/sitio", "/software", "/widget", "/c", "/robots.txt", "/vitrina", "/oauth/token"],
+    publicPaths: ["/login", "/salir", "/invitacion", "/recuperar", "/restablecer", "/sitio", "/software", "/widget", "/c", "/robots.txt", "/llms.txt", "/llms-full.txt", "/sitemap.xml", "/vitrina", "/oauth/token"],
   },
   platform: {
     session: "kipucontrol_platform_session",

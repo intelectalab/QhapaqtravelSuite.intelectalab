@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Showcase\Http\Controllers;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Integrations\Payments\ConnectorCatalog;
 use App\Domain\Showcase\Actions\ManageGateways;
 use App\Domain\Showcase\Support\GatewayDirectory;
 use Illuminate\Http\JsonResponse;
@@ -23,6 +24,7 @@ final class GatewayController
         'settle_days.*' => 'La liquidación va de 0 a 60 días.',
         'status.*' => 'Elige un estado válido.',
         'mode.*' => 'Elige sandbox o producción.',
+        'credentials.*' => 'Revisa las credenciales: cada una admite hasta 400 caracteres.',
     ];
 
     public function index(Request $request, GatewayDirectory $directory): JsonResponse
@@ -47,6 +49,11 @@ final class GatewayController
         $gateways->update($id, $data);
 
         return response()->json(['data' => ['id' => $id]]);
+    }
+
+    public function test(string $id, ManageGateways $gateways): JsonResponse
+    {
+        return response()->json(['data' => $gateways->test($id)]);
     }
 
     public function fees(Request $request, GatewayDirectory $directory): JsonResponse
@@ -94,6 +101,7 @@ final class GatewayController
             'credentials' => ['nullable', 'array'],
             'credentials.client_id' => ['nullable', 'string', 'max:200'],
             'credentials.secret' => ['nullable', 'string', 'max:400'],
+            ...array_fill_keys(array_map(fn (string $key) => "credentials.{$key}", ConnectorCatalog::fieldKeys()), ['nullable', 'string', 'max:400']),
         ];
     }
 }

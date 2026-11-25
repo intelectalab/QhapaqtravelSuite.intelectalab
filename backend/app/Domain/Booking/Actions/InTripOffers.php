@@ -11,6 +11,7 @@ use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Site\Support\CardPayments;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -201,7 +202,7 @@ final class InTripOffers
             'currency' => $item['currency'],
             'methods' => '{card}',
             'installments_max' => 1,
-            'provider' => (string) config('integrations.drivers.payments', 'fake'),
+            'provider' => app(CardPayments::class)->gatewayName((string) $item['currency']),
             'url' => $url,
             'token_hash' => DerivedTokens::hash($token),
             'sent_via' => match ($channel) {

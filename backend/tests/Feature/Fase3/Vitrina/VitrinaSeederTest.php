@@ -18,7 +18,7 @@ it('el seeder de la vitrina deja datos de demostración coherentes y es repetibl
         ->and($platform->table('platform_showcase_agencies')->where('code', 'SHA-02')->value('tenant_id'))->toBe((string) tenantByCode('TNT-0005')->getKey())
         ->and($platform->table('platform_access_passes')->where('code', 'PASE-0001')->value('status'))->toBe('activo')
         ->and($platform->table('feature_overrides')->where('reason', 'Pase PASE-0001')->exists())->toBeTrue()
-        ->and($platform->table('platform_blog_posts')->where('status', 'publicado')->count())->toBe(3)
+        ->and($platform->table('platform_blog_posts')->where('site', 'rutaslibres')->where('status', 'publicado')->count())->toBe(3)
         ->and($platform->table('platform_funnel_events')->where('kind', 'reserva')->count())->toBeGreaterThan(0)
         ->and($platform->table('addons')->where('code', 'paypal_gateway')->value('billing_mode'))->toBe('unico');
 

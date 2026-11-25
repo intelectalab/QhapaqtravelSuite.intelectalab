@@ -1,6 +1,8 @@
 import { test, expect } from '../fixtures/auth';
+import type { Api } from '../support/api';
 import { R } from '../support/routes';
 import { T } from '../support/testids';
+import { userFor } from '../support/users';
 
 /**
  * Ownership del rol Ventas (esp. 00 SEC-BR-09 / §7.6, 03 QTE-BR-26, 01 H-17).
@@ -13,13 +15,27 @@ const FOREIGN_QUOTE = 'COT-2026-00190';     // U04
 const FOREIGN_RES = 'RES-2026-000350';      // U04
 const FOREIGN_LEAD = 'LEAD-0231';           // U04
 
+async function portfolioOf(admin: Api, alias: 'sales' | 'sales2'): Promise<string[]> {
+  const rows = (await (await admin.get('/quotes', { 'page[size]': 100 })).json()).data as { code: string; owner?: { name?: string } | null }[];
+  return rows.filter((q) => q.owner?.name === userFor(alias).name).map((q) => q.code).sort();
+}
+
 test.describe('Ownership de Ventas @fase1 @ownership @smoke', () => {
-  test('lista de cotizaciones: solo su cartera y sin columna Vendedor', async ({ pageAs }) => {
+  test('lista de cotizaciones: solo su cartera y sin columna Vendedor', async ({ pageAs, apiAs }) => {
+    const expected = await portfolioOf(await apiAs('tenantAdmin'), 'sales');
+    expect(expected).toEqual(expect.arrayContaining(OWN_QUOTES_U03));
+    expect(expected).not.toContain(FOREIGN_QUOTE);
     const page = await pageAs('sales');
     await page.goto(R.quotes);
+    const rowsPicker = page.getByRole('button', { name: 'Filas por página' }).first();
+    if (await rowsPicker.count()) {
+      await rowsPicker.click();
+      await page.getByTestId(T.option('100')).click();
+    }
     const rows = page.locator('[data-testid^="table-row:COT-"]');
+    await expect(rows).toHaveCount(expected.length);
     const codes = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')!.split(':')[1]));
-    expect(codes.sort()).toEqual([...OWN_QUOTES_U03].sort());
+    expect(codes.sort()).toEqual(expected);
     await expect(page.getByRole('columnheader', { name: /vendedor/i })).toHaveCount(0);
     await expect(page.getByText('Mi cartera')).toBeVisible();
   });
@@ -46,10 +62,11 @@ test.describe('Ownership de Ventas @fase1 @ownership @smoke', () => {
     expect(detail.status()).toBe(403);
     expect((await detail.json()).code).toBe('SEC-BR-09');
 
+    const own = await portfolioOf(admin, 'sales');
     const list = await (await sales.get('/quotes', { 'filter[owner]': 'U04', 'page[size]': 100 })).json();
     const codes = (list.data as any[]).map((q) => q.code);
     expect(codes).not.toContain(FOREIGN_QUOTE);
-    expect(codes.every((c) => OWN_QUOTES_U03.includes(c))).toBeTruthy();
+    expect(codes.sort()).toEqual(own);
   });
 
   test('búsqueda global y KPIs respetan la cartera', async ({ apiAs }) => {

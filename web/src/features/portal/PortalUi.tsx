@@ -17,9 +17,9 @@ export function rise(index: number) {
   return { animationDelay: `${index * 60}ms` };
 }
 
-export function PortalBadge({ status, scope }: { status: string; scope?: PortalStatusScope }) {
+export function PortalBadge({ status, scope, testId }: { status: string; scope?: PortalStatusScope; testId?: string }) {
   const meta = portalStatus(status, scope);
-  return <Badge tone={meta.tone}>{meta.label}</Badge>;
+  return <Badge tone={meta.tone} status={testId ? status : undefined} testId={testId}>{meta.label}</Badge>;
 }
 
 export function PortalTitle({ title, subtitle, actions, back }: { title: string; subtitle?: ReactNode; actions?: ReactNode; back?: { href: string; label: string } }) {

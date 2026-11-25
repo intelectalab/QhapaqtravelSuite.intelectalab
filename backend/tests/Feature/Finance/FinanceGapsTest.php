@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    lockSeededBookings();
     lockTreasury();
     Queue::fake();
     withinTenant(tenantA(), fn () => DB::table('catalog_dynamic_price_rules')->update(['active' => false]));

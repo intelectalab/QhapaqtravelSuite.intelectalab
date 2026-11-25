@@ -44,7 +44,7 @@ function RateFields({ product, agencies, rate }: { product: Product; agencies: A
       <div className="grid gap-3 sm:grid-cols-3">
         <TextField label="Precio neto" name="net_price" type="number" step="0.01" min="0" max={product.public && product.public.currency === currency ? product.public.price : undefined} required defaultValue={current?.net_price ?? product.general?.price ?? ""} />
         <SelectField label="Moneda" name="currency" defaultValue={currency} options={[{ value: "PEN", label: "Soles" }, { value: "USD", label: "Dólares" }]} />
-        <TextField label="Comisión (%)" name="commission_pct" type="number" step="0.5" min="0" max="30" required defaultValue={current?.commission_pct ?? agency?.commission_pct ?? 10} />
+        <TextField label="Comisión (%)" name="commission_pct" type="number" step="0.5" min="0" max="30" required defaultValue={current?.commission_pct ?? agency?.commission_pct ?? 10} tip="Manda sobre la comisión del convenio: se congela en cada reserva B2B de este producto y es la que se liquida." />
       </div>
       <DateField label="Vigente hasta" name="valid_to" defaultValue={current?.valid_to} hint="Vacío: rige mientras dure el convenio de la agencia." />
       <SwitchField label="Permite reservar a crédito" name="credit_allowed" checked={credit && Boolean(agency?.credit)} onCheckedChange={setCredit} disabled={!agency?.credit} hint={agency?.credit ? "Descuenta de la línea de crédito de la agencia." : "La agencia no tiene línea de crédito: solo prepago."} />

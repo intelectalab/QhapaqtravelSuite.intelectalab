@@ -9,16 +9,16 @@ import { cn } from "@/lib/cn";
 import { listingQuery, type Option } from "@/lib/site";
 import { useSite } from "./SiteContext";
 
-export function Stepper({ value, min, max, onChange, label, removeLabel, addLabel }: { value: number; min: number; max: number; onChange: (value: number) => void; label: string; removeLabel?: string; addLabel?: string }) {
+export function Stepper({ value, min, max, onChange, label, removeLabel, addLabel, testId }: { value: number; min: number; max: number; onChange: (value: number) => void; label: string; removeLabel?: string; addLabel?: string; testId?: string }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <button type="button" aria-label={removeLabel ?? `Quitar ${label}`} disabled={value <= min} onClick={() => onChange(value - 1)} className="grid h-8 w-8 place-items-center rounded-full border border-line text-fg-2 transition hover:border-accent hover:text-accent disabled:opacity-40">
+      <button type="button" aria-label={removeLabel ?? `Quitar ${label}`} disabled={value <= min} onClick={() => onChange(value - 1)} data-testid={testId ? `bk-pax-dec:${testId}` : undefined} className="grid h-8 w-8 place-items-center rounded-full border border-line text-fg-2 transition hover:border-accent hover:text-accent disabled:opacity-40">
         <Minus size={14} />
       </button>
-      <b className="w-7 text-center text-[15px] tabular-nums text-fg" aria-live="polite">
+      <b className="w-7 text-center text-[15px] tabular-nums text-fg" aria-live="polite" data-testid={testId ? `bk-pax-count:${testId}` : undefined}>
         {value}
       </b>
-      <button type="button" aria-label={addLabel ?? `Agregar ${label}`} disabled={value >= max} onClick={() => onChange(value + 1)} className="grid h-8 w-8 place-items-center rounded-full border border-line text-fg-2 transition hover:border-accent hover:text-accent disabled:opacity-40">
+      <button type="button" aria-label={addLabel ?? `Agregar ${label}`} disabled={value >= max} onClick={() => onChange(value + 1)} data-testid={testId ? `bk-pax-inc:${testId}` : undefined} className="grid h-8 w-8 place-items-center rounded-full border border-line text-fg-2 transition hover:border-accent hover:text-accent disabled:opacity-40">
         <Plus size={14} />
       </button>
     </span>

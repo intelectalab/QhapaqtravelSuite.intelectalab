@@ -168,7 +168,12 @@ final class SiteAccountController
 
     public function pay(Request $request, string $id, SiteAccountPayment $payments): JsonResponse
     {
-        return $this->json($payments->pay($this->customer($request), $id, $request->only(['method', 'card_token', 'card_holder', 'operation_ref'])));
+        return $this->json($payments->pay($this->customer($request), $id, $request->only(['method', 'card_token', 'card_holder', 'operation_ref', 'session_id'])));
+    }
+
+    public function paymentSession(Request $request, string $id, SiteAccountPayment $payments): JsonResponse
+    {
+        return response()->json(['data' => $payments->session($this->customer($request), $id)], 201);
     }
 
     public function wishlist(Request $request): JsonResponse

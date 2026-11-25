@@ -9,7 +9,8 @@ import { API } from './routes';
 export async function setRule(code: string, enabled: boolean): Promise<() => Promise<void>> {
   const admin = await Api.as('tenantAdmin');
   const list = await (await admin.get('/admin/booking-rules')).json();
-  const rule = (list.data as any[]).find((r) => r.code === code);
+  const rules = (Array.isArray(list.data) ? list.data : list.data?.rules ?? []) as any[];
+  const rule = rules.find((r) => r.code === code);
   expect(rule, `regla ${code}`).toBeTruthy();
   const original = rule.enabled as boolean;
   const r = await admin.patch(API.bookingRule(code), { enabled }, { 'If-Match': String(rule.lock_version) });

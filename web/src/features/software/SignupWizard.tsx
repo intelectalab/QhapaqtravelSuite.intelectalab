@@ -1,8 +1,9 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ExternalLink, LoaderCircle, Lock, Mail, MessageSquare, Phone, Receipt, Search, Tag, User } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, type ReactNode, useState, useTransition } from "react";
 import { checkCoupon, createSignup, lookupRuc } from "@/app/(software)/software/suscribirse/actions";
 import { Button } from "@/components/ui/Button";
 import { Captcha } from "@/components/ui/Captcha";
@@ -15,6 +16,7 @@ import { SalesLeadForm } from "@/features/software/SalesLeadForm";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { CYCLE_LABEL, SUNAT_RUC_GUIDE, type LandingCatalog, type LandingPlan, type SignupCycle, type SignupTotals, type Taxpayer } from "@/lib/landing";
+import { signupEmail } from "@/lib/landing-content";
 import type { DemoOptions } from "@/lib/software";
 import { planTone } from "@/lib/platform";
 import { toneStyle } from "@/lib/tone";
@@ -41,7 +43,23 @@ export function SignupStepper({ current }: { current: number }) {
   );
 }
 
-function ConsentSwitch({ name, label, hint }: { name: string; label: string; hint?: string }) {
+function TermsLinks() {
+  return (
+    <>
+      Lee los{" "}
+      <Link href="/software/legal/terminos" target="_blank" className="font-semibold text-accent hover:underline">
+        términos
+      </Link>{" "}
+      y la{" "}
+      <Link href="/software/legal/privacidad" target="_blank" className="font-semibold text-accent hover:underline">
+        política de privacidad
+      </Link>{" "}
+      (Ley 29733).
+    </>
+  );
+}
+
+function ConsentSwitch({ name, label, hint }: { name: string; label: string; hint?: ReactNode }) {
   const [checked, setChecked] = useState(false);
   return <SwitchField name={name} label={label} hint={hint} checked={checked} onCheckedChange={setChecked} />;
 }
@@ -100,6 +118,7 @@ function NoRucNotice({ onWrite }: { onWrite: () => void }) {
 }
 
 export function SignupWizard({ catalog, businessTypes, leadOptions, initialPlan, initialCycle, attribution }: { catalog: LandingCatalog; businessTypes: string[]; leadOptions: DemoOptions; initialPlan?: string; initialCycle: SignupCycle; attribution: Record<string, string> }) {
+  const [initialEmail] = useState(signupEmail);
   const router = useRouter();
   const plans = catalog.plans.filter((plan) => plan.self_service);
   const rucLookup = catalog.ruc_lookup !== false;
@@ -245,10 +264,10 @@ export function SignupWizard({ catalog, businessTypes, leadOptions, initialPlan,
               <TextField label="Teléfono" name="phone" icon={<Phone size={16} />} error={errors.phone} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField label="Correo de trabajo" name="email" type="email" required icon={<Mail size={16} />} error={errors.email} />
+              <TextField label="Correo de trabajo" name="email" type="email" required defaultValue={initialEmail} icon={<Mail size={16} />} error={errors.email} />
               <TextField label="Contraseña" name="password" type="password" revealable required minLength={10} hint="10 caracteres o más." error={errors.password} />
             </div>
-            <ConsentSwitch name="accept_terms" label="Acepto los términos del servicio y la política de privacidad" hint={errors.accept_terms ?? "Ley 29733 de protección de datos personales."} />
+            <ConsentSwitch name="accept_terms" label="Acepto los términos del servicio y la política de privacidad" hint={errors.accept_terms ?? <TermsLinks />} />
             <ConsentSwitch name="marketing_consent" label="Quiero recibir novedades y guías de KipuControl" />
             <Captcha />
             {message && <p className="rounded-[12px] bg-[color-mix(in_srgb,var(--bad)_9%,transparent)] px-4 py-2.5 text-[13px] font-medium text-bad">{message}</p>}

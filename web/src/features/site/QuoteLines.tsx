@@ -6,6 +6,8 @@ import { formatMoney } from "@/lib/format";
 import type { QuoteLine, QuoteLineKind, TripCategory } from "@/lib/site";
 import { useSite } from "./SiteContext";
 
+const LINE_MARKS: Record<string, string> = { adults: "base-adt", children: "base-chd", infants: "base-inf" };
+
 const ORDER: QuoteLineKind[] = ["base", "option", "addon", "lodging", "surcharge", "tour", "transport"];
 
 const KIND_ICON: Partial<Record<QuoteLineKind, typeof Ticket>> = {
@@ -68,7 +70,7 @@ export function QuoteLines({ lines, currency, onToggle, busyKey, compact = false
         const Icon = KIND_ICON[line.kind];
         const free = Number(line.amount) <= 0;
         return (
-          <li key={line.key} className={cn("group flex items-start justify-between gap-3 text-[13px] transition", line.removed ? "text-fg-3" : "text-fg-2")}>
+          <li key={line.key} data-testid={`bk-line:${LINE_MARKS[line.key] ?? line.key}`} data-amount={Number(line.amount).toFixed(2)} data-removed={line.removed ? "true" : "false"} className={cn("group flex items-start justify-between gap-3 text-[13px] transition", line.removed ? "text-fg-3" : "text-fg-2")}>
             <span className="flex min-w-0 items-start gap-2">
               {Icon && <Icon size={14} className={cn("mt-0.5 flex-none", line.removed ? "text-fg-3/60" : "text-t1")} />}
               <span className={cn("min-w-0", line.removed && "line-through decoration-fg-3/40")}>

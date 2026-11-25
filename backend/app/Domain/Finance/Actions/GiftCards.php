@@ -110,13 +110,22 @@ final class GiftCards
         });
     }
 
+    public function paymentSession(array $data): array
+    {
+        $this->gate->require(self::RULE);
+        $amount = $this->amount((string) $data['amount']);
+
+        return $this->cards->openSession('gift_card', 'VALE-'.mb_strtoupper(Str::random(8)), (string) $amount, (string) $data['currency'], (string) $data['buyer_email'], null, ['title' => 'Tarjeta de regalo']);
+    }
+
     public function purchase(array $data): array
     {
         $this->gate->require(self::RULE);
         $amount = $this->amount((string) $data['amount']);
         $currency = (string) $data['currency'];
         $deliverAt = $this->deliveryDate($data['deliver_at'] ?? null, $this->expiry(null), $data['recipient_email'] ?? $data['buyer_email']);
-        $card = $this->cards->charge('gift_card', 'VALE-'.mb_strtoupper(Str::random(8)), (string) $amount, $currency, (string) $data['buyer_email'], (string) $data['card_token'], null);
+        $subject = $this->cards->sessionSubject($data['session_id'] ?? null, 'gift_card') ?? 'VALE-'.mb_strtoupper(Str::random(8));
+        $card = $this->cards->charge('gift_card', $subject, (string) $amount, $currency, (string) $data['buyer_email'], (string) $data['card_token'], $data['session_id'] ?? null);
 
         if (! $card['approved']) {
             throw ApiException::unprocessable('PAYMENT_DECLINED', (string) $card['message'], ['code' => $card['code']]);

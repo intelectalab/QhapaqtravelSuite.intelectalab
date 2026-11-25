@@ -44,7 +44,7 @@ final class ManageShowcasePosts
         }
 
         return $this->db()->transaction(function () use ($id, $data, $actor): array {
-            $post = $this->db()->table('platform_blog_posts')->where('id', $id)->lock('for no key update')->first(['*', DB::raw('array_to_json(linked_listing_ids) as linked')]) ?? throw ApiException::notFound('El artículo no existe.');
+            $post = $this->db()->table('platform_blog_posts')->where('id', $id)->where('site', 'rutaslibres')->lock('for no key update')->first(['*', DB::raw('array_to_json(linked_listing_ids) as linked')]) ?? throw ApiException::notFound('El artículo no existe.');
             $merged = [
                 'title' => $data['title'] ?? $post->title,
                 'excerpt' => $data['excerpt'] ?? $post->excerpt,

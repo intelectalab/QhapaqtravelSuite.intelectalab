@@ -1,7 +1,7 @@
 "use client";
 
 import { AtSign, KeyRound, Lock, Send, Server } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { saveOutgoingMail, sendOutgoingMailTest } from "@/app/plataforma/(consola)/configuracion/actions";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -64,6 +64,7 @@ function OutgoingMailFields({ mail }: { mail: OutgoingMailSummary }) {
         <TextField label="Remitente" name="from_address" type="email" required={enabled} defaultValue={mail.from_address} maxLength={190} placeholder="avisos@tudominio.com" hint="Debe ser el mismo buzón o uno que el servidor permita." />
         <TextField label="Nombre del remitente" name="from_name" defaultValue={mail.from_name} maxLength={120} placeholder="KipuControl" />
       </div>
+      <InlineTestMail mail={mail} />
       <div className="grid gap-3 border-t border-line-2 pt-4">
         <div>
           <p className="text-[13px] font-semibold text-fg">Acuses de entrega</p>
@@ -72,6 +73,60 @@ function OutgoingMailFields({ mail }: { mail: OutgoingMailSummary }) {
         <WebhookSecretField label="Secreto del correo (SES)" name="ses_webhook_secret" saved={mail.webhook_secrets.ses} />
       </div>
     </>
+  );
+}
+
+type TestResult = { ok: boolean; to: string; at: string; message: string | null };
+
+function InlineTestMail({ mail }: { mail: OutgoingMailSummary }) {
+  const [to, setTo] = useState(mail.last_test?.to ?? "");
+  const [result, setResult] = useState<TestResult | null>(mail.last_test ? { ...mail.last_test, message: null } : null);
+  const [pending, startTransition] = useTransition();
+  const box = useRef<HTMLDivElement>(null);
+
+  const run = () => {
+    const target = to.trim();
+    if (pending || target === "") return;
+    const owner = box.current?.closest("form");
+    const form = owner ? new FormData(owner) : new FormData();
+    form.set("to", target);
+    startTransition(async () => {
+      const state = await sendOutgoingMailTest(ADMIN_INITIAL, form);
+      setResult({ ok: state.done, to: target, at: new Date().toISOString(), message: state.message });
+    });
+  };
+
+  return (
+    <div ref={box} className="grid min-w-0 gap-3 rounded-xl border border-line-2 bg-surface-2 p-3.5">
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold text-fg">Enviar un correo de prueba</p>
+        <p className="mt-0.5 text-[12.5px] text-fg-2">Sale ahora mismo con los datos escritos arriba, aunque todavía no los guardes. Con la contraseña vacía usamos la guardada.</p>
+      </div>
+      <TextField
+        label="Enviar a"
+        name="test_to"
+        type="email"
+        className="min-w-0"
+        value={to}
+        onChange={(event) => setTo(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          run();
+        }}
+        maxLength={190}
+        placeholder="tu@correo.com"
+        autoComplete="email"
+      />
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <p role="status" className={`min-w-0 text-[12.5px] ${result ? (result.ok ? "text-ok" : "text-bad") : "text-fg-3"}`}>
+          {result ? (result.ok ? `Última prueba ${formatDateTime(result.at)}: salió bien hacia ${result.to}. Si no aparece, revisa spam.` : result.message ? `No salió: ${result.message}` : `Última prueba ${formatDateTime(result.at)}: falló el envío a ${result.to}.`) : "Todavía no se envió ninguna prueba."}
+        </p>
+        <Button variant="secondary" size="sm" icon={<Send size={15} />} onClick={run} disabled={pending || to.trim() === ""} className="flex-none">
+          {pending ? "Enviando…" : "Enviar prueba"}
+        </Button>
+      </div>
+    </div>
   );
 }
 

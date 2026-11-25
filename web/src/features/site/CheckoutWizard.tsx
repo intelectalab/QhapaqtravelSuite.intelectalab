@@ -360,7 +360,7 @@ export function CheckoutWizard({ terms, walletPhone, cart, account = null, login
             </Panel>
           ) : (
             <Panel title="Medio de pago">
-              <PaymentFields methods={terms.methods} accounts={terms.bank_accounts} walletPhone={walletPhone} onChange={onPayment} errors={allErrors} />
+              <PaymentFields methods={terms.methods} accounts={terms.bank_accounts} walletPhone={walletPhone} onChange={onPayment} errors={allErrors} gateway={terms.gateway} />
             </Panel>
           )}
           <input type="hidden" name="payload" value={JSON.stringify(payload())} />

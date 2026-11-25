@@ -1,4 +1,4 @@
-import { BadgePercent, Calculator, Coins, RefreshCw, Scale } from "lucide-react";
+import { BadgePercent, Calculator, Coins, RefreshCw, Scale, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,6 +10,7 @@ import { FieldList } from "@/components/ui/Details";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { RecalculateCommissionAction } from "@/features/finance/Commissions";
 import { AuditCard, StatusHistoryCard } from "@/features/finance/FinanceDetailParts";
+import { Notice } from "@/features/operations/OpsBits";
 import { cn } from "@/lib/cn";
 import type { CommissionDetail } from "@/lib/finance";
 import { formatDateTime, formatMoney } from "@/lib/format";
@@ -61,6 +62,11 @@ export default async function ComisionPage({ params }: PageProps<"/finanzas/comi
           ) : undefined
         }
       />
+      {rule?.alert && (
+        <Notice tone="warn" icon={<TriangleAlert size={16} />}>
+          {rule.alert}
+        </Notice>
+      )}
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={Calculator} tone="t1" label="Base" value={formatMoney(row.base, row.currency)} info={<p>Monto sobre el que se calcula la comisión. En una reserva es su total o su venta neta sin IGV, según la regla aplicada.</p>} />
         <TintTile icon={BadgePercent} tone="violet" label="Porcentaje" value={`${Number(row.pct)} %`} info={<p>Porcentaje de la regla de comisión que regía cuando se calculó. Si la regla cambió después, la diferencia aparece en «Frente a la regla vigente».</p>} />

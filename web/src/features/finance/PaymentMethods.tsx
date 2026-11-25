@@ -7,10 +7,11 @@ import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { InfoTip } from "@/components/ui/InfoTip";
+import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
-import { ROUTING_DESTINATIONS, type PaymentMethodCatalog, type PaymentMethodRow } from "@/lib/finance";
+import { ROUTING_DESTINATIONS, type PaymentMethodCatalog, type PaymentMethodRow, type RoutingDestination } from "@/lib/finance";
 import { FinanceStep } from "./FinanceStep";
 
 const destinationLabel = (row: PaymentMethodRow): string => {
@@ -43,7 +44,23 @@ function Receiving({ row }: { row: PaymentMethodRow }) {
   );
 }
 
-function MethodFields({ row }: { row?: PaymentMethodRow }) {
+function DestinationFields({ row, banks }: { row?: PaymentMethodRow; banks: string[] }) {
+  const [destination, setDestination] = useState<RoutingDestination>(row?.destination ?? (banks.length > 0 ? "bank" : "petty_cash"));
+  const options = (Object.keys(ROUTING_DESTINATIONS) as RoutingDestination[]).filter((key) => key !== "bank" || banks.length > 0).map((key) => ({ value: key, label: ROUTING_DESTINATIONS[key] }));
+  return (
+    <>
+      <SelectField label="Entra en" name="destination" value={destination} onChange={(value) => setDestination(value as RoutingDestination)} options={options} hint="Cuenta de tesorería donde se registra el ingreso de cada pago con este medio." />
+      {destination === "bank" && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SelectField label="Banco" name="bank" defaultValue={row?.bank ?? banks[0]} options={banks.map((bank) => ({ value: bank, label: bank }))} hint="Solo bancos con una cuenta activa de la agencia." />
+          <SelectField label="Moneda de la cuenta" name="currency" defaultValue={row?.currency ?? ""} options={[{ value: "", label: "La del cobro" }, { value: "PEN", label: "Soles" }, { value: "USD", label: "Dólares" }]} />
+        </div>
+      )}
+    </>
+  );
+}
+
+function MethodFields({ row, banks }: { row?: PaymentMethodRow; banks: string[] }) {
   const [reference, setReference] = useState(row?.requires_reference ?? true);
   const [active, setActive] = useState(row?.active ?? true);
   return (
@@ -57,12 +74,12 @@ function MethodFields({ row }: { row?: PaymentMethodRow }) {
           <input type="hidden" name="active" value={active ? "1" : "0"} />
         </>
       )}
-      {!row && <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">La cuenta que recibe este medio se elige luego en Parámetros › Cuenta que recibe cada medio de pago. Hasta que la elijas, entra en una cuenta bancaria de la agencia.</p>}
+      {!row?.b2b && <DestinationFields row={row} banks={banks} />}
     </>
   );
 }
 
-function MethodFormAction({ row }: { row?: PaymentMethodRow }) {
+function MethodFormAction({ row, banks }: { row?: PaymentMethodRow; banks: string[] }) {
   return (
     <FinanceStep
       step={row ? "payment_method_update" : "payment_method_create"}
@@ -74,7 +91,7 @@ function MethodFormAction({ row }: { row?: PaymentMethodRow }) {
       submitLabel={row ? "Guardar cambios" : "Crear medio"}
       trigger={row ? (open) => <RowIcon tone="edit" label="Editar medio" onClick={open} /> : undefined}
     >
-      <MethodFields row={row} />
+      <MethodFields row={row} banks={banks} />
     </FinanceStep>
   );
 }
@@ -90,7 +107,7 @@ function DeleteMethodAction({ row }: { row: PaymentMethodRow }) {
 }
 
 export function PaymentMethodsTable({ catalog }: { catalog: PaymentMethodCatalog }) {
-  const { rows, can } = catalog;
+  const { rows, can, banks } = catalog;
   const columns: Column<PaymentMethodRow>[] = [
     {
       id: "method",
@@ -118,7 +135,7 @@ export function PaymentMethodsTable({ catalog }: { catalog: PaymentMethodCatalog
       cell: (row) =>
         can.manage ? (
           <RowActions>
-            <MethodFormAction row={row} />
+            <MethodFormAction row={row} banks={banks} />
             <DeleteMethodAction row={row} />
           </RowActions>
         ) : null,
@@ -154,7 +171,7 @@ export function PaymentMethodsTable({ catalog }: { catalog: PaymentMethodCatalog
       sorts={sorts}
       toolbarEnd={
         can.manage ? (
-          <MethodFormAction />
+          <MethodFormAction banks={banks} />
         ) : (
           <InfoTip>Solo quien administra la configuración de la agencia agrega, edita o elimina medios de cobro.</InfoTip>
         )

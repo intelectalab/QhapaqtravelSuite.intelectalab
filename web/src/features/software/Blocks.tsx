@@ -1,9 +1,10 @@
-import { ArrowRight, CalendarCheck, LayoutDashboard, LogIn } from "lucide-react";
+import { ArrowRight, CalendarCheck, LayoutDashboard } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { FUNNEL_STEPS, contactHref } from "@/lib/software";
 import { toneStyle } from "@/lib/tone";
+import { DemoTourButton } from "./DemoTour";
 import { Reveal } from "./Reveal";
 import { Eyebrow } from "./Section";
 
@@ -35,9 +36,13 @@ export function HomeHero({ signedIn, stats, preview }: { signedIn: boolean; stat
             <Button href="/software/planes" variant="secondary" className="h-12 px-6 text-[14.5px]">
               Ver planes y precios
             </Button>
-            <Button href={signedIn ? "/dashboard" : "/login"} variant="ghost" icon={signedIn ? <LayoutDashboard size={16} /> : <LogIn size={16} />} className="h-12 px-4 text-[14.5px]">
-              {signedIn ? "Ir a mi panel" : "Ingresar"}
-            </Button>
+            {signedIn ? (
+              <Button href="/dashboard" variant="ghost" icon={<LayoutDashboard size={16} />} className="h-12 px-4 text-[14.5px]">
+                Ir a mi panel
+              </Button>
+            ) : (
+              <DemoTourButton />
+            )}
           </div>
           {stats.length > 0 && (
             <dl className="mt-10 grid max-w-xl grid-cols-3 gap-3">

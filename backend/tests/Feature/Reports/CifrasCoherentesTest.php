@@ -28,14 +28,14 @@ it('cada agencia del kit tiene su suscripción, y las agencias en prueba coincid
         ->toBe($db->table('tenants')->whereIn('id', $kit)->where('status', 'prueba')->count());
 });
 
-it('FIN-BR-26: el catálogo del portal B2B muestra la comisión del convenio, que es la que se liquida', function () {
+it('FIN-BR-26: el catálogo del portal B2B muestra la comisión de la lista de precios de cada producto, que es la que se liquida', function () {
     actingAsSeed('U13');
-    $agency = $this->getJson('/api/v1/b2b/agency')->assertOk()->json('data');
-    $pct = (float) ($agency['agency']['commission_pct'] ?? $agency['credit']['commission_pct']);
+    $rates = withinTenant(tenantA(), fn () => DB::table('catalog_product_b2b_rates as r')->join('catalog_products as p', 'p.id', '=', 'r.product_id')->join('channel_b2b_agencies as a', 'a.id', '=', 'r.agency_id')
+        ->where('a.code', 'AGB-01')->whereNull('r.deleted_at')->pluck('r.commission_pct', 'p.code'));
     $products = collect($this->getJson('/api/v1/b2b/catalog')->assertOk()->json('data.products'))->filter(fn (array $product): bool => $product['commission_pct'] !== null);
 
     expect($products)->not->toBeEmpty()
-        ->and($products->every(fn (array $product): bool => (float) $product['commission_pct'] === $pct))->toBeTrue();
+        ->and($products->every(fn (array $product): bool => (float) $product['commission_pct'] === (float) $rates[$product['code']]))->toBeTrue();
 });
 
 it('el crédito usado de cada agencia B2B es la suma de sus movimientos y sus reservas B2B están ligadas a ella', function () {

@@ -121,9 +121,28 @@ final class PlatformSettingsController
 
     public function testOutgoingMail(Request $request, UpdateOutgoingMail $mail): JsonResponse
     {
-        $data = $request->validate(['to' => ['required', 'email', 'max:190']], ['to.*' => 'Escribe el correo que recibirá la prueba.']);
+        $data = $request->validate([
+            'to' => ['required', 'email', 'max:190'],
+            'host' => ['sometimes', 'nullable', 'string', 'max:190', 'regex:/^[A-Za-z0-9.-]+$/'],
+            'port' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:65535'],
+            'encryption' => ['sometimes', Rule::in(OutgoingMail::ENCRYPTIONS)],
+            'username' => ['sometimes', 'nullable', 'string', 'max:190'],
+            'password' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'from_address' => ['sometimes', 'nullable', 'email', 'max:190'],
+            'from_name' => ['sometimes', 'nullable', 'string', 'max:120'],
+        ], [
+            'to.*' => 'Escribe el correo que recibirá la prueba.',
+            'host.*' => 'Escribe el servidor de salida, por ejemplo mail.tudominio.com.',
+            'port.*' => 'El puerto va de 1 a 65535. Con SSL suele ser 465 y con STARTTLS, 587.',
+            'encryption.*' => 'Elige el cifrado.',
+            'username.*' => 'Escribe el usuario del buzón, casi siempre la dirección completa.',
+            'password.*' => 'La contraseña no puede pasar de 255 caracteres.',
+            'from_address.*' => 'Escribe un remitente válido.',
+            'from_name.*' => 'El nombre del remitente no puede pasar de 120 caracteres.',
+        ]);
+        $draft = $request->has('host') ? array_intersect_key($data, array_flip(['host', 'port', 'encryption', 'username', 'from_address', 'from_name'])) : null;
 
-        return response()->json(['data' => $mail->sendTest(mb_strtolower((string) $data['to']), $this->user($request))]);
+        return response()->json(['data' => $mail->sendTest(mb_strtolower((string) $data['to']), $this->user($request), $draft, $request->input('password'))]);
     }
 
     public function settings(UpdatePlatformSettings $settings): JsonResponse

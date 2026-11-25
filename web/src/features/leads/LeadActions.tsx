@@ -227,6 +227,7 @@ export function LeadActions({ lead, catalogs, viewerId, advisors, opportunityOpt
           variant="primary"
           icon={<Hand size={16} />}
           disabled={taking}
+          data-testid="lead-take"
           onClick={() =>
             startTaking(async () => {
               const result = await takeLead(lead.code);
@@ -247,7 +248,7 @@ export function LeadActions({ lead, catalogs, viewerId, advisors, opportunityOpt
     <div className="flex flex-wrap items-center justify-end gap-2">
       <LeadEditAction lead={lead} catalogs={catalogs} advisors={advisors} defaultOpen={editOpen} />
       {canReassign && <LeadAssignAction lead={lead} advisors={advisors} />}
-      <PanelAction label="Estado" icon={<ArrowRightLeft size={16} />} title="Cambiar estado" description="Para convertirlo o descartarlo usa sus propias acciones." submitLabel="Guardar" action={changeLeadStatus} initial={initial}>
+      <PanelAction label="Estado" icon={<ArrowRightLeft size={16} />} title="Cambiar estado" description="Para convertirlo o descartarlo usa sus propias acciones." submitLabel="Guardar" action={changeLeadStatus} initial={initial} testId="lead-status">
         {() => (
           <>
             <Hidden lead={lead} />
@@ -256,7 +257,7 @@ export function LeadActions({ lead, catalogs, viewerId, advisors, opportunityOpt
           </>
         )}
       </PanelAction>
-      <PanelAction label="Calificar" icon={<Target size={16} />} title="Calificar (BANT)" description="Cuatro preguntas para saber qué tan listo está para comprar." submitLabel="Guardar calificación" action={qualifyLead} initial={initial}>
+      <PanelAction label="Calificar" icon={<Target size={16} />} title="Calificar (BANT)" description="Cuatro preguntas para saber qué tan listo está para comprar." submitLabel="Guardar calificación" action={qualifyLead} initial={initial} testId="lead-qualify">
         {() => <BantForm lead={lead} />}
       </PanelAction>
       <LeadDiscardAction lead={lead} catalogs={catalogs} />
@@ -270,6 +271,7 @@ export function LeadActions({ lead, catalogs, viewerId, advisors, opportunityOpt
           submitLabel="Convertir"
           action={convertLead}
           initial={initial}
+          testId="lead-convert"
           onDone={(state) => state.result?.client && router.push(`/crm/clientes/${state.result.client}`)}
         >
           {() => <ConvertForm lead={lead} catalogs={catalogs} options={opportunityOptions} canReassign={canReassign} />}

@@ -130,6 +130,9 @@ it('SIT-BR-20: el comprador web crea su cuenta, ve su reserva y paga el saldo; s
     $due = $open[0]['code'];
     expect($open)->toHaveCount(1)->and($open[0]['kind'])->toBe('saldo')->and($open[0]['can_pay'])->toBeTrue();
 
+    $session = $this->postJson("/api/v1/public/me/receivables/{$due}/payment-session", [], [...acctAs($token), ...critical()])->assertCreated()->json('data');
+    expect($session['receivable'])->toBe($due)->and($session['gateway'])->toBe('fake')->and($session['session_id'])->toContain('.')->and((float) $session['amount'])->toBeGreaterThan(0);
+
     $rejected = $this->postJson("/api/v1/public/me/receivables/{$due}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_51_0002', 'card_holder' => 'ROSA Q'], [...acctAs($token), ...critical()])->assertOk()->json('data');
     expect($rejected['result'])->toBe('rechazado');
 

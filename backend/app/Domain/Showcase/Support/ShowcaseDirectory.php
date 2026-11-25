@@ -234,7 +234,7 @@ final class ShowcaseDirectory
 
     public function posts(bool $published): array
     {
-        $rows = $this->db()->table('platform_blog_posts as p')->leftJoin('platform_users as u', 'u.id', '=', 'p.author_id')
+        $rows = $this->db()->table('platform_blog_posts as p')->leftJoin('platform_users as u', 'u.id', '=', 'p.author_id')->where('p.site', 'rutaslibres')
             ->when($published, fn (Builder $q) => $q->where('p.status', 'publicado'))
             ->orderByRaw('p.published_at desc nulls first')->orderByDesc('p.created_at')
             ->get(['p.id', 'p.slug', 'p.title', 'p.excerpt', 'p.city', 'p.focus_keyword', 'p.status', 'p.word_count', 'p.seo_score', 'p.published_at', 'p.created_at', 'p.updated_at', DB::raw('array_to_json(p.linked_listing_ids) as linked'), 'u.name as author', DB::raw($published ? 'null as body' : 'p.body')]);
@@ -249,7 +249,7 @@ final class ShowcaseDirectory
 
     public function publicPost(string $slug): array
     {
-        $row = $this->db()->table('platform_blog_posts as p')->leftJoin('platform_users as u', 'u.id', '=', 'p.author_id')->where('p.slug', $slug)->where('p.status', 'publicado')
+        $row = $this->db()->table('platform_blog_posts as p')->leftJoin('platform_users as u', 'u.id', '=', 'p.author_id')->where('p.site', 'rutaslibres')->where('p.slug', $slug)->where('p.status', 'publicado')
             ->first(['p.id', 'p.slug', 'p.title', 'p.excerpt', 'p.body', 'p.city', 'p.focus_keyword', 'p.status', 'p.word_count', 'p.seo_score', 'p.published_at', 'p.created_at', 'p.updated_at', DB::raw('array_to_json(p.linked_listing_ids) as linked'), 'u.name as author'])
             ?? throw ApiException::notFound('El artículo no existe.');
         $linked = PgArray::parse($row->linked);

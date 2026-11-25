@@ -60,7 +60,7 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/crm
         title={lead.name}
         info={
           <span className="ml-2 flex-none">
-            <StatusBadge status={lead.status} />
+            <StatusBadge status={lead.status} primary />
           </span>
         }
         subtitle={[lead.code, lead.company].filter(Boolean).join(" · ")}

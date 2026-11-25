@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Database\Seeders\Modules;
 
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Tracking\Support\AnalyticsScope;
 use App\Domain\Tracking\Support\TrackingCatalog;
+use App\Domain\Tracking\Support\WebAnalyticsRollup;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -107,5 +110,7 @@ final class TrackingSeeder
                 DB::table('cms_web_analytics_daily')->insert(['tenant_id' => $this->tenant->getKey(), 'day' => $this->day($day['d']), ...$row]);
             }
         }
+
+        app(WebAnalyticsRollup::class)->ledgerFromDaily(AnalyticsScope::tenant((string) $this->tenant->getKey()), Carbon::today('America/Lima')->subDay()->toDateString());
     }
 }

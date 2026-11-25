@@ -1,4 +1,5 @@
 import "server-only";
+import { parseGatewayInfo, type GatewayInfo } from "@/lib/payment-gateway";
 import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
@@ -100,6 +101,11 @@ export const getSiteListing = cache(async (agencia: string, params: Partial<Reco
 export const getSiteProduct = cache((agencia: string, slug: string, viajeros = 2) => read<ProductDetail>(agencia, `/products/${encodeURIComponent(slug)}?viajeros=${viajeros}`));
 
 export const getSiteFormOptions = cache((agencia: string) => read<FormOptions>(agencia, "/form-options"));
+
+export const getSitePaymentGateway = cache(async (agencia: string): Promise<GatewayInfo> => {
+  const result = await apiFetch<unknown>(sitePath("/payment-gateway"), { auth: false, headers: await siteHeaders(agencia) });
+  return parseGatewayInfo(result.ok ? result.data : null);
+});
 
 export async function sendSite<T>(agencia: string, path: string, body: Record<string, unknown>, extra: Record<string, string> = {}, method = "POST") {
   return apiFetch<T>(sitePath(path), { method, body, auth: false, headers: await siteHeaders(agencia, extra) });

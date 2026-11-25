@@ -59,7 +59,11 @@ export async function saveOutgoingMail(_state: AdminActionState, form: FormData)
 }
 
 export async function sendOutgoingMailTest(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return send("/settings/outgoing-mail/test", "POST", { to: text(form, "to") }, "No pudimos enviar el correo de prueba.");
+  const port = text(form, "port");
+  const draft = form.has("host")
+    ? { host: text(form, "host"), port: port === "" ? null : Number(port), encryption: text(form, "encryption") || "ssl", username: text(form, "username"), password: String(form.get("password") ?? ""), from_address: text(form, "from_address"), from_name: text(form, "from_name") }
+    : {};
+  return send("/settings/outgoing-mail/test", "POST", { to: text(form, "to"), ...draft }, "No pudimos enviar el correo de prueba.");
 }
 
 export async function savePlatformBranding(_state: AdminActionState, form: FormData): Promise<AdminActionState> {

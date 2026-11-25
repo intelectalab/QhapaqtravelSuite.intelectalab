@@ -209,7 +209,20 @@ final class PaymentLinks
         ];
     }
 
-    public function checkout(string $token, array $data): array
+    public function paymentSession(string $token, ?string $email): array
+    {
+        $link = $this->activeLink($token);
+
+        if (! in_array('card', $this->methods($link), true)) {
+            throw ApiException::unprocessable('PAYMENT_METHOD_NOT_ALLOWED', 'Ese medio de pago no está habilitado para este link.');
+        }
+
+        $this->ensureBalance($link);
+
+        return $this->cards->openSession('payment_link', (string) $link->code, (string) $link->amount, (string) $link->currency, (string) ($email ?? ($this->client($link)->email ?? '')), (string) $link->url);
+    }
+
+    private function activeLink(string $token): object
     {
         $this->expireDue();
         $link = $this->byToken($token);
@@ -222,6 +235,12 @@ final class PaymentLinks
             });
         }
 
+        return $link;
+    }
+
+    public function checkout(string $token, array $data): array
+    {
+        $link = $this->activeLink($token);
         $method = (string) $data['method'];
 
         if (! in_array($method, $this->methods($link), true)) {
@@ -248,7 +267,7 @@ final class PaymentLinks
             ];
         }
 
-        $card = $this->cards->charge('payment_link', (string) $link->code, (string) $link->amount, (string) $link->currency, $email, (string) $data['card_token'], null);
+        $card = $this->cards->charge('payment_link', (string) $link->code, (string) $link->amount, (string) $link->currency, $email, (string) $data['card_token'], $data['session_id'] ?? null);
 
         if (! $card['approved']) {
             $this->audit->log('Link de pago', (string) $link->code, 'pago_rechazado', after: 'Tarjeta '.($card['masked'] ?? '').' · código '.$card['code']);

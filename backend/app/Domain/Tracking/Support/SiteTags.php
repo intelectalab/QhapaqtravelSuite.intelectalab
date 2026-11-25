@@ -12,6 +12,8 @@ final class SiteTags
 {
     public const POLICY_VERSION = 'COOK-2026.2';
 
+    public const CLIENT_CACHE_SECONDS = 30;
+
     public const CATEGORIES = [
         ['code' => 'necesarias', 'label' => 'Necesarias', 'description' => 'Carrito, sesión, idioma y seguridad. Siempre activas.', 'required' => true],
         ['code' => 'analiticas', 'label' => 'Analíticas', 'description' => 'Nos ayudan a entender qué páginas sirven (Google Analytics, Clarity).', 'required' => false],

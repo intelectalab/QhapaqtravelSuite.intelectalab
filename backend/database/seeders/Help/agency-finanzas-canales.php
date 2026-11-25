@@ -93,7 +93,8 @@ return [
         ],
         'faqs' => [
             ['question' => '¿Por qué no puedo anular una comisión aprobada o pagada?', 'answer' => 'Solo se anulan comisiones calculadas. Las aprobadas o pagadas no se recalculan: la diferencia se ajusta en el siguiente periodo.'],
-            ['question' => '¿Qué significa «Convenio» en las reglas?', 'answer' => 'Las agencias B2B cobran el porcentaje pactado en su convenio, que se define en «B2B agencias».'],
+            ['question' => '¿Qué porcentaje cobra una agencia B2B?', 'answer' => 'El de la lista de precios del producto (Canales › B2B › Listas de precios), que queda fijo en la reserva al momento de reservar. Si la reserva no lo tiene, se usa el del convenio de la agencia.'],
+            ['question' => '¿Por qué una comisión muestra un aviso de diferencia?', 'answer' => 'Porque su monto difiere en más de 0,05 de lo que da hoy la regla vigente. Recalcúlala antes de aprobarla o pagarla.'],
             ['question' => 'Una comisión no tiene reserva', 'answer' => 'Es un bono por meta: su origen es la regla de la meta comercial, no una venta concreta.'],
             ['question' => 'No veo «Calcular pendientes» ni «Registrar pago»', 'answer' => 'Ambas acciones exigen también el permiso de registrar pagos. «Calcular pendientes» solo aparece cuando hay reservas vendidas sin comisión.'],
         ],
@@ -187,7 +188,7 @@ return [
             ['title' => 'Reponer una caja chica', 'text' => '«Reponer» propone lo que falta para completar el fondo. La aprueba o la rechaza alguien distinto de quien la pidió, y «Pagar» la transfiere desde un banco.'],
             ['title' => 'Mirar el flujo proyectado', 'text' => '«Flujo proyectado» suma las cuotas por cobrar, las cuentas por pagar, las comisiones aprobadas y los egresos fijos para los próximos 30, 60 y 90 días, con su desglose por concepto y un gráfico de 13 semanas. Los interruptores quitan las cuotas vencidas o los egresos fijos, y el detalle se filtra por tipo y horizonte. Avisa si el saldo podría quedar en negativo.'],
             ['title' => 'Dar de alta cuentas', 'text' => 'En «Cuentas», «Nueva cuenta» registra un banco, una caja chica (con su fondo y su custodio) o una pasarela (con el banco donde liquida). Una cuenta solo se desactiva con saldo cero.'],
-            ['title' => 'Configurar los medios de cobro', 'text' => 'En «Medios de cobro», «Nuevo medio de cobro» agrega un medio con su nombre y si pide número de operación. Editar cambia el nombre en todos los pagos ya registrados con ese medio. Un medio con pagos no se elimina: se desactiva, y deja de ofrecerse al registrar pagos. El crédito B2B no se desactiva ni se elimina. La cuenta que recibe cada medio se elige en «Parámetros».'],
+            ['title' => 'Configurar los medios de cobro', 'text' => 'En «Medios de cobro», «Nuevo medio de cobro» agrega un medio con su nombre y si pide número de operación. Editar cambia el nombre en todos los pagos ya registrados con ese medio. Un medio con pagos no se elimina: se desactiva, y deja de ofrecerse al registrar pagos. El crédito B2B no se desactiva ni se elimina. En el mismo panel, «Entra en» elige la cuenta que recibe el medio: un banco con su moneda, la pasarela, la caja chica o sin movimiento. Es la misma regla que ves en «Parámetros».'],
             ['title' => 'Buscar movimientos', 'text' => 'Filtra por «Cuenta», «Tipo» o «Categoría», usa las tarjetas «Ingresos», «Egresos» y «Gastos de caja chica», y ordena por «Fecha» o «Importe en soles».'],
         ],
         'faqs' => [
@@ -242,6 +243,7 @@ return [
             ['question' => '¿Cuándo se libera el crédito?', 'answer' => 'Cuando Finanzas aplica sus pagos. Si la agencia estaba bloqueada por crédito excedido y vuelve a quedar dentro de su línea, se desbloquea sola.'],
             ['question' => 'No me deja reactivar la agencia', 'answer' => 'El crédito utilizado supera la línea. Registra un pago o amplía la línea primero. Tampoco puedes bajar la línea por debajo del crédito ya usado.'],
             ['question' => '¿Qué límites tiene el convenio?', 'answer' => 'La comisión va de 0 a 30 % y el fin de vigencia no puede ser anterior al inicio. No puede haber dos agencias con el mismo RUC.'],
+            ['question' => '¿Qué comisión se liquida, la del convenio o la de la lista de precios?', 'answer' => 'La de la lista de precios de cada producto: manda sobre el convenio y queda fija en cada reserva. La del convenio se usa solo si la reserva no tiene una.'],
         ],
         'keywords' => ['agencia aliada', 'convenio', 'línea de crédito', 'mayorista', 'ruc', 'bloqueo'],
         'roles' => [],

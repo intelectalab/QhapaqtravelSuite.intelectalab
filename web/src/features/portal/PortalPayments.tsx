@@ -2,6 +2,7 @@
 
 import { AlarmClock, BadgeCheck, CreditCard, Hourglass, ReceiptText, Send, Wallet } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { PanelActionState } from "@/components/ui/PanelAction";
 import { PanelAction } from "@/components/ui/PanelAction";
@@ -10,7 +11,11 @@ import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
-import { payOnline, reportPayment } from "@/app/(portal)/portal/actions";
+import { openPortalPaymentSession, payOnline, payPortalWithGateway, reportPayment } from "@/app/(portal)/portal/actions";
+import { Button } from "@/components/ui/Button";
+import { SidePanel } from "@/components/ui/SidePanel";
+import { GatewayCardForm } from "@/features/payments/GatewayCardForm";
+import { LOCAL_GATEWAY, type GatewayInfo } from "@/lib/payment-gateway";
 import { PaymentFields, type PaymentValue } from "@/features/site/PaymentFields";
 import { MoneyLines } from "@/features/channels/ChannelUi";
 import { cn } from "@/lib/cn";
@@ -83,7 +88,28 @@ function PayOnlinePanel({ row }: { row: PortalInstallment }) {
   );
 }
 
-export function PortalPayments({ billing }: { billing: PortalBilling }) {
+function GatewayPayPanel({ row, gateway }: { row: PortalInstallment; gateway: GatewayInfo }) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const available = Math.max(0, row.balance - (row.reported ?? 0));
+  const openSession = useCallback(() => openPortalPaymentSession(row.code), [row.code]);
+  const onToken = useCallback((token: string, sessionId: string) => payPortalWithGateway(row.code, token, sessionId), [row.code]);
+  return (
+    <>
+      <Button variant="primary" size="sm" icon={<CreditCard size={15} />} onClick={() => setOpen(true)}>
+        Pagar en línea
+      </Button>
+      <SidePanel open={open} onOpenChange={setOpen} title="Pagar en línea" description={`${row.concept} · ${formatMoney(available, row.currency)}`}>
+        <div className="grid gap-4">
+          <p className="rounded-tile bg-surface-2 px-3.5 py-3 text-[13px] text-fg-2">El cobro se acredita al instante y la cuota queda pagada. Los datos de la tarjeta los procesa {gateway.label}.</p>
+          <GatewayCardForm info={gateway} amountLabel={formatMoney(available, row.currency)} openSession={openSession} onToken={onToken} onPaid={() => router.refresh()} />
+        </div>
+      </SidePanel>
+    </>
+  );
+}
+
+export function PortalPayments({ billing, gateway = LOCAL_GATEWAY }: { billing: PortalBilling; gateway?: GatewayInfo }) {
   const overdue = billing.installments.filter((row) => row.overdue);
   const reported = billing.payments.filter((row) => row.status === "pendiente");
   const paid = billing.payments.filter((row) => ["aplicado", "confirmado"].includes(row.status));
@@ -137,7 +163,7 @@ export function PortalPayments({ billing }: { billing: PortalBilling }) {
                       </div>
                       {available > 0.004 && (
                         <span className="flex flex-wrap gap-2">
-                          <PayOnlinePanel row={row} />
+                          {gateway.embedded ? <GatewayPayPanel row={row} gateway={gateway} /> : <PayOnlinePanel row={row} />}
                           <ReportPanel row={row} methods={billing.methods} today={billing.today} />
                         </span>
                       )}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Integrations\Adapters\BcrpFxRateProvider;
 use App\Domain\Integrations\Adapters\ClamAvMalwareScanner;
 use App\Domain\Integrations\Adapters\ExpoPushSender;
 use App\Domain\Integrations\Adapters\SystemDnsResolver;
@@ -57,7 +58,7 @@ final class IntegrationServiceProvider extends ServiceProvider
         MessagingChannel::class => ['config' => 'integrations.drivers.messaging', 'drivers' => ['fake' => FakeMessagingChannel::class]],
         WhatsappCloud::class => ['config' => 'integrations.drivers.whatsapp', 'drivers' => ['fake' => FakeWhatsappCloud::class]],
         ReviewsProvider::class => ['config' => 'integrations.drivers.reviews', 'drivers' => ['fake' => FakeReviewsProvider::class]],
-        FxRateProvider::class => ['config' => 'integrations.drivers.fx', 'drivers' => ['fake' => FakeFxRateProvider::class]],
+        FxRateProvider::class => ['config' => 'integrations.drivers.fx', 'drivers' => ['fake' => FakeFxRateProvider::class, 'live' => BcrpFxRateProvider::class]],
         MalwareScanner::class => ['config' => 'integrations.drivers.antivirus', 'drivers' => ['fake' => FakeMalwareScanner::class, 'clamav' => ClamAvMalwareScanner::class]],
         PushSender::class => ['config' => 'integrations.drivers.push', 'drivers' => ['fake' => FakePushSender::class, 'expo' => ExpoPushSender::class]],
         SiteContentAi::class => ['config' => 'integrations.drivers.site_content_ai', 'drivers' => ['fake' => FakeSiteContentAi::class]],

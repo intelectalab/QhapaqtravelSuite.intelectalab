@@ -227,3 +227,30 @@ it('Ventas no gestiona etiquetas y la agencia B no ve las etiquetas de A', funct
     expect(json_encode($this->getJson('/api/v1/marketing/tracking/tags')->assertOk()->json()))->not->toContain('G-AH7K2M9Q1T');
     $this->getJson("/api/v1/marketing/tracking/tags/{$tag['code']}")->assertNotFound();
 });
+
+it('SEG-12: crear, pausar, editar o borrar una etiqueta se ve en el sitio en menos de un minuto y queda auditado', function () {
+    $public = fn () => test()->getJson('/api/v1/public/site/tags?path=/', siteOf());
+    $ids = fn () => collect($public()->assertOk()->json('data.tags'))->pluck('measurement_id')->filter()->values()->all();
+
+    expect($ids())->toBe([]);
+    $public()->assertHeader('Cache-Control', 'max-age=30, public');
+
+    $tag = segCreateTag();
+    expect($ids())->toBe(['G-AH7K2M9Q1T']);
+
+    $this->postJson("/api/v1/marketing/tracking/tags/{$tag['code']}/pause")->assertOk();
+    expect($ids())->toBe([]);
+
+    $this->postJson("/api/v1/marketing/tracking/tags/{$tag['code']}/pause")->assertOk();
+    $current = $this->getJson("/api/v1/marketing/tracking/tags/{$tag['code']}")->assertOk()->json('data');
+    $this->patchJson("/api/v1/marketing/tracking/tags/{$tag['code']}", ['measurement_id' => 'G-ZX9Y8W7V6U'], critical($current['lock_version']))->assertOk();
+    expect($ids())->toBe(['G-ZX9Y8W7V6U']);
+
+    $this->deleteJson("/api/v1/marketing/tracking/tags/{$tag['code']}", [], critical())->assertSuccessful();
+    expect($ids())->toBe([]);
+
+    $events = withinTenant(tenantA(), fn () => DB::table('audit_events')->where('entity_id', $tag['code'])->get(['action', 'before_value', 'after_value']));
+    expect($events->pluck('action')->all())->toContain('crear', 'pausar', 'reanudar', 'editar', 'eliminar')
+        ->and($events->firstWhere('action', 'pausar')->before_value)->toBe('activo')
+        ->and($events->firstWhere('action', 'pausar')->after_value)->toBe('pausado');
+});

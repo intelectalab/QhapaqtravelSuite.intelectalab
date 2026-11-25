@@ -52,7 +52,7 @@ export const R = {
 
   // Portales externos (ver SUPUESTO arriba)
   customerHome: '/portal-cliente/inicio',
-  customerQuote: (code: string) => `/portal-cliente/cotizaciones/${code}`,
+  customerQuote: (code: string) => `/portal/propuestas/${code}`,
   passengerTrip: '/portal-pasajero/viajes',
   passengerItinerary: '/portal-pasajero/itinerario',
   passengerVouchers: '/portal-pasajero/vouchers',

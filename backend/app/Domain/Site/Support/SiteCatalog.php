@@ -86,7 +86,7 @@ final class SiteCatalog
             ->whereExists(fn ($q) => $q->from('catalog_rates as r')->whereColumn('r.product_id', 'p.id')->where('r.status', 'vigente')->where('r.valid_to', '>=', $today)->whereIn('r.channel', ['E-commerce', 'Directo', 'Todos']))
             ->orderByDesc('p.is_featured')->orderBy('p.name')
             ->get([
-                'p.id', 'p.code', 'p.slug', 'p.name', 'p.short_description', 'p.long_description', 'p.duration_value', 'p.duration_unit', 'p.modality',
+                'p.id', 'p.ref', 'p.code', 'p.slug', 'p.name', 'p.short_description', 'p.long_description', 'p.duration_value', 'p.duration_unit', 'p.modality',
                 'p.minimum_passengers', 'p.maximum_passengers', 'p.minimum_age', 'p.maximum_age', 'p.booking_advance_min_days', 'p.booking_advance_max_days',
                 'p.operating_weekdays', 'p.is_featured', 'p.difficulty', 'p.guide_languages', 'p.pickup_text', 'p.availability_model', 'p.seo_title', 'p.seo_description',
                 't.name as type_name', 'c.name as category_name', 'd.id as destination_id', 'd.name as destination_name', 'd.path as destination_path',

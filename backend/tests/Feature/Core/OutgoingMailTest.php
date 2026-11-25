@@ -182,6 +182,26 @@ it('envía un correo de prueba y registra el resultado, también cuando falla', 
         ->and(DB::connection('pgsql_platform')->table('audit_events')->whereNull('tenant_id')->where('entity_id', 'Correo de prueba')->count())->toBe(2);
 });
 
+it('envía la prueba con los datos escritos en el panel sin guardarlos, y con la contraseña vacía usa la guardada', function () {
+    actingAsPlatform();
+    $smtp = fakeSmtp();
+    $draft = ['to' => 'yo@ejemplo.test', 'host' => 'Mail.Borrador.test', 'port' => 587, 'encryption' => 'tls', 'username' => 'avisos@borrador.test', 'password' => '', 'from_address' => 'avisos@borrador.test', 'from_name' => 'Borrador'];
+
+    expect($this->postJson('/api/v1/platform/settings/outgoing-mail/test', $draft))->toBeApiError(422, 'CFG-MAIL-03');
+
+    $this->postJson('/api/v1/platform/settings/outgoing-mail/test', [...$draft, 'password' => 'ClaveNueva2026'])->assertOk()->assertJsonPath('data.last_test.ok', true)->assertJsonPath('data.host', '');
+
+    $sent = $smtp->sent->messages()[0]->getOriginalMessage();
+    expect($sent->getFrom()[0]->getAddress())->toBe('avisos@borrador.test')
+        ->and(app(OutgoingMail::class)->summary()['enabled'])->toBeFalse();
+
+    activeOutgoingMail();
+    $this->postJson('/api/v1/platform/settings/outgoing-mail/test', $draft)->assertOk()->assertJsonPath('data.host', 'mail.ejemplo.test');
+
+    expect($smtp->sent->messages())->toHaveCount(2)
+        ->and($smtp->sent->messages()[1]->getOriginalMessage()->getFrom()[0]->getAddress())->toBe('avisos@borrador.test');
+});
+
 it('una agencia no puede tocar el correo de salida', function () {
     actingAsSeed('U01');
 

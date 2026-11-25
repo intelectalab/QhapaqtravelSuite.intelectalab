@@ -1,10 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { accountCookie, cartCookie, NO_EXTRAS, orderCookie, SITE_CURRENCY_COOKIE, siteHref, type AccountMe, type ChatMessage, type BookingExtras, type CalendarMonth, type PaymentMode, type Quote, type SiteFormState } from "@/lib/site";
 import { parseSiteLocale, SITE_LOCALE_COOKIE } from "@/lib/site-i18n";
+import type { GatewaySession, SessionResult } from "@/lib/payment-gateway";
 import { captchaHeaders } from "@/lib/server/captcha";
 import { apiFetch } from "@/lib/server/api";
 import { accountFetch, accountToken, cartHeaders, readSite, sendSite, siteBase, siteRequestHeaders } from "@/lib/server/site";
@@ -121,9 +123,12 @@ export interface QuoteInput {
   payment_mode?: PaymentMode;
 }
 
-export async function quoteProduct(agencia: string, slug: string, input: QuoteInput): Promise<{ quote: Quote | null; error: string | null }> {
+export async function quoteProduct(agencia: string, slug: string, input: QuoteInput): Promise<{ quote: Quote | null; error: string | null; paxErrors: string[] }> {
   const result = await sendSite<Quote>(agencia, "/price-quote", { product: slug, date: input.date, adults: input.adults, children: input.children, infants: input.infants, promo: input.promo, payment_mode: input.payment_mode, ...(input.extras ?? NO_EXTRAS) });
-  return result.ok ? { quote: result.data, error: null } : { quote: null, error: result.error?.message ?? "No pudimos calcular el precio." };
+  if (result.ok) return { quote: result.data, error: null, paxErrors: [] };
+  const details = result.error?.details as { errors?: { pax?: unknown } } | null | undefined;
+  const pax = Array.isArray(details?.errors?.pax) ? details.errors.pax.filter((item): item is string => typeof item === "string") : [];
+  return { quote: null, error: result.error?.message ?? "No pudimos calcular el precio.", paxErrors: pax };
 }
 
 const CART_DAYS = 30;
@@ -212,7 +217,7 @@ export async function payOrder(agencia: string, code: string, payment: Record<st
   const token = (await cookies()).get(orderCookie(code))?.value;
   const orderHeaders: Record<string, string> = token ? { "X-Order-Token": token } : {};
   let body: Record<string, string> = payment;
-  if (payment.method === "tarjeta") {
+  if (payment.method === "tarjeta" && !payment.session_id) {
     const session = await sendSite<{ session_id: string }>(agencia, `/orders/${encodeURIComponent(code)}/payment-session`, {}, orderHeaders);
     if (!session.ok || !session.data) return { ok: false, message: session.error?.message ?? "La pasarela no respondió. Intenta de nuevo en unos minutos." };
     body = { ...payment, session_id: session.data.session_id };
@@ -224,6 +229,21 @@ export async function payOrder(agencia: string, code: string, payment: Record<st
     return { ok: false, message: Object.values(errors)[0] ?? (result.status === 404 ? "No encontramos el pedido en este navegador." : (result.error?.message ?? "No pudimos registrar el pago.")) };
   }
   return { ok: result.data.payment.result !== "rechazado", message: result.data.payment.message };
+}
+
+function sessionFailure(status: number, error: { message?: string } | null): SessionResult {
+  return { ok: false, message: status === 404 ? "No encontramos el pago en este navegador." : (error?.message ?? "La pasarela no respondió. Intenta de nuevo en unos minutos.") };
+}
+
+export async function openOrderPaymentSession(agencia: string, code: string): Promise<SessionResult> {
+  const token = (await cookies()).get(orderCookie(code))?.value;
+  const result = await sendSite<GatewaySession>(agencia, `/orders/${encodeURIComponent(code)}/payment-session`, {}, { ...(token ? { "X-Order-Token": token } : {}), "Idempotency-Key": randomUUID() });
+  return result.ok && result.data ? { ok: true, session: result.data } : sessionFailure(result.status, result.error);
+}
+
+export async function openReceivablePaymentSession(agencia: string, code: string): Promise<SessionResult> {
+  const result = await accountFetch<GatewaySession>(agencia, `/me/receivables/${encodeURIComponent(code)}/payment-session`, { method: "POST", body: {} });
+  return result.ok && result.data ? { ok: true, session: result.data } : sessionFailure(result.status, result.error);
 }
 
 export async function setSiteLocale(locale: string): Promise<void> {

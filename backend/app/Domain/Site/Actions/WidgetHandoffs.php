@@ -33,7 +33,7 @@ final class WidgetHandoffs
         $config = DB::table('channel_widget_config')->first(['tenant_slug', 'defaults']);
         $defaults = $config ? (array) json_decode((string) $config->defaults, true) : [];
         $products = $this->quotes->catalog()->products();
-        $product = $code !== null && $code !== '' ? $products->first(fn (stdClass $row): bool => $row->code === $code || $row->slug === $code) : null;
+        $product = $code !== null && $code !== '' ? $products->first(fn (stdClass $row): bool => in_array($code, [$row->code, $row->slug, $row->ref], true)) : null;
         $subdomain = $this->profile->subdomain();
 
         return [

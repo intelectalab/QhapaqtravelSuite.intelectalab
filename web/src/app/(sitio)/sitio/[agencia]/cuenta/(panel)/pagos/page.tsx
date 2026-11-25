@@ -5,12 +5,12 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { OrderPayment } from "@/features/site/PayButton";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
-import { getSiteProfile, requireAccount, siteBase } from "@/lib/server/site";
+import { getSitePaymentGateway, getSiteProfile, requireAccount, siteBase } from "@/lib/server/site";
 import { siteHref, type AccountMe, type AccountReceivables } from "@/lib/site";
 
 export default async function AccountPaymentsPage({ params }: PageProps<"/sitio/[agencia]/cuenta/pagos">) {
   const { agencia } = await params;
-  const [data, me, profile, base] = await Promise.all([requireAccount<AccountReceivables>(agencia, "/me/receivables?status=open"), requireAccount<AccountMe>(agencia, "/me"), getSiteProfile(agencia), siteBase(agencia)]);
+  const [data, me, profile, base, gateway] = await Promise.all([requireAccount<AccountReceivables>(agencia, "/me/receivables?status=open"), requireAccount<AccountMe>(agencia, "/me"), getSiteProfile(agencia), siteBase(agencia), getSitePaymentGateway(agencia)]);
   const payable = data.totals.payable.filter((money) => Number(money.amount) > 0);
   const pending = data.totals.pending.filter((money) => Number(money.amount) > 0);
   const tours = data.by_tour ?? [];
@@ -102,7 +102,7 @@ export default async function AccountPaymentsPage({ params }: PageProps<"/sitio/
                         <span className="text-[12.5px] font-medium text-fg-3 group-open:hidden">Tarjeta, transferencia, Yape o Plin</span>
                       </summary>
                       <div className="border-t border-line p-4">
-                        <OrderPayment target="receivable" code={item.code} label={`Pagar ${formatMoney(item.payable, item.currency)}`} methods={data.methods} accounts={data.bank_accounts} walletPhone={profile.agency.phone} />
+                        <OrderPayment target="receivable" code={item.code} label={`Pagar ${formatMoney(item.payable, item.currency)}`} amountLabel={formatMoney(item.payable, item.currency)} methods={data.methods} accounts={data.bank_accounts} walletPhone={profile.agency.phone} gateway={gateway} />
                       </div>
                     </details>
                   )}
