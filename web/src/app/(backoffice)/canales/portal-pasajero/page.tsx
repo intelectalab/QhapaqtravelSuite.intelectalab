@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { PassengerPreviewAction, PassengerTiles, PassengerWorkspace } from "@/features/channels/PassengerPortal";
+import { PassengerPreviewAction, PassengerWorkspace } from "@/features/channels/PassengerPortal";
 import type { PassengerPortalOverview } from "@/lib/channels";
 import { getResource } from "@/lib/server/resource";
 
@@ -31,7 +31,6 @@ export default async function PassengerPortalPage() {
           </>
         }
       />
-      <PassengerTiles kpis={overview.kpis} />
       <PassengerWorkspace overview={overview} />
     </>
   );

@@ -86,6 +86,7 @@ return [
         'crecimiento-b.catalog.imports.store',
         'crecimiento-b.catalog.imports.confirm',
         'crecimiento-b.channels.ota.connections.sync',
+        'crecimiento-b.channels.ota.bookings.convert',
         'crecimiento-b.marketplace.orders.store',
         'plantillas.templates.purchase',
         'plantillas.ai.jobs.store',

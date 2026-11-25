@@ -6,6 +6,7 @@ namespace App\Domain\Booking\Support;
 
 use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Catalog\Support\CancellationTiers;
+use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 final class ReservationSections
 {
     private const WEB_RULES = ['R-MULTICURRENCY', 'R-LODGING', 'R-ADDONS', 'R-PICKUP', 'R-COMMENTS', 'R-DEPOSIT', 'R-PAY-LATER'];
+
+    public function __construct(private readonly PaymentMethods $methods) {}
 
     public function extras(object $row, array $view, User $viewer): array
     {
@@ -99,9 +102,9 @@ final class ReservationSections
 
     private function payments(string $reservationId): Collection
     {
-        return DB::table('fin_payments as p')->leftJoin('fin_receivables as r', 'r.id', '=', 'p.receivable_id')
+        return $this->methods->relabel(DB::table('fin_payments as p')->leftJoin('fin_receivables as r', 'r.id', '=', 'p.receivable_id')
             ->where('p.reservation_id', $reservationId)->orderByDesc('p.paid_on')->orderByDesc('p.created_at')
-            ->get(['p.code', 'p.paid_on', 'p.method', 'p.reference', 'p.amount', 'p.currency', 'p.status', 'p.reject_reason', 'r.code as receivable_code', 'r.concept as receivable_concept']);
+            ->get(['p.code', 'p.paid_on', 'p.method', 'p.reference', 'p.amount', 'p.currency', 'p.status', 'p.reject_reason', 'r.code as receivable_code', 'r.concept as receivable_concept']));
     }
 
     private function invoices(string $reservationId): Collection

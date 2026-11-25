@@ -75,7 +75,7 @@ export function PlatformHomeView({ home }: { home: PlatformHomeOverview }) {
 
         <div className="flex flex-col gap-5">
           <Link href="/plataforma/facturacion/cobranza" className="rounded-tile">
-            <TintTile variant="side" icon={CirclePause} tone={home.failed.count ? "bad" : "ok"} label="Cobros fallidos" value={formatMoney(home.failed.amount)} note={home.failed.count ? `${home.failed.count} facturas de ${home.failed.tenants} ${home.failed.tenants === 1 ? "agencia" : "agencias"}` : "Ninguna agencia con deuda"} />
+            <TintTile variant="side" icon={CirclePause} tone={home.failed.count ? "bad" : "ok"} label="Cobros fallidos" value={formatMoney(home.failed.amount)} note={home.failed.count ? `${home.failed.count} facturas de ${home.failed.tenants} ${home.failed.tenants === 1 ? "agencia" : "agencias"}` : "Ninguna agencia con deuda"} info={<p>Suma de las facturas con cobro rechazado en reintento y las incobrables, con cuántas son y de cuántas agencias.</p>} />
           </Link>
           <Card>
             <TintCardTitle icon={Layers} title="Agencias por plan" tone="violet" />

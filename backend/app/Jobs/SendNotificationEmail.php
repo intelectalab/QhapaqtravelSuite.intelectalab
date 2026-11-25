@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Domain\Admin\Support\AdapterRetryPolicy;
 use App\Domain\Admin\Support\IntegrationErrors;
+use App\Domain\Platform\Support\NotificationThrottler;
 use App\Domain\Platform\Support\UsageMeter;
 use App\Domain\Shared\Tenancy\Jobs\RestoreTenantContext;
 use App\Domain\Shared\Tenancy\Jobs\TenantAware;
@@ -50,9 +51,18 @@ final class SendNotificationEmail implements ShouldQueue
 
     public function handle(): void
     {
-        $message = DB::table('notif_messages')->where('id', $this->messageId)->lockForUpdate()->first(['id', 'code', 'status', 'recipient_address', 'subject', 'body_rendered']);
+        $message = DB::table('notif_messages')->where('id', $this->messageId)->lockForUpdate()->first(['id', 'code', 'event_code', 'status', 'recipient_address', 'subject', 'body_rendered']);
 
         if ($message === null || $message->status !== 'pendiente' || ! str_contains((string) $message->recipient_address, '@')) {
+            return;
+        }
+
+        $throttler = app(NotificationThrottler::class);
+
+        if ($this->tenantId !== null && ($reason = $throttler->reason('email', (string) $this->tenantId, (string) $message->event_code)) !== null) {
+            DB::table('notif_messages')->where('id', $message->id)->update(['last_error' => $reason]);
+            dispatch((new self((string) $message->id))->forTenant((string) $this->tenantId))->delay($throttler->resumesAt());
+
             return;
         }
 

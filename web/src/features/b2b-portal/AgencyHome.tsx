@@ -56,10 +56,10 @@ export function AgencyHomeView({ home, session }: { home: Home; session: AgencyS
       </ToneScope>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={PlaneTakeoff} tone="t1" label="Reservas activas" value={home.active} note={`${home.bookings_month} creadas este mes`} />
-        <TintTile icon={TrendingUp} tone="t4" label="Ventas netas del mes" value={<MoneyLines values={home.sales_month} empty="Sin ventas aún" />} note="Total neto reservado" />
-        <TintTile icon={BadgePercent} tone="violet" label="Comisión del mes" value={<MoneyLines values={home.commission_month} empty="—" />} note="Calculada sobre el neto" />
-        <TintTile icon={HandCoins} tone="t2" label="Comisión por liquidar" value={<MoneyLines values={home.commission_pending} empty="Nada pendiente" />} note="Solicítala en estado de cuenta" />
+        <TintTile icon={PlaneTakeoff} tone="t1" label="Reservas activas" value={home.active} note={`${home.bookings_month} creadas este mes`} info={<p>Tus reservas que no están canceladas ni completadas. La nota cuenta las que creaste este mes, sin las canceladas.</p>} />
+        <TintTile icon={TrendingUp} tone="t4" label="Ventas netas del mes" value={<MoneyLines values={home.sales_month} empty="Sin ventas aún" />} note="Total neto reservado" info={<p>Suma del total neto de las reservas que creaste este mes, sin las canceladas. Se muestra por moneda.</p>} />
+        <TintTile icon={BadgePercent} tone="violet" label="Comisión del mes" value={<MoneyLines values={home.commission_month} empty="—" />} note="Calculada sobre el neto" info={<p>Suma de las comisiones de tu agencia registradas desde el inicio del mes.</p>} />
+        <TintTile icon={HandCoins} tone="t2" label="Comisión por liquidar" value={<MoneyLines values={home.commission_pending} empty="Nada pendiente" />} note="Solicítala en estado de cuenta" info={<p>Suma de tus comisiones calculadas o aprobadas que aún no se pagan.</p>} />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">

@@ -48,6 +48,19 @@ final class AssistantController
         return response()->json(['data' => $this->workflow->discard($id, GrowthRules::actor($request))]);
     }
 
+    public function context(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'source_type' => ['required', Rule::in(array_keys(AssistantWorkflow::SOURCES))],
+            'source_code' => ['required', 'string', 'max:40'],
+        ], [
+            'source_type.*' => 'Indica si el contexto es una cotización, un lead o una conversación.',
+            'source_code.*' => 'Indica el código del registro.',
+        ]);
+
+        return response()->json(['data' => $this->workflow->context((string) $data['source_type'], (string) $data['source_code'], GrowthRules::actor($request))]);
+    }
+
     public function usage(Request $request): JsonResponse
     {
         return response()->json(['data' => $this->workflow->usage(GrowthRules::actor($request))]);

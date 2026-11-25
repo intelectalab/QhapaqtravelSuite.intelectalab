@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, FileText, Gauge, MessageSquareText, Route, Sparkles, Trash2, TriangleAlert, Wand2 } from "lucide-react";
+import { Check, Copy, FileText, Gauge, MessageSquareText, Reply, Route, Sparkles, Trash2, TriangleAlert, Wand2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { askAssistant, assistantStep, type AssistantState } from "@/app/(backoffice)/asistente/actions";
 import { Button } from "@/components/ui/Button";
@@ -19,9 +19,9 @@ import { KpiRow, PlanNotice, StatusPill } from "./GrowthUi";
 
 const initial: StepResult = { message: null, done: false };
 
-const STATUS_LABELS: Record<AiRequest["status"], string> = { pending: "Procesando", completed: "Listo para revisar", failed: "Falló", applied: "Aplicado", discarded: "Descartado" };
+export const STATUS_LABELS: Record<AiRequest["status"], string> = { pending: "Procesando", completed: "Listo para revisar", failed: "Falló", applied: "Aplicado", discarded: "Descartado" };
 
-const KIND_ICONS: Record<string, typeof Route> = { itinerary: Route, quote_draft: FileText, reply_draft: MessageSquareText, summary: Sparkles };
+export const KIND_ICONS: Record<string, typeof Route> = { itinerary: Route, quote_draft: FileText, reply_draft: MessageSquareText, summary: Sparkles };
 
 export function AssistantPanel({ usage, sourceType, sourceCode }: { usage: AiUsage; sourceType?: string; sourceCode?: string }) {
   const [kind, setKind] = useState("itinerary");
@@ -80,8 +80,12 @@ function ApplyConfirmation({ impact, onCancel, pending }: { impact: AiApplyImpac
   );
 }
 
-function RequestActions({ request }: { request: AiRequest }) {
-  const [state, run, pending] = useActionState(assistantStep, initial);
+export function RequestActions({ request, returnPath, onReply }: { request: AiRequest; returnPath?: string; onReply?: (text: string) => void }) {
+  const [state, run, pending] = useActionState(async (previous: StepResult, form: FormData) => {
+    const next = await assistantStep(previous, form);
+    if (next.done && form.get("reply") === "1" && request.text) onReply?.(request.text);
+    return next;
+  }, initial);
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState(false);
   if (request.status !== "completed") return null;
@@ -89,6 +93,7 @@ function RequestActions({ request }: { request: AiRequest }) {
   return (
     <form action={run} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="id" value={request.id} />
+      {returnPath && <input type="hidden" name="return_path" value={returnPath} />}
       {impact && !confirming ? (
         <Button type="button" size="sm" variant="primary" icon={<Check size={14} />} disabled={pending} onClick={() => setConfirming(true)} title={`Crea la v${impact.new_version} en borrador de la cotización`}>
           Aplicar a la cotización
@@ -99,6 +104,11 @@ function RequestActions({ request }: { request: AiRequest }) {
             {request.source?.type === "quote" ? "Aplicar a la cotización" : "Usar borrador"}
           </Button>
         )
+      )}
+      {onReply && request.text && request.source?.type === "conversation" && (
+        <Button type="submit" name="reply" value="1" size="sm" variant="primary" icon={<Reply size={14} />} disabled={pending} title="Pega el borrador en la respuesta de la conversación para que lo revises y lo envíes">
+          Responder
+        </Button>
       )}
       {request.text && (
         <Button
@@ -123,7 +133,7 @@ function RequestActions({ request }: { request: AiRequest }) {
   );
 }
 
-function RequestCard({ request, index }: { request: AiRequest; index: number }) {
+export function RequestCard({ request, index, returnPath, onReply }: { request: AiRequest; index: number; returnPath?: string; onReply?: (text: string) => void }) {
   const Icon = KIND_ICONS[request.kind] ?? Sparkles;
   return (
     <li style={{ animationDelay: `${index * 50}ms` }} className={cn("lift animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-tile border border-line bg-surface p-4", request.status === "discarded" && "opacity-70")}>
@@ -148,7 +158,7 @@ function RequestCard({ request, index }: { request: AiRequest; index: number }) 
         <span className="text-[11.5px] text-fg-3">
           {formatDateTime(request.created_at)} · {formatNumber(request.tokens_in + request.tokens_out)} tokens
         </span>
-        <RequestActions request={request} />
+        <RequestActions request={request} returnPath={returnPath} onReply={onReply} />
       </div>
     </li>
   );

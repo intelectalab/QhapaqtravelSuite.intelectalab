@@ -14,6 +14,8 @@ final class TenantBootstrap
 {
     public const ROLE_NAMES = ['tenant_admin' => 'Administración', 'manager' => 'Gerencia', 'sales' => 'Ventas'];
 
+    public const ROLE_DESCRIPTIONS = ['tenant_admin' => 'Administración completa de la agencia'];
+
     public const SUPPLIER_PERMISSIONS = [
         'supplier.portal.view',
         'supplier.requests.respond',
@@ -76,7 +78,7 @@ final class TenantBootstrap
                 ['name' => $seed['id'], 'guard_name' => 'api', 'tenant_id' => $tenant->getKey()],
                 [
                     'display_name' => self::ROLE_NAMES[$seed['id']] ?? $seed['name'],
-                    'description' => $seed['desc'] ?? null,
+                    'description' => self::ROLE_DESCRIPTIONS[$seed['id']] ?? $seed['desc'] ?? null,
                     'scope' => $seed['scope'],
                     'experience' => config("access.roles.{$seed['id']}.experience", 'backoffice'),
                 ],

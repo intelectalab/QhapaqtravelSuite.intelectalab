@@ -34,7 +34,8 @@ fresh:           ## Base desde cero + datos demo
 	$(PHP) php artisan migrate:fresh --database=pgsql_owner --seed --seeder=DemoSeeder
 
 test:            ## Pest contra PostgreSQL y Redis reales
-	$(PHP) ./vendor/bin/pest --parallel
+	$(PHP) ./vendor/bin/pest --parallel --exclude-group=base-sola
+	$(PHP) ./vendor/bin/pest --group=base-sola
 test-f:          ## Pest filtrado: make test-f FILTER=Quote
 	$(PHP) ./vendor/bin/pest --filter="$(FILTER)"
 lint:            ## Pint (verificación) + Larastan
@@ -53,7 +54,7 @@ db-validate:     ## Valida los .sql del kit en un cluster temporal
 web-lint:        ## ESLint + tsc
 	cd web && npm run lint
 web-test:        ## Vitest
-	cd web && npm run test
+	cd web && npm run test && npm run test:unit
 e2e:             ## Playwright (docs/kit/tests/e2e)
 	cd docs/kit/tests/e2e && npx playwright test
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Cache\RedisStore;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Testing\DatabaseTransactionsManager;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\ParallelTesting;
 use PDO;
+use PDOException;
 use RuntimeException;
 use Spatie\Permission\PermissionRegistrar;
 use Throwable;
@@ -107,6 +109,56 @@ final class TestDatabase
         }
 
         self::$ready = true;
+    }
+
+    public static function exclusively(int $waitSeconds, Closure $fn): bool
+    {
+        if (getenv('TEST_TOKEN') !== false) {
+            throw new RuntimeException("Esta prueba necesita la base sola y no puede correr en paralelo: márcala con ->group('base-sola'); la CI la corre aparte con pest --group=base-sola.");
+        }
+
+        $session = self::session();
+        $session->query('select pg_advisory_unlock_shared('.self::USAGE_LOCK.')');
+
+        try {
+            $session->exec("set lock_timeout = '{$waitSeconds}s'");
+
+            try {
+                $session->query('select pg_advisory_lock('.self::USAGE_LOCK.')');
+            } catch (PDOException) {
+                return false;
+            } finally {
+                $session->exec('set lock_timeout = 0');
+            }
+
+            try {
+                $fn();
+            } finally {
+                $session->query('select pg_advisory_unlock('.self::USAGE_LOCK.')');
+            }
+
+            return true;
+        } finally {
+            $session->query('select pg_advisory_lock_shared('.self::USAGE_LOCK.')');
+        }
+    }
+
+    public static function committed(Application $app, int $waitSeconds, Closure $fn): bool
+    {
+        return self::exclusively($waitSeconds, function () use ($app, $fn) {
+            $snapshot = CommittedSnapshot::take();
+            self::rollBack($app);
+
+            try {
+                $fn();
+            } finally {
+                try {
+                    $snapshot->restore();
+                } finally {
+                    self::begin($app);
+                }
+            }
+        });
     }
 
     private static function rebuildWhenAlone(PDO $session): void

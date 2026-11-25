@@ -19,6 +19,10 @@ final class ManageSiteBrand
 {
     public const PURPOSES = ['principal', 'reservas', 'blog', 'aventuras', 'portal'];
 
+    public const DNS_WAIT_HOURS = 72;
+
+    public const RENEW_DAYS = 30;
+
     public function __construct(private readonly DomainProvisioner $provisioner, private readonly AuditLogger $audit) {}
 
     public function addDomain(array $data, User $actor): array
@@ -86,6 +90,54 @@ final class ManageSiteBrand
         $this->audit->log('Dominio', (string) $domain->host, 'verificar', $domain->status, 'verificado · SSL '.($certificate['ok'] ? 'emitido' : 'con error'));
 
         return ['id' => $domain->id, 'status' => 'verificado', 'ssl_status' => $certificate['ok'] ? 'emitido' : 'error', 'error' => null];
+    }
+
+    public function recheck(object $domain, bool $giveUp): string
+    {
+        $check = $this->provisioner->verify((string) $domain->host, (string) $domain->verify_token);
+
+        if (! $check['ok']) {
+            $status = $giveUp ? 'error' : 'pendiente_dns';
+            DB::table('cms_site_domains')->where('id', $domain->id)->where('status', 'pendiente_dns')->update(['status' => $status, 'last_error' => $check['error'], 'last_check_at' => now(), 'updated_at' => now()]);
+
+            if ($giveUp) {
+                $this->audit->log('Dominio', (string) $domain->host, 'verificar', 'pendiente_dns', 'error · sin registros DNS tras '.self::DNS_WAIT_HOURS.' h');
+            }
+
+            return $status;
+        }
+
+        $updated = DB::table('cms_site_domains')->where('id', $domain->id)->where('status', 'pendiente_dns')->update(['status' => 'verificado', 'verified_at' => now(), 'last_error' => null, 'last_check_at' => now(), 'updated_at' => now()]);
+
+        if ($updated === 0) {
+            return 'pendiente_dns';
+        }
+
+        $this->audit->log('Dominio', (string) $domain->host, 'verificar', 'pendiente_dns', 'verificado');
+
+        return $this->certify($domain, 'emitir_ssl') ? 'verificado' : 'sin_ssl';
+    }
+
+    public function certify(object $domain, string $action): bool
+    {
+        $before = (string) $domain->ssl_status;
+        $claimed = DB::table('cms_site_domains')->where('id', $domain->id)->where('status', 'verificado')->where('ssl_status', $before)->update(['ssl_status' => 'renovando', 'updated_at' => now()]);
+
+        if ($claimed === 0) {
+            return false;
+        }
+
+        $certificate = $this->provisioner->issueCertificate((string) $domain->host);
+        DB::table('cms_site_domains')->where('id', $domain->id)->update([
+            'ssl_status' => $certificate['ok'] ? 'emitido' : 'error',
+            'ssl_expires_at' => $certificate['ok'] ? Carbon::parse($certificate['expires_at']) : $domain->ssl_expires_at,
+            'last_error' => $certificate['ok'] ? null : $certificate['error'],
+            'last_check_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->audit->log('Dominio', (string) $domain->host, $action, $before, $certificate['ok'] ? 'emitido · vence '.Carbon::parse($certificate['expires_at'])->toDateString() : 'error · '.mb_substr((string) $certificate['error'], 0, 200));
+
+        return (bool) $certificate['ok'];
     }
 
     public function retire(string $id): void

@@ -98,8 +98,8 @@ export function ServiceUsageTable({ detail }: { detail: ServiceDetail }) {
     { id: "status", header: "Estado del producto", cell: (row) => <StatusBadge status={row.status} label={productLabel(row.status)} /> },
   ];
   const metrics: MetricFilter<UsageRow>[] = [
-    { id: "required", label: "Requerido", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.required },
-    { id: "optional", label: "Opcional", tone: "mute", icon: <CircleDashed size={19} />, matches: (row) => !row.required },
+    { id: "required", label: "Requerido", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.required, info: <p>Productos que incluyen este servicio como componente obligatorio.</p> },
+    { id: "optional", label: "Opcional", tone: "mute", icon: <CircleDashed size={19} />, matches: (row) => !row.required, info: <p>Productos que ofrecen este servicio como componente opcional.</p> },
   ];
   return (
     <DataTable

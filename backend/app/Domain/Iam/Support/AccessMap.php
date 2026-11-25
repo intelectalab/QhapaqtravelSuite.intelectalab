@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Iam\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Integrations\Support\IntegrationCatalog;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Platform\Support\Entitlements;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +28,16 @@ final class AccessMap
             'screens' => $screens->merge($platform->map(fn (): bool => false)),
             'required' => $this->requirements(collect(config('access.routes'))->reject(fn (array $required, string $path): bool => $screens[$path]))->merge($platform),
             'locked' => $this->locked((string) $user->tenant_id),
+            'upcoming' => $this->upcoming(),
         ];
+    }
+
+    private function upcoming(): array
+    {
+        return collect((array) config('integrations.screens'))
+            ->reject(fn (array $paths, string $feature): bool => IntegrationReadiness::usable($feature))
+            ->flatMap(fn (array $paths, string $feature): array => collect($paths)->mapWithKeys(fn (string $path): array => [$path => ['feature' => $feature, 'label' => IntegrationCatalog::PLATFORM[$feature]['label'] ?? $feature, 'message' => IntegrationCatalog::missing($feature)]])->all())
+            ->all();
     }
 
     public function outsideAgency(): array

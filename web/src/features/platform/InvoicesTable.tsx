@@ -88,11 +88,11 @@ const columns: Column<InvoiceSummary>[] = [
 ];
 
 const metrics: MetricFilter<InvoiceSummary>[] = [
-  { id: "paid", label: "Pagadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (invoice) => invoice.status === "paid" },
-  { id: "open", label: "Por cobrar", tone: "info", icon: <Clock size={19} />, matches: (invoice) => invoice.status === "open" },
-  { id: "failed", label: "Cobro fallido", tone: "bad", icon: <CircleAlert size={19} />, matches: (invoice) => invoice.status === "failed" },
-  { id: "uncollectible", label: "Incobrables", tone: "warn", icon: <FileWarning size={19} />, matches: (invoice) => invoice.status === "uncollectible" },
-  { id: "void", label: "Anuladas", tone: "mute", icon: <Ban size={19} />, matches: (invoice) => invoice.status === "void" },
+  { id: "paid", label: "Pagadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (invoice) => invoice.status === "paid", info: <p>Facturas de las agencias ya cobradas, con tarjeta o con pago manual.</p> },
+  { id: "open", label: "Por cobrar", tone: "info", icon: <Clock size={19} />, matches: (invoice) => invoice.status === "open", info: <p>Facturas emitidas que todavía esperan su cobro.</p> },
+  { id: "failed", label: "Cobro fallido", tone: "bad", icon: <CircleAlert size={19} />, matches: (invoice) => invoice.status === "failed", info: <p>Facturas cuyo cobro fue rechazado y siguen en reintentos de cobranza.</p> },
+  { id: "uncollectible", label: "Incobrables", tone: "warn", icon: <FileWarning size={19} />, matches: (invoice) => invoice.status === "uncollectible", info: <p>Facturas que agotaron los reintentos de cobro sin recuperarse.</p> },
+  { id: "void", label: "Anuladas", tone: "mute", icon: <Ban size={19} />, matches: (invoice) => invoice.status === "void", info: <p>Facturas anuladas: ya no se cobran.</p> },
 ];
 
 const sorts: SortOption<InvoiceSummary>[] = [

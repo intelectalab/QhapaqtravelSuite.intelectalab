@@ -96,10 +96,10 @@ export function PortalHomeView({ home, session }: { home: Home; session: PortalS
       )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={CalendarHeart} tone="t1" label={customer ? "Mis viajes" : "Mi viaje"} value={home.trips.length} note={home.next_trip ? countdownLabel(home.next_trip.days_left) : "Sin viajes próximos"} />
-        {customer && <TintTile icon={ScrollText} tone="violet" label="Propuestas por responder" value={home.quotes.length} note={home.quotes.length ? "Revisa y decide" : "Nada pendiente"} />}
-        {customer && <TintTile icon={Wallet} tone="t2" label="Saldo pendiente" value={<MoneyLines values={home.balance} empty="Al día" />} note="Puedes pagar en partes" />}
-        <TintTile icon={FileText} tone="t4" label="Vouchers" value={home.documents} note={home.documents ? "Listos para tu viaje" : "Llegan al confirmar"} />
+        <TintTile icon={CalendarHeart} tone="t1" label={customer ? "Mis viajes" : "Mi viaje"} value={home.trips.length} note={home.next_trip ? countdownLabel(home.next_trip.days_left) : "Sin viajes próximos"} info={<p>Viajes reservados a tu nombre. La nota cuenta los días que faltan para el próximo.</p>} />
+        {customer && <TintTile icon={ScrollText} tone="violet" label="Propuestas por responder" value={home.quotes.length} note={home.quotes.length ? "Revisa y decide" : "Nada pendiente"} info={<p>Propuestas que te enviamos, siguen vigentes y esperan tu respuesta.</p>} />}
+        {customer && <TintTile icon={Wallet} tone="t2" label="Saldo pendiente" value={<MoneyLines values={home.balance} empty="Al día" />} note="Puedes pagar en partes" info={<p>Lo que falta pagar de tus cuotas, sumado por moneda.</p>} />}
+        <TintTile icon={FileText} tone="t4" label="Vouchers" value={home.documents} note={home.documents ? "Listos para tu viaje" : "Llegan al confirmar"} info={<p>Vouchers emitidos para los servicios de tus viajes.</p>} />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">

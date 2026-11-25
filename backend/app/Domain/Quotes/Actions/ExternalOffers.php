@@ -8,6 +8,7 @@ use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Support\GrowthFeatureGate;
 use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Contracts\TravelInventory;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -20,11 +21,15 @@ final class ExternalOffers
 {
     public const RULE = 'R-GDS-OFFERS';
 
+    public const PERMISSION = 'quotes.external_offers';
+
     public const KINDS = ['aereo' => 'Aéreo', 'hotel' => 'Hotel', 'auto' => 'Auto', 'seguro' => 'Seguro'];
 
     public const STATUSES = ['cotizada' => 'Cotizada', 'retenida' => 'Retenida', 'emitida' => 'Emitida', 'vencida' => 'Vencida', 'cancelada' => 'Quitada', 'error' => 'Error'];
 
     private const EDITABLE = ['borrador', 'enviada', 'vista', 'negociacion'];
+
+    private const HOLDABLE = [...self::EDITABLE, 'aprobada'];
 
     public function __construct(
         private readonly TenantContext $context,
@@ -33,9 +38,15 @@ final class ExternalOffers
         private readonly GrowthFeatureGate $gate,
     ) {}
 
+    public function overview(string $quoteKey, User $actor): array
+    {
+        return $this->state($this->quote($quoteKey, $actor));
+    }
+
     public function search(string $quoteKey, array $criteria, User $actor): array
     {
-        $this->gate->require(self::RULE);
+        $this->gate->require(self::RULE, [self::PERMISSION]);
+        IntegrationReadiness::refuse('travel_inventory');
         $quote = $this->quote($quoteKey, $actor);
         $from = (string) ($criteria['date_from'] ?? $quote->travel_from);
         $to = (string) ($criteria['date_to'] ?? $quote->travel_to);
@@ -59,10 +70,10 @@ final class ExternalOffers
 
     public function add(string $quoteKey, array $data, User $actor): array
     {
-        $this->gate->require(self::RULE);
+        $this->gate->require(self::RULE, [self::PERMISSION]);
 
         return DB::transaction(function () use ($quoteKey, $data, $actor): array {
-            $quote = $this->quote($quoteKey, $actor, true);
+            $quote = $this->quote($quoteKey, $actor, self::EDITABLE);
             $offer = $this->inventory->find((string) $data['provider'], (string) $data['offer_ref']);
 
             if ($offer === null) {
@@ -93,6 +104,8 @@ final class ExternalOffers
                 'currency' => $offer['currency'],
                 'offer_expires_at' => $offer['offer_expires_at'],
                 'status' => 'cotizada',
+                'pnr' => null,
+                'reservation_id' => null,
                 'updated_by' => $actor->getKey(),
             ];
 
@@ -108,20 +121,52 @@ final class ExternalOffers
         });
     }
 
+    public function hold(string $quoteKey, string $offerKey, User $actor): array
+    {
+        $this->gate->require(self::RULE, [self::PERMISSION]);
+
+        return DB::transaction(function () use ($quoteKey, $offerKey, $actor): array {
+            $quote = $this->quote($quoteKey, $actor, self::HOLDABLE);
+            $offer = $this->offer($quote, $offerKey);
+
+            if ($offer->status === 'retenida') {
+                return $this->state($quote);
+            }
+
+            if ($offer->status !== 'cotizada') {
+                throw ApiException::conflict('OFFER_NOT_HOLDABLE', 'Solo se retiene una oferta cotizada; esta está '.mb_strtolower(self::STATUSES[$offer->status] ?? $offer->status).'.');
+            }
+
+            if ($offer->offer_expires_at !== null && Carbon::parse((string) $offer->offer_expires_at)->isPast()) {
+                throw ApiException::unprocessable('OFFER_EXPIRED', 'La oferta venció antes de retenerla. Quítala y vuelve a buscar.');
+            }
+
+            $result = $this->inventory->hold((string) $offer->provider, (string) $offer->offer_ref);
+
+            if (! $result->ok) {
+                throw ApiException::unprocessable('OFFER_HOLD_FAILED', 'El proveedor no retuvo la oferta: '.rtrim($result->message ?? 'sin respuesta', '. ').'. Vuelve a buscar.');
+            }
+
+            $until = isset($result->payload['expires_at']) ? Carbon::parse((string) $result->payload['expires_at']) : null;
+            DB::table('quote_external_offers')->where('id', $offer->id)->update(['status' => 'retenida', 'offer_expires_at' => $until ?? $offer->offer_expires_at, 'updated_by' => $actor->getKey()]);
+            $this->audit->log('Cotización', (string) $quote->code, 'retener_oferta', 'cotizada', 'retenida · '.$offer->summary.($until !== null ? ' · hasta '.$until->setTimezone($this->context->timezone())->format('d/m/Y H:i') : ''), actor: $actor);
+
+            return $this->state($quote);
+        });
+    }
+
     public function remove(string $quoteKey, string $offerKey, User $actor): void
     {
-        $this->gate->require(self::RULE);
-
         DB::transaction(function () use ($quoteKey, $offerKey, $actor): void {
-            $quote = $this->quote($quoteKey, $actor, true);
-            $offer = DB::table('quote_external_offers')->where('quote_id', $quote->id)->where(Str::isUuid($offerKey) ? 'id' : 'offer_ref', $offerKey)->first(['id', 'status', 'summary']);
-
-            if ($offer === null || $offer->status === 'cancelada') {
-                throw ApiException::notFound('La oferta no está en esta cotización.');
-            }
+            $quote = $this->quote($quoteKey, $actor, self::HOLDABLE);
+            $offer = $this->offer($quote, $offerKey);
 
             if ($offer->status === 'emitida') {
                 throw ApiException::conflict('OFFER_ISSUED', 'La oferta ya fue emitida en el proveedor y no se puede quitar. Anúlala desde la reserva.');
+            }
+
+            if ($offer->status === 'retenida') {
+                $this->inventory->void((string) $offer->provider, (string) $offer->offer_ref);
             }
 
             DB::table('quote_external_offers')->where('id', $offer->id)->update(['status' => 'cancelada', 'updated_by' => $actor->getKey()]);
@@ -129,10 +174,22 @@ final class ExternalOffers
         });
     }
 
-    private function quote(string $key, User $actor, bool $lock = false): object
+    private function offer(object $quote, string $offerKey): object
+    {
+        $offer = DB::table('quote_external_offers')->where('quote_id', $quote->id)->where(Str::isUuid($offerKey) ? 'id' : 'offer_ref', $offerKey)
+            ->lock('for no key update')->first(['id', 'provider', 'offer_ref', 'status', 'summary', 'offer_expires_at']);
+
+        if ($offer === null || $offer->status === 'cancelada') {
+            throw ApiException::notFound('La oferta no está en esta cotización.');
+        }
+
+        return $offer;
+    }
+
+    private function quote(string $key, User $actor, ?array $statuses = null): object
     {
         $query = DB::table('quote_quotes')->whereNull('deleted_at')->where(Str::isUuid($key) ? 'id' : 'code', $key);
-        $quote = ($lock ? $query->lock('for no key update') : $query)->first(['id', 'code', 'status', 'owner_id', 'currency', 'travel_from', 'travel_to', 'pax_adt', 'pax_chd', 'pax_inf', 'current_version_id', 'current_version_no', 'title', 'client_id', 'lock_version', 'valid_until', 'fx_rate']);
+        $quote = ($statuses !== null ? $query->lock('for no key update') : $query)->first(['id', 'code', 'status', 'owner_id', 'currency', 'travel_from', 'travel_to', 'pax_adt', 'pax_chd', 'pax_inf', 'current_version_id', 'current_version_no', 'title', 'client_id', 'lock_version', 'valid_until', 'fx_rate']);
 
         if ($quote === null) {
             throw ApiException::notFound('La cotización no existe.');
@@ -142,7 +199,7 @@ final class ExternalOffers
             throw ApiException::forbidden('SEC-BR-09', 'Esta cotización pertenece a la cartera de otro asesor. Pide a tu gerente que te la reasigne.', ['crm.records.reassign']);
         }
 
-        if ($lock && ! in_array($quote->status, self::EDITABLE, true)) {
+        if ($statuses !== null && ! in_array($quote->status, $statuses, true)) {
             throw ApiException::unprocessable('QUOTE_NOT_EDITABLE', 'La cotización está '.$quote->status.'; las ofertas de aéreo y hotel solo se cambian antes de aprobarla.');
         }
 
@@ -155,6 +212,8 @@ final class ExternalOffers
         $offers = DB::table('quote_external_offers')->where('quote_id', $quote->id)->where('status', '<>', 'cancelada')->orderBy('created_at')
             ->get(['id', 'provider', 'kind', 'offer_ref', 'summary', 'net_amount', 'sell_amount', 'currency', 'offer_expires_at', 'pnr', 'status']);
         $active = $offers->whereIn('status', ['cotizada', 'retenida', 'emitida']);
+        $editable = in_array($quote->status, self::EDITABLE, true);
+        $holdable = in_array($quote->status, self::HOLDABLE, true);
 
         return [
             'id' => $quote->id,
@@ -174,7 +233,10 @@ final class ExternalOffers
             'pax_chd' => (int) $quote->pax_chd,
             'pax_inf' => (int) $quote->pax_inf,
             'lock_version' => (int) $quote->lock_version,
-            'editable' => in_array($quote->status, self::EDITABLE, true),
+            'editable' => $editable,
+            'rule_enabled' => $this->gate->enabled(self::RULE),
+            'available' => IntegrationReadiness::usable('travel_inventory'),
+            'unavailable_message' => IntegrationReadiness::usable('travel_inventory') ? null : 'Las ofertas de aéreo y hotel estarán disponibles cuando KipuControl active un GDS o banco de camas.',
             'external_offers' => $offers->map(fn (object $row) => [
                 'id' => $row->id,
                 'provider' => $row->provider,
@@ -189,6 +251,8 @@ final class ExternalOffers
                 'pnr' => $row->pnr,
                 'status' => $row->status,
                 'status_label' => self::STATUSES[$row->status] ?? $row->status,
+                'can_hold' => $holdable && $row->status === 'cotizada',
+                'can_remove' => $holdable && $row->status !== 'emitida',
             ])->values()->all(),
             'external_total' => (string) $active->reduce(fn ($carry, object $row) => $carry->plus((string) $row->sell_amount), Decimal::round2('0')),
         ];

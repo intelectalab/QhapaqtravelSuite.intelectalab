@@ -92,10 +92,10 @@ export function PortalPayments({ billing }: { billing: PortalBilling }) {
     <>
       <PortalTitle title="Pagos" subtitle="Tus cuotas, lo que ya pagaste y lo que está en validación." />
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={Wallet} tone="t2" label="Saldo pendiente" value={<MoneyLines values={billing.balance} empty="Al día" />} note="Puedes pagar en partes" />
-        <TintTile icon={AlarmClock} tone={overdue.length ? "bad" : "ok"} label="Cuotas vencidas" value={overdue.length} note={overdue.length ? "Regulariza para no perder espacios" : "Ninguna"} />
-        <TintTile icon={Hourglass} tone="info" label="En validación" value={reported.length} note="Pagos que reportaste" />
-        <TintTile icon={BadgeCheck} tone="ok" label="Pagos acreditados" value={paid.length} note="Confirmados por la agencia" />
+        <TintTile icon={Wallet} tone="t2" label="Saldo pendiente" value={<MoneyLines values={billing.balance} empty="Al día" />} note="Puedes pagar en partes" info={<p>Lo que falta pagar de tus cuotas, sumado por moneda.</p>} />
+        <TintTile icon={AlarmClock} tone={overdue.length ? "bad" : "ok"} label="Cuotas vencidas" value={overdue.length} note={overdue.length ? "Regulariza para no perder espacios" : "Ninguna"} info={<p>Cuotas con saldo por pagar cuya fecha de vencimiento ya pasó.</p>} />
+        <TintTile icon={Hourglass} tone="info" label="En validación" value={reported.length} note="Pagos que reportaste" info={<p>Pagos que reportaste y aún estamos revisando.</p>} />
+        <TintTile icon={BadgeCheck} tone="ok" label="Pagos acreditados" value={paid.length} note="Confirmados por la agencia" info={<p>Pagos que ya revisamos y se sumaron a tus cuotas.</p>} />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">

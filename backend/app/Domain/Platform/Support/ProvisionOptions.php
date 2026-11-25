@@ -35,7 +35,7 @@ final class ProvisionOptions
                     $templates[$template] = ['permissions' => count($permissions), 'modules' => array_values(array_unique(array_filter(array_map(fn (string $permission): ?string => $modules[$permission] ?? null, $permissions))))];
                 }
 
-                return ['id' => $role['id'], 'name' => $role['name'], 'description' => $role['desc'] ?? null, 'scope' => $role['scope'], 'required' => $role['id'] === 'tenant_admin', 'templates' => $templates];
+                return ['id' => $role['id'], 'name' => TenantBootstrap::ROLE_NAMES[$role['id']] ?? $role['name'], 'description' => TenantBootstrap::ROLE_DESCRIPTIONS[$role['id']] ?? $role['desc'] ?? null, 'scope' => $role['scope'], 'required' => $role['id'] === 'tenant_admin', 'templates' => $templates];
             }, TenantBootstrap::tenantRoles()),
             'defaults' => [
                 'country' => 'Perú',

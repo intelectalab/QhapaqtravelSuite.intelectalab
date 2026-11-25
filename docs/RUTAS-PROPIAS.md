@@ -6,8 +6,8 @@ Registro del 6 de noviembre de 2026. Son las rutas que el código expone y que n
 | --- | --- | --- |
 | Alinear con el contrato | 0 | Ninguna. Las 109 que tenían equivalente en el contrato se movieron a su ruta el 6 de noviembre (sitio público, portales y back-office). |
 | Lectura de pantalla | 67 | Se quedan. Evitan varias llamadas por pantalla; se propone sumarlas al contrato como lecturas de interfaz. |
-| Editar, borrar o cambiar estado | 73 | Se quedan. Se propone sumarlas al contrato. |
-| Acción propia | 21 | Se quedan mientras negocio no las retire; se propone sumarlas al contrato. |
+| Editar, borrar o cambiar estado | 72 | Se quedan. Se propone sumarlas al contrato. |
+| Acción propia | 22 | Se quedan mientras negocio no las retire; se propone sumarlas al contrato. |
 | **Total** | **161** | |
 
 Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=storage/openapi.generated.json`) y correr `python3 docs/kit/api/compare_contract.py backend/storage/openapi.generated.json --phase 3`; las rutas nuevas fuera del contrato deben agregarse a este registro. Cuando el registro esté vacío de rutas «Alinear», la CI puede correr con `--strict-extra`.
@@ -125,7 +125,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PATCH /supplier/rate-requests/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `POST /supplier/company/contacts` | Acción propia | Contactos de la empresa en la extranet del proveedor; el contrato no los tiene. |
 
-### Finanzas · spec 07 (14)
+### Finanzas · spec 07 (18)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -139,6 +139,10 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /finance/bank-lines/{}/candidates` | Lectura de pantalla | Pagos u obligaciones disponibles para asignar una excepción de conciliación (FIN-BR-54: asignar requiere candidato), ordenados por diferencia y referencia. |
 | `GET /treasury/settings` | Acción propia | Parámetros de tesorería por agencia (spec 12 §3.9): tolerancia del arqueo, máximo por gasto, tope de declaración jurada, % de reposición, comisión de pasarela, meta y mínimo de margen, egresos fijos. |
 | `PATCH /treasury/settings` | Acción propia | Guarda los parámetros de tesorería, con `lock_version` y auditoría. |
+| `GET /treasury/payment-methods` | Lectura de pantalla | Catálogo de medios de cobro de la agencia (`fin_payment_methods`, spec 07 §3.9) con sus pagos y la cuenta que los recibe. Agregado el 24 nov. |
+| `POST /treasury/payment-methods` | Editar, borrar o cambiar estado | Crea un medio de cobro; el código sale del nombre (`PaymentMethods::code`). Pide `admin.settings.manage`, auditado. |
+| `PATCH /treasury/payment-methods/{}` | Editar, borrar o cambiar estado | Renombra, cambia si pide número de operación o lo activa y desactiva. El crédito B2B no se desactiva (FIN-PM-02) y queda al menos un medio activo (FIN-PM-03). |
+| `DELETE /treasury/payment-methods/{}` | Editar, borrar o cambiar estado | Elimina un medio sin pagos (FIN-PM-04 si tiene). Auditado. |
 | `GET /treasury/movements/{}/receipt` | Lectura de pantalla | Archivo del comprobante del gasto de caja chica. |
 | `GET /treasury/counts/{}/pdf` | Lectura de pantalla | Acta imprimible del arqueo. |
 | `POST /finance/commission-rules` | Editar, borrar o cambiar estado | Alta de una regla de comisión (criterio de CRUD completo). |
@@ -203,7 +207,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /inbox/channel-accounts` | Lectura de pantalla | Cuentas de WhatsApp y correo de la bandeja (ID del número, buzón, plazo, estado y si el secreto del webhook está configurado, sin mostrarlo). Panel «Canales e integración» de la bandeja. |
 | `PUT /inbox/channel-accounts/{}` | Editar, borrar o cambiar estado | Crea o edita la cuenta de canal (`collab_channel_accounts`): ID del número o buzón, secreto del webhook cifrado, plazo de primera respuesta y estado (desconectar = `inactivo`). Audita cada campo; el secreto nunca se devuelve. |
 
-### Plataforma SaaS y API · spec 13 (38)
+### Plataforma SaaS y API · spec 13 (37)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -211,7 +215,6 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PUT /platform/settings/outgoing-mail` | Editar, borrar o cambiar estado | Correo de salida de la plataforma (SMTP) desde Configuración de la consola. Prueba la conexión antes de guardar, guarda la contraseña cifrada en `platform_settings`, nunca la devuelve y audita cada campo. Todos los correos usan el mailer `platform`, que lee esta cuenta en cada envío. |
 | `POST /platform/settings/outgoing-mail/test` | Acción propia | Envía en el momento un correo de prueba con la cuenta guardada y registra el resultado. |
 | `PUT /platform/settings/whatsapp-webhook` | Editar, borrar o cambiar estado | Token de verificación de la app de Meta para `GET /integrations/whatsapp/webhook`, desde Configuración de la consola. Se guarda cifrado en `platform_settings`, nunca se devuelve (solo «configurado») y se audita; `clear` lo quita. |
-| `PUT /platform/settings/fiscal-webhook` | Editar, borrar o cambiar estado | Secreto con el que el OSE firma `POST /integrations/fiscal/{provider}/webhook`, desde Configuración de la consola. Se guarda cifrado en `platform_settings` (clave `fiscal_provider`, campo `webhook_secret`), nunca se devuelve (solo «configurado») y se audita; `clear` lo quita. |
 | `GET /platform/audit-events/export` | Acción propia | Descarga en CSV hasta 5000 eventos de la auditoría de plataforma (7, 30, 90 o 365 días, con los mismos filtros del listado) y registra la exportación. |
 | `PUT /platform/settings/form-protection` | Editar, borrar o cambiar estado | Protección de formularios (Cloudflare Turnstile, spec 15 §585) desde Configuración de la consola. Prueba la clave secreta con Cloudflare, la guarda cifrada en `platform_settings`, nunca la devuelve y audita cada campo. |
 | `GET /platform/demo-requests` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
@@ -348,7 +351,7 @@ Agregadas el 12 de noviembre de 2026, con las cuentas corporativas y los estados
 | `GET /public/stories` | Lectura de pantalla | Historias publicadas con consentimiento vigente para la página `/aventuras` del sitio de la agencia (spec 22 §2, `(sitio)/aventuras`). El nombre del viajero se muestra según `consent_name_mode`. |
 | `GET /public/stories/{}` | Lectura de pantalla | Detalle de una historia publicada para `/aventuras/{slug}`; suma una lectura. 404 si el cliente retiró el consentimiento. |
 
-### Decisiones · finanzas: tipo de cambio y facturación electrónica (16)
+### Decisiones · finanzas: tipo de cambio y facturación electrónica (17)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -363,7 +366,8 @@ Agregadas el 12 de noviembre de 2026, con las cuentas corporativas y los estados
 | `GET /platform/ose-providers` | Lectura de pantalla | Consola › Integraciones › Facturación electrónica: catálogo de OSE con estado homologado y agencias que lo eligieron. |
 | `POST /platform/ose-providers` | Editar, borrar o cambiar estado | Alta de OSE en el catálogo. |
 | `PATCH /platform/ose-providers/{code}` | Editar, borrar o cambiar estado | Edita nombre, nota u homologación. |
-| `DELETE /platform/ose-providers/{code}` | Editar, borrar o cambiar estado | Retira el OSE si ninguna agencia lo tiene elegido (`OSE-IN-USE`). |
+| `DELETE /platform/ose-providers/{code}` | Editar, borrar o cambiar estado | Retira el OSE si ninguna agencia lo tiene elegido (`OSE-IN-USE`); borra también su clave de webhook. |
+| `POST /platform/ose-providers/{code}/webhook-secret` | Acción propia | Genera o rota la clave con la que ese OSE firma `POST /integrations/fiscal/{provider}/webhook` (decisión del 16 nov: una por OSE). Devuelve la clave una sola vez; al rotar, la anterior vale 24 h. Cifrada en `platform_settings` (`fiscal_provider.providers.{CODE}`), auditada. Reemplaza a `PUT /platform/settings/fiscal-webhook` (clave única), que se retiró. |
 | `GET /platform/tenants/{id}/ose` | Lectura de pantalla | Tarjeta Facturación electrónica de la ficha de la agencia. |
 | `PUT /platform/tenants/{id}/ose/credentials` | Editar, borrar o cambiar estado | El Super Admin carga las credenciales cifradas de la agencia ante su OSE. |
 | `DELETE /platform/tenants/{id}/ose/credentials` | Editar, borrar o cambiar estado | Quita las credenciales de la agencia. |
@@ -559,3 +563,24 @@ Agregado el 18 de noviembre de 2026 («Tanda siguiente del informe» de pendient
 - `POST /oauth/token` (spec 13 §3.14, `tokenUrl` del contrato): canje del código (Authorization Code + PKCE, un solo uso, 10 min) y renovación (`kco_` 1 h, `kcr_` 30 días, rotación). Errores en formato RFC 6749. Next reenvía `/oauth/token` del dominio público a esta ruta.
 
 Cambios sin ruta nueva en rutas del contrato: `POST /ops/checkin/scan` acepta `service_id` opcional (422 `PASS_OTHER_SERVICE`); `POST /reservations/{id}/travel-docs/{passengerId}/{type}/files` ya no lleva el middleware `permission:` porque el contrato la abre al portal del cliente (el controlador limita al cliente o pasajero a su viaje y exige `operations.travel_docs` al personal); la venta del marketplace pide `client_id`; la API con llave responde 429 `QUOTA_EXCEEDED` al 100 % del plan (SUB-BR-04).
+
+### Tanda del 24 de noviembre · conversión de reservas OTA (1 ruta nueva)
+
+- `POST /channels/ota/bookings/{id}/convert` (Acción propia, spec 19 §4 «Reserva OTA» `recibida → confirmada|rechazada`, SC-09 y SC-10): convierte a mano una reserva recibida que no se pudo convertir sola (por ejemplo, sin datos del cliente). Cuerpo opcional `client_id` (código o id de un cliente de la cartera). Pide `channels.ota.manage` y `reservations.create`, regla R-OTA-CHANNEL e Idempotency-Key. Crea la reserva confirmada en canal B2B por el neto de la OTA, toma el cupo con el mismo bloqueo de la reserva directa (descontando los bloqueos vigentes) y deja la comisión en el snapshot; sin cupo pasa a `rechazada` y responde 200 con ese estado y el motivo en `error`. Una reserva ya confirmada devuelve la misma reserva (idempotente por `ota_booking_ref`); otro estado → 409 `OTA_BOOKING_LOCKED`.
+
+Cambios sin ruta nueva en rutas del contrato: `POST /webhooks/ota/{ota}` ahora convierte la reserva al recibirla (responde `confirmada`, `rechazada`, `error` o `recibida` si falta el cliente) y acepta `booking.customer` (nombre, correo, teléfono, país, tipo y número de documento); la cancelación de la OTA cancela la reserva vinculada con su política. `GET /channels/ota/bookings` suma `sale_amount`, `payout_amount`, `commission_amount`, `customer` y `convertible`, y `GET /channels/ota/connections` suma `clients` (cartera del usuario).
+
+### Asistente de ventas en panel lateral · spec 19 §2 (1 ruta nueva)
+
+Agregado el 24 de noviembre de 2026. Spec 19 §2 l. 40 («Panel lateral "Asistente" en cotización, lead e inbox»).
+
+- `GET /ai/context?source_type=quote|lead|conversation&source_code=…` (`crecimiento-b.ai.context`, `ai.assistant.use`): lo que el asistente verá del registro (`source` con título, `facts` para la pantalla), el cupo del mes (`usage`), los tipos de pedido y los últimos 5 pedidos del usuario sobre ese registro. Respeta la cartera y el alcance de siempre (cotización por policy `view`, lead por `Portfolio`, conversación por el alcance de la bandeja): fuera de alcance o de otra agencia, 404. Sin parámetros, 422.
+- Sin ruta nueva: `POST /ai/requests` con `source_type`/`source_code` ahora envía al proveedor `context.record` con datos reales y reducidos (SC-04): cotización → título, fechas, destinos y servicios de la versión vigente; lead → interés, destino, fecha, producto y notas; conversación → asunto, canal y los últimos 6 mensajes del cliente y la agencia (sin notas internas). Textos libres pasan por el filtro de PII y además se quitan correos y teléfonos. `input_ref` guarda solo referencias (códigos de producto o ids de mensaje), no el texto. El adaptador simulado usa el destino del registro (o el que aparezca en los mensajes) cuando el pedido no lo nombra.
+
+### Ofertas de aéreo y hotel en la cotización · spec 19 SC-16 (2 rutas nuevas)
+
+Agregado el 24 de noviembre de 2026. Spec 19 §2 l. 51 (pestaña «Aéreo y hotel»), §4 (máquina de la oferta externa: `cotizada → retenida → emitida`) y SC-16.
+
+- `GET /quotes/{}/external-offers` (`crecimiento-a.quotes.external-offers.index`, `quotes.external_offers`): ofertas de la cotización (sin las quitadas) con `can_hold`/`can_remove`, `external_total`, `rule_enabled` (R-GDS-OFFERS) y `available`/`unavailable_message` (proveedor real o simulación permitida). Marca `vencida` las que pasaron su `offer_expires_at`. Respeta la cartera (SEC-BR-09); otra agencia, 404. Con la regla apagada responde igual (consulta de lo ya cotizado, como los vales en la decisión O2).
+- `POST /quotes/{}/external-offers/{offerId}/hold` (`crecimiento-a.quotes.external-offers.hold`, `quotes.external_offers`): transición «Retener» de la máquina de estados (`cotizada → retenida`), por el contrato `TravelInventory::hold`, que devuelve el nuevo vencimiento. Permitida en borrador, enviada, vista, negociación y aprobada; repetirla sobre una retenida no hace nada. Errores: 403 `RULE_NOT_IN_PLAN`, 409 `OFFER_NOT_HOLDABLE`, 422 `OFFER_EXPIRED` u `OFFER_HOLD_FAILED`. Auditada `retener_oferta`.
+- Sin ruta nueva: `POST /quotes/{}/external-offers/search` responde 409 `INTEGRATION_UNAVAILABLE` sin proveedor real en producción; buscar, añadir y retener piden R-GDS-OFFERS (403 con `required_permissions`), quitar no. `DELETE /quotes/{}/external-offers/{offerId}` también se permite con la cotización aprobada (máquina: `* → cancelada`) y libera la retención en el proveedor. `GET /quotes/{}/conversion-preview` suma el chequeo `external_offers` y el total con las ofertas. `POST /quotes/{}/convert` (SC-16): oferta vencida, con error o en otra moneda → 422 (`OFFER_EXPIRED`, `OFFER_ISSUE_FAILED`, `CURRENCY_MISMATCH`) sin crear nada; las cotizadas y retenidas se emiten por `TravelInventory::issue` (clave = Idempotency-Key + id de la oferta), pasan a `emitida` con `pnr` y `reservation_id`, y entran como servicios `confirmado` (código = PNR) sumados a `total_amount` y a las CxC. Si el proveedor rechaza una, se anulan las ya emitidas (`TravelInventory::void`), responde 422 `OFFER_ISSUE_FAILED` y se audita `emitir_oferta_fallida` fuera de la transacción. `GET /quotes/{}` suma `can.external_offers`.

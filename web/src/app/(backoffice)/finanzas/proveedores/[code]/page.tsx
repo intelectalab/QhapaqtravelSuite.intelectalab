@@ -57,10 +57,10 @@ export default async function ObligacionPage({ params }: PageProps<"/finanzas/pr
       />
       {row.observation && <p className="mb-5 rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]"><b className="font-semibold">Observada.</b> {row.observation}</p>}
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={Receipt} tone="t1" label="Monto" value={formatMoney(row.amount, row.currency)} />
-        <TintTile icon={Wallet} tone="ok" label="Pagado" value={formatMoney(row.paid, row.currency)} />
-        <TintTile icon={Truck} tone={row.status === "vencida" ? "bad" : "sun"} label="Saldo" value={formatMoney(row.balance, row.currency)} />
-        <TintTile icon={CalendarClock} tone="violet" label={row.scheduled_date ? "Pago programado" : "Vence"} value={<span className="text-[16px]">{formatDate(row.scheduled_date ?? row.due_date)}</span>} note={row.scheduled ? `${row.scheduled.account ? `Desde ${row.scheduled.account.name} · ` : ""}vence el ${formatDate(row.due_date)}` : undefined} />
+        <TintTile icon={Receipt} tone="t1" label="Monto" value={formatMoney(row.amount, row.currency)} info={<p>Costo del servicio de la reserva con este proveedor, o el importe de un gasto o una penalidad registrados a mano.</p>} />
+        <TintTile icon={Wallet} tone="ok" label="Pagado" value={formatMoney(row.paid, row.currency)} info={<p>Suma de los abonos registrados a esta obligación en Cuentas por pagar.</p>} />
+        <TintTile icon={Truck} tone={row.status === "vencida" ? "bad" : "sun"} label="Saldo" value={formatMoney(row.balance, row.currency)} info={<p>Lo que falta pagar: monto menos lo pagado.</p>} />
+        <TintTile icon={CalendarClock} tone="violet" label={row.scheduled_date ? "Pago programado" : "Vence"} value={<span className="text-[16px]">{formatDate(row.scheduled_date ?? row.due_date)}</span>} note={row.scheduled ? `${row.scheduled.account ? `Desde ${row.scheduled.account.name} · ` : ""}vence el ${formatDate(row.due_date)}` : undefined} info={row.scheduled_date ? <p>Fecha en la que está programado el pago.</p> : <p>Fecha de vencimiento de la obligación.</p>} />
       </section>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">
@@ -77,7 +77,7 @@ export default async function ObligacionPage({ params }: PageProps<"/finanzas/pr
                       {payout.operation_ref && <span className="text-xs text-fg-3">Operación {payout.operation_ref}</span>}
                     </td>
                     <td className="whitespace-nowrap">{formatDate(payout.paid_on)}</td>
-                    <td className="first-letter:uppercase">{payout.method.replaceAll("_", " ")}</td>
+                    <td>{payout.method}</td>
                     <td>{payout.account ?? "—"}</td>
                     <td className="text-right font-mono">{formatMoney(payout.amount, row.currency)}</td>
                   </tr>

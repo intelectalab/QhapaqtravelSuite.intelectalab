@@ -18,6 +18,7 @@ Route::name('crecimiento-b.')->group(function (): void {
         Route::post('ai/requests/{id}/apply', 'apply')->name('ai.requests.apply');
         Route::post('ai/requests/{id}/discard', 'discard')->name('ai.requests.discard');
         Route::get('ai/usage', 'usage')->name('ai.usage');
+        Route::get('ai/context', 'context')->name('ai.context');
     });
 
     Route::middleware('permission:inbox.whatsapp.manage')->controller(WhatsappTemplateController::class)->group(function (): void {
@@ -58,6 +59,7 @@ Route::name('crecimiento-b.')->group(function (): void {
         Route::get('channels/ota/connections/{code}/mappings', 'mappings')->name('channels.ota.mappings.index');
         Route::put('channels/ota/connections/{code}/mappings/{productId}', 'map')->name('channels.ota.mappings.replace');
         Route::get('channels/ota/bookings', 'bookings')->name('channels.ota.bookings.index');
+        Route::post('channels/ota/bookings/{id}/convert', 'convert')->name('channels.ota.bookings.convert');
     });
 
     Route::middleware('permission:channels.marketplace.manage')->controller(MarketplaceController::class)->group(function (): void {

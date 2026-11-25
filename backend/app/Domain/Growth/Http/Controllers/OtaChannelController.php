@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Growth\Http\Controllers;
 
+use App\Domain\Growth\Ota\OtaBookingConversion;
 use App\Domain\Growth\Ota\OtaChannel;
 use App\Domain\Growth\Shared\GrowthRules;
 use Illuminate\Http\JsonResponse;
@@ -30,9 +31,9 @@ final class OtaChannelController
 
     public function __construct(private readonly OtaChannel $channel) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->channel->connections()]);
+        return response()->json(['data' => $this->channel->connections(GrowthRules::actor($request))]);
     }
 
     public function store(Request $request): JsonResponse
@@ -91,5 +92,12 @@ final class OtaChannelController
     public function bookings(Request $request): JsonResponse
     {
         return response()->json($this->channel->bookings($request));
+    }
+
+    public function convert(Request $request, string $id, OtaBookingConversion $conversion): JsonResponse
+    {
+        $data = $request->validate(['client_id' => ['nullable', 'string', 'max:60']], ['client_id.*' => 'Elige un cliente de tu cartera.']);
+
+        return response()->json(['data' => $conversion->convert($id, $data['client_id'] ?? null, GrowthRules::actor($request))]);
     }
 }

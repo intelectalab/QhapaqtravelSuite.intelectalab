@@ -9,6 +9,7 @@ use App\Domain\Integrations\Data\AdapterResult;
 use App\Domain\Integrations\Data\OutboundMessage;
 use App\Domain\Integrations\Support\IntegrationCatalog;
 use App\Domain\Integrations\Support\IntegrationReadiness;
+use App\Domain\Platform\Support\NotificationThrottler;
 use Throwable;
 
 final class RoutedMessagingChannel implements MessagingChannel
@@ -18,10 +19,15 @@ final class RoutedMessagingChannel implements MessagingChannel
         private readonly AgencyMailbox $mailbox,
         private readonly AgencyMailer $mailer,
         private readonly SmtpConnector $smtp,
+        private readonly ?NotificationThrottler $throttler = null,
     ) {}
 
     public function send(OutboundMessage $message): AdapterResult
     {
+        if (($reason = ($this->throttler ?? app(NotificationThrottler::class))->reason($message->channel)) !== null) {
+            return new AdapterResult(false, 'diferido', null, 'cuota', $reason, ['code' => NotificationThrottler::CODE]);
+        }
+
         if (mb_strtolower($message->channel) !== 'email') {
             return $this->channels->send($message);
         }

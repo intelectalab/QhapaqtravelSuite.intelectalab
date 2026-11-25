@@ -7,6 +7,7 @@ namespace App\Domain\Platform\Actions;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Platform\Support\FiscalWebhookSecret;
 use App\Domain\Platform\Support\IntegrationSecrets;
 use App\Domain\Platform\Support\OseCatalog;
 use App\Domain\Platform\Support\TenantDirectory;
@@ -20,12 +21,13 @@ final class ManageOse
         private readonly OseCatalog $catalog,
         private readonly TenantDirectory $tenants,
         private readonly PlatformSession $session,
+        private readonly FiscalWebhookSecret $webhooks,
     ) {}
 
     public function overview(): array
     {
         $usage = $this->catalog->usage();
-        $providers = array_map(fn (array $row): array => $this->catalog->present($row, $usage[$row['code']] ?? 0), $this->catalog->all());
+        $providers = array_map(fn (array $row): array => [...$this->catalog->present($row, $usage[$row['code']] ?? 0), 'webhook' => $this->webhooks->summary($row['code'])], $this->catalog->all());
 
         return [
             'providers' => $providers,
@@ -115,7 +117,21 @@ final class ManageOse
 
             unset($providers[$index]);
             $this->catalog->save($providers, (string) $actor->getKey());
+            $this->webhooks->forget($removed['code'], (string) $actor->getKey());
             $this->session->log(ManageFxProviders::ENTITY, $this->label($removed['code']), 'eliminar', "{$removed['name']} · ".OseCatalog::STATUS[$removed['status']], null, $actor);
+        });
+    }
+
+    public function generateWebhookSecret(string $code, PlatformUser $actor): array
+    {
+        return $this->catalog->locked(FiscalWebhookSecret::KEY, function () use ($code, $actor): array {
+            $providers = $this->catalog->all();
+            $provider = $providers[$this->index($providers, $code)];
+            $secret = 'kipu_ose_'.bin2hex(random_bytes(24));
+            $rotated = $this->webhooks->store($provider['code'], $secret, (string) $actor->getKey());
+            $this->session->log(ManageFxProviders::ENTITY, $this->label($provider['code']), $rotated ? 'rotar_clave_webhook' : 'generar_clave_webhook', $rotated ? 'configurada' : null, $rotated ? 'rotada · la anterior vale '.FiscalWebhookSecret::ROTATION_HOURS.' h' : 'generada', $actor);
+
+            return [...$this->webhooks->summary($provider['code']), 'code' => $provider['code'], 'secret' => $secret, 'rotated' => $rotated];
         });
     }
 

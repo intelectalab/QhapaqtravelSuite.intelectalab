@@ -48,6 +48,20 @@ export interface OseProvider {
   fields: { field: string; label: string }[];
   tenants: number | null;
   updated_at: string | null;
+  webhook?: OseWebhook;
+}
+
+export interface OseWebhook {
+  secret_set: boolean;
+  secret_hint: string | null;
+  secret_generated_at: string | null;
+  previous_secret_until: string | null;
+  previous_secret_valid: boolean;
+  still_previous: boolean;
+  last_signed_at: string | null;
+  last_key: "actual" | "anterior" | null;
+  callback_url: string;
+  signature_header: string;
 }
 
 export interface OseCatalogOverview {

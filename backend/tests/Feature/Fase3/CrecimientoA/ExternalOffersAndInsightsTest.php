@@ -30,6 +30,13 @@ function crecAOtaPost(array $event, string $secret = 'secreto-de-pruebas'): Test
     return test()->call('POST', '/api/v1/webhooks/ota/viator', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_OTA_SIGNATURE' => hash_hmac('sha256', $raw, $secret)], $raw);
 }
 
+it('la búsqueda de ofertas acepta grupos grandes, como los 60 pasajeros de COT-2026-00191, y rechaza más de 500', function () {
+    actingAsSeed('U02');
+
+    $this->postJson('/api/v1/quotes/COT-2026-00191/external-offers/search', ['kind' => 'aereo', 'origin' => 'LIM', 'destination' => 'CUZ', 'pax' => 60])->assertOk();
+    $this->postJson('/api/v1/quotes/COT-2026-00191/external-offers/search', ['kind' => 'aereo', 'origin' => 'LIM', 'destination' => 'CUZ', 'pax' => 501])->assertStatus(422)->assertJsonValidationErrors(['pax']);
+});
+
 it('POST /quotes/{id}/external-offers/search busca ofertas en el adaptador y POST las añade a la cotización', function () {
     actingAsSeed('U02');
 

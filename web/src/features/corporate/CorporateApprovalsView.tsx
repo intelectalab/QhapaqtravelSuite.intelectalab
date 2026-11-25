@@ -116,10 +116,10 @@ export function CorporateApprovalsView({ approvals, meta }: { approvals: Corpora
     },
   ];
   const metrics: MetricFilter<CorporateApproval>[] = [
-    { id: "pendiente", label: "Pendientes", tone: "warn", icon: <Clock size={19} />, matches: (row) => row.status === "pendiente" },
-    { id: "aprobada", label: "Aprobadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "aprobada" },
-    { id: "rechazada", label: "Rechazadas", tone: "bad", icon: <CircleX size={19} />, matches: (row) => row.status === "rechazada" },
-    { id: "cerrada", label: "Vencidas o canceladas", tone: "mute", icon: <Timer size={19} />, matches: (row) => row.status === "vencida" || row.status === "cancelada" },
+    { id: "pendiente", label: "Pendientes", tone: "warn", icon: <Clock size={19} />, matches: (row) => row.status === "pendiente" , info: <p>Cotizaciones enviadas a tu empresa para aprobar que aún esperan decisión.</p> },
+    { id: "aprobada", label: "Aprobadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "aprobada" , info: <p>Cotizaciones que un aprobador de tu empresa aprobó.</p> },
+    { id: "rechazada", label: "Rechazadas", tone: "bad", icon: <CircleX size={19} />, matches: (row) => row.status === "rechazada" , info: <p>Cotizaciones que un aprobador de tu empresa rechazó.</p> },
+    { id: "cerrada", label: "Vencidas o canceladas", tone: "mute", icon: <Timer size={19} />, matches: (row) => row.status === "vencida" || row.status === "cancelada" , info: <p>Vencidas: pasó la fecha límite sin decisión. Canceladas: la cotización cambió o se anuló antes de decidir.</p> },
   ];
   const filters: FilterConfig<CorporateApproval>[] = [{ id: "center", label: "Centro de costo", options: [...new Set(approvals.map((row) => row.cost_center?.code ?? ""))].filter(Boolean).map((value) => ({ value, label: value })), value: (row) => row.cost_center?.code ?? "" }];
   const sorts: SortOption<CorporateApproval>[] = [

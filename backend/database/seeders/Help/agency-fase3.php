@@ -43,11 +43,13 @@ return [
     ], ['precio', 'dinamico', 'ocupacion', 'simulador']),
     $article('asistente-ia', 'General', '/asistente', 'Asistente con IA', 'Pide al asistente borradores de cotizaciones, respuestas o resúmenes. Nada se aplica sin que lo revises.', [
         ['Hacer un pedido', 'Escribe qué necesitas y elige sobre qué registro trabajar.'],
+        ['Desde la cotización, el lead o la bandeja', 'Pulsa «Asistente» en la ficha de la cotización, en la del lead o en la conversación de la bandeja. El panel lateral ya trae los datos del registro (nombre del cliente, pasajeros, fechas, destinos, servicios o los últimos mensajes) y te propone un pedido que puedes cambiar. Correos, teléfonos y notas internas no se envían.'],
+        ['Responder en la bandeja', 'En una conversación, «Responder» pega el borrador en la caja de respuesta. Revísalo y envíalo tú: el asistente nunca envía solo.'],
         ['Aplicar o descartar', 'Revisa el borrador y aplícalo o descártalo. Los datos sensibles del cliente no se envían al asistente.'],
         ['Aplicar a una cotización ya enviada', 'Si la cotización está en borrador, el texto se agrega a la versión vigente. Si ya la enviaste, aplicar crea una versión nueva en borrador y pide confirmar: el cliente sigue viendo la versión anterior hasta que envíes la nueva. Si el cliente ya la aprobó o hay una aprobación interna pendiente, el aviso sale en rojo y pide un segundo clic porque esa aprobación se anula. Una cotización convertida en reserva no cambia.'],
     ], [
         ['¿Tiene límite?', 'Sí, un cupo mensual según tu plan. Lo ves en la misma pantalla.'],
-    ], ['ia', 'asistente', 'borrador', 'cupo']),
+    ], ['ia', 'asistente', 'borrador', 'cupo', 'panel', 'bandeja', 'responder']),
     $article('marketing-recuperacion', 'Marketing', '/marketing/recuperacion', 'Recuperación de ventas', 'Flujos que escriben al cliente que dejó un carrito o una cotización sin cerrar, para retomar la venta.', [
         ['Crear un flujo', 'Elige qué se recupera, cuánto esperar y qué mensaje enviar.'],
         ['Cómo sale', 'Cada 15 minutos el sistema busca carritos sin actividad y cotizaciones enviadas sin respuesta que ya cumplieron la espera, y escribe al cliente. Entre un intento y el siguiente deja la misma espera, hasta el máximo de intentos del flujo.'],
@@ -59,10 +61,13 @@ return [
     $article('canales-ota', 'Canales', '/canales/ota', 'Conexión con OTAs', 'Conecta tu catálogo con agencias en línea, relaciona tus productos con los suyos y recibe sus reservas.', [
         ['Conectar', 'Pulsa «Conectar OTA», elige la OTA y escribe su clave. Se guarda cifrada.'],
         ['Relacionar productos', 'En «Mapeos» indica qué producto tuyo corresponde a cada uno de la OTA.'],
-        ['Reservas recibidas', 'En «Reservas» revisa lo que llegó desde cada OTA.'],
+        ['Reservas recibidas', 'En «Reservas recibidas» revisa lo que llegó desde cada OTA. Si tiene cupo y datos del viajero, se convierte sola en una reserva confirmada.'],
+        ['Convertir a mano', 'Si una reserva quedó «Recibida» porque faltaba el cliente, pulsa «Convertir», elige el cliente de tu cartera y confirma.'],
     ], [
         ['¿Qué pasa si un producto no está relacionado?', 'La reserva que llega se rechaza y queda registrada para que la revises.'],
-    ], ['ota', 'canal', 'mapeo', 'reservas externas']),
+        ['¿Por cuánto se registra la reserva?', 'Por el neto que te paga la OTA: la venta menos su comisión. Los tres montos se ven al convertirla y quedan en la reserva.'],
+        ['¿Y si ya no hay cupo?', 'La reserva queda «Rechazada» con el motivo y no se crea nada. Si la OTA la cancela después de confirmada, la reserva se cancela con su política.'],
+    ], ['ota', 'canal', 'mapeo', 'reservas externas', 'convertir']),
     $article('canales-marketplace', 'Canales', '/canales/marketplace', 'Marketplace B2B', 'Publica tus tours para que otros operadores los revendan y vende los de tus aliados, con comisión acordada.', [
         ['Publicar', 'En «Mis publicaciones» elige qué productos ofreces y con qué comisión.'],
         ['Alianzas', 'Acepta o rechaza las solicitudes de otros operadores.'],

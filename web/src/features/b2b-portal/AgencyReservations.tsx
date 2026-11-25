@@ -88,11 +88,11 @@ export function AgencyReservations({ rows, today }: { rows: AgencyReservationRow
   ];
 
   const metrics: MetricFilter<AgencyReservationRow>[] = [
-    { id: "upcoming", label: "Próximas salidas", tone: "t3", icon: <Plane size={19} />, matches: (row) => live(row) && row.to >= today },
-    { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "confirmada" },
-    { id: "pending", label: "Por confirmar o pagar", tone: "warn", icon: <Hourglass size={19} />, matches: (row) => ["pendiente_pago", "pendiente_proveedor", "pendiente_disponibilidad"].includes(row.status) },
-    { id: "balance", label: "Con saldo", tone: "t2", icon: <Wallet size={19} />, matches: (row) => row.balance > 0.004 && row.status !== "cancelada" },
-    { id: "names", label: "Por nominar", tone: "info", icon: <UserRoundPen size={19} />, matches: (row) => row.pending_names > 0 && live(row) },
+    { id: "upcoming", label: "Próximas salidas", tone: "t3", icon: <Plane size={19} />, matches: (row) => live(row) && row.to >= today , info: <p>Reservas no canceladas ni completadas cuyo viaje termina hoy o después.</p> },
+    { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "confirmada" , info: <p>Reservas en estado confirmada.</p> },
+    { id: "pending", label: "Por confirmar o pagar", tone: "warn", icon: <Hourglass size={19} />, matches: (row) => ["pendiente_pago", "pendiente_proveedor", "pendiente_disponibilidad"].includes(row.status) , info: <p>Reservas que esperan tu pago, la confirmación del proveedor o la disponibilidad.</p> },
+    { id: "balance", label: "Con saldo", tone: "t2", icon: <Wallet size={19} />, matches: (row) => row.balance > 0.004 && row.status !== "cancelada" , info: <p>Reservas no canceladas con saldo: total de las cuotas − lo pagado.</p> },
+    { id: "names", label: "Por nominar", tone: "info", icon: <UserRoundPen size={19} />, matches: (row) => row.pending_names > 0 && live(row) , info: <p>Reservas vigentes con pasajeros sin nombre o sin documento.</p> },
   ];
 
   const filters: FilterConfig<AgencyReservationRow>[] = [

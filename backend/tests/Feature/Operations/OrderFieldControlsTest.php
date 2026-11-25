@@ -78,7 +78,7 @@ it('al asignar con aviso deja el mensaje en la bandeja interna del guía', funct
 
     $result = $this->putJson("/api/v1/ops/assignments/{$assignment->id}/resources", ['guide_id' => $guide, 'ack_warnings' => true, 'notify' => ['push', 'whatsapp']], critical((int) $assignment->lock_version))->assertOk()->json('data');
     expect($result['notified'])->toBe(1)->and($result['delivery'])->toBe('portal')->and($result['channels'])->toBe(['push', 'whatsapp']);
-    $message = withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', 'asignacion.creada')->where('source_id', $assignment->id)->first());
+    $message = withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', 'asignacion.creada')->where('source_id', $assignment->id)->where('channel', 'portal')->first());
     expect($message->channel)->toBe('portal')
         ->and((string) $message->recipient_user_id)->toBe((string) seedUser('U09')->getKey());
 

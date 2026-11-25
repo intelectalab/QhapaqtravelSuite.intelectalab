@@ -44,7 +44,7 @@ final class PaymentDirectory
                     'lock_version' => (int) $row->lock_version,
                     'kind' => $row->kind,
                     'source' => $row->source,
-                    'method' => $labels[$row->method] ?? $row->method,
+                    'method' => PaymentMethods::display((string) $row->method, $labels),
                     'amount' => (float) $row->amount,
                     'currency' => $row->currency,
                     'fx_rate' => $row->fx_rate !== null ? (float) $row->fx_rate : null,

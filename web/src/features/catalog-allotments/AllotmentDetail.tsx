@@ -163,8 +163,8 @@ export function ContractConsumption({ detail }: { detail: AllotmentDetail }) {
     { id: "state", header: "Consumo", cell: (row) => <Badge tone={row.state === "consumido" ? "ok" : "sun"}>{row.state === "consumido" ? "Consume cupo" : "En trámite"}</Badge> },
   ];
   const metrics: MetricFilter<ConsumptionRow>[] = [
-    { id: "used", label: "Consumen cupo", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.state === "consumido" },
-    { id: "pending", label: "En trámite", tone: "sun", icon: <Hourglass size={19} />, matches: (row) => row.state === "en_tramite" },
+    { id: "used", label: "Consumen cupo", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.state === "consumido", info: <p>Servicios de reservas confirmados, en curso o completados que descuentan unidades de este cupo. Las reservas en borrador no cuentan aquí.</p> },
+    { id: "pending", label: "En trámite", tone: "sun", icon: <Hourglass size={19} />, matches: (row) => row.state === "en_tramite", info: <p>Servicios de reservas que usan este cupo pero siguen solicitados o pendientes, o cuya reserva sigue en borrador.</p> },
   ];
   return (
     <div className="p-5">
@@ -250,9 +250,9 @@ export function ContractRequests({ detail }: { detail: AllotmentDetail }) {
       : []),
   ];
   const metrics: MetricFilter<AllotmentRequest>[] = [
-    { id: "solicitada", label: "Por responder", tone: "sun", icon: <Send size={19} />, matches: (row) => row.status === "solicitada" },
-    { id: "aceptada", label: "Aceptadas", tone: "ok", icon: <ThumbsUp size={19} />, matches: (row) => row.status === "aceptada" },
-    { id: "rechazada", label: "Rechazadas", tone: "bad", icon: <ThumbsDown size={19} />, matches: (row) => row.status === "rechazada" },
+    { id: "solicitada", label: "Por responder", tone: "sun", icon: <Send size={19} />, matches: (row) => row.status === "solicitada", info: <p>Solicitudes de ampliación de este cupo que aún no tienen respuesta.</p> },
+    { id: "aceptada", label: "Aceptadas", tone: "ok", icon: <ThumbsUp size={19} />, matches: (row) => row.status === "aceptada", info: <p>Solicitudes de ampliación de este cupo que fueron aceptadas.</p> },
+    { id: "rechazada", label: "Rechazadas", tone: "bad", icon: <ThumbsDown size={19} />, matches: (row) => row.status === "rechazada", info: <p>Solicitudes de ampliación de este cupo que fueron rechazadas.</p> },
   ];
   return (
     <div className="p-5">

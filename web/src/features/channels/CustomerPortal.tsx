@@ -182,10 +182,10 @@ function Portal({ client }: { client: CustomerPortal }) {
     <div className="flex flex-col gap-5">
       <Greeting client={client} />
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={Plane} tone="t1" label="Próximo viaje" value={next ? formatDate(next.from) : "Sin viajes"} note={next?.title ?? "Planifica el siguiente"} />
-        <TintTile icon={ScrollText} tone="violet" label="Propuestas por responder" value={client.kpis.awaiting_quotes} note="Enviadas por tu asesor" />
-        <TintTile icon={Wallet} tone="sun" label="Saldo pendiente" value={<MoneyLines values={client.kpis.balance} empty="Al día" />} note="Puedes pagar en partes" />
-        <TintTile icon={FileText} tone="t4" label="Documentos" value={client.kpis.documents} note="Vouchers listos" />
+        <TintTile icon={Plane} tone="t1" label="Próximo viaje" value={next ? formatDate(next.from) : "Sin viajes"} note={next?.title ?? "Planifica el siguiente"} info={<p>Fecha de inicio de tu viaje más cercano que aún no termina ni se canceló.</p>} />
+        <TintTile icon={ScrollText} tone="violet" label="Propuestas por responder" value={client.kpis.awaiting_quotes} note="Enviadas por tu asesor" info={<p>Propuestas que te envió tu asesor y aún esperan tu respuesta.</p>} />
+        <TintTile icon={Wallet} tone="sun" label="Saldo pendiente" value={<MoneyLines values={client.kpis.balance} empty="Al día" />} note="Puedes pagar en partes" info={<p>Lo que falta pagar de tus cuotas, sumado por moneda.</p>} />
+        <TintTile icon={FileText} tone="t4" label="Documentos" value={client.kpis.documents} note="Vouchers listos" info={<p>Vouchers emitidos para los servicios de tus viajes.</p>} />
       </section>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex flex-col gap-5">

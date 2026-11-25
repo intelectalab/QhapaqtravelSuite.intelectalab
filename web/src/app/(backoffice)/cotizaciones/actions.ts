@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { ConvertQuoteResponse } from "@/lib/api/types";
+import type { ExternalOfferKind, ExternalOfferResult, ExternalOfferState } from "@/lib/external-offers";
 import type { QuoteComparison, QuotePreview } from "@/lib/quotes";
 import { apiFetch } from "@/lib/server/api";
 import { stepByField, wizardFailure, type WizardResult } from "@/lib/wizard";
@@ -175,4 +176,42 @@ export async function reassignQuote(_state: QuoteStepState, form: FormData): Pro
 export async function compareVersions(code: string, a: number, b: number): Promise<{ comparison: QuoteComparison | null; message: string | null }> {
   const result = await apiFetch<QuoteComparison>(`/quotes/${encodeURIComponent(code)}/versions/compare?a=${a}&b=${b}`);
   return result.ok && result.data ? { comparison: result.data, message: null } : { comparison: null, message: result.error?.message ?? "No pudimos comparar las versiones." };
+}
+
+export interface ExternalOfferSearch {
+  kind: ExternalOfferKind;
+  origin?: string;
+  destination: string;
+  date_from?: string;
+  date_to?: string;
+  pax?: number;
+}
+
+function firstMessage(error: { message?: string; errors?: Record<string, string[]> } | null | undefined, fallback: string): string {
+  const field = error?.errors ? Object.values(error.errors)[0]?.[0] : undefined;
+  return field ?? error?.message ?? fallback;
+}
+
+export async function searchExternalOffers(code: string, criteria: ExternalOfferSearch): Promise<{ results: ExternalOfferResult[]; message: string | null }> {
+  const body = Object.fromEntries(Object.entries(criteria).filter(([, value]) => value !== undefined && value !== ""));
+  const result = await apiFetch<ExternalOfferState>(`/quotes/${encodeURIComponent(code)}/external-offers/search`, { method: "POST", body });
+  if (!result.ok || !result.data) return { results: [], message: firstMessage(result.error, "No pudimos buscar ofertas en el proveedor.") };
+  return { results: result.data.results ?? [], message: null };
+}
+
+export async function changeExternalOffer(code: string, change: { op: "add"; provider: string; offer_ref: string; key: string } | { op: "hold" | "remove"; id: string }): Promise<{ state: ExternalOfferState | null; message: string | null }> {
+  const base = `/quotes/${encodeURIComponent(code)}/external-offers`;
+  const result =
+    change.op === "add"
+      ? await apiFetch<ExternalOfferState>(base, { method: "POST", body: { provider: change.provider, offer_ref: change.offer_ref }, headers: { "Idempotency-Key": change.key } })
+      : change.op === "hold"
+        ? await apiFetch<ExternalOfferState>(`${base}/${encodeURIComponent(change.id)}/hold`, { method: "POST" })
+        : await apiFetch<ExternalOfferState>(`${base}/${encodeURIComponent(change.id)}`, { method: "DELETE" });
+  if (!result.ok) return { state: null, message: firstMessage(result.error, "No pudimos actualizar la oferta.") };
+  revalidatePath(`/cotizaciones/${code}`);
+  if (change.op === "remove") {
+    const fresh = await apiFetch<ExternalOfferState>(base);
+    return { state: fresh.ok ? fresh.data : null, message: null };
+  }
+  return { state: result.data, message: null };
 }

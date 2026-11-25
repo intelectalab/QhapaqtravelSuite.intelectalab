@@ -15,6 +15,7 @@ Route::middleware('platform.user:verified,admin.tenant.manage')->name('finanzas.
     Route::post('ose-providers', 'storeOseProvider')->name('ose-providers.store');
     Route::patch('ose-providers/{code}', 'updateOseProvider')->name('ose-providers.update');
     Route::delete('ose-providers/{code}', 'destroyOseProvider')->name('ose-providers.destroy');
+    Route::post('ose-providers/{code}/webhook-secret', 'generateOseWebhookSecret')->middleware('throttle:6,1')->name('ose-providers.webhook-secret');
     Route::get('tenants/{id}/ose', 'tenantOse')->name('tenants.ose.show');
     Route::put('tenants/{id}/ose/credentials', 'saveTenantOseCredentials')->name('tenants.ose.credentials');
     Route::delete('tenants/{id}/ose/credentials', 'clearTenantOseCredentials')->name('tenants.ose.credentials.destroy');

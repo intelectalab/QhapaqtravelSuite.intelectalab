@@ -11,6 +11,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
+import { onComposerFill } from "@/lib/assistant";
 import { cn } from "@/lib/cn";
 import { ATTACHMENT_ACCEPT, ATTACHMENT_MAX_BYTES, ATTACHMENT_MAX_FILES, LINK_KINDS, PRIORITY_OPTIONS, type ConversationThread, type InboxOverview, type LinkKind, type LinkOption, type ReplyTemplate } from "@/lib/inbox";
 import type { StepResult } from "@/lib/server/resource";
@@ -207,6 +208,15 @@ export function Composer({ thread, templates, me, agency }: { thread: Conversati
   const [internal, setInternal] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const picker = useRef<HTMLInputElement>(null);
+  useEffect(
+    () =>
+      onComposerFill(thread.code, (text) => {
+        setInternal(false);
+        setTemplate("");
+        setBody(text);
+      }),
+    [thread.code],
+  );
   const syncFiles = (next: File[]) => {
     setFiles(next);
     if (!picker.current) return;

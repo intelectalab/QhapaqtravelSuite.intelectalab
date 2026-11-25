@@ -8,7 +8,6 @@ use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Data\AdapterResult;
 use App\Domain\Integrations\Data\FiscalDocument;
 use App\Domain\Integrations\Support\IntegrationReadiness;
-use App\Domain\Platform\Support\FiscalWebhookSecret;
 use Brick\Math\BigDecimal;
 
 final class FakeFiscalGateway implements FiscalGateway
@@ -141,18 +140,18 @@ final class FakeFiscalGateway implements FiscalGateway
         return AdapterResult::success('anulado', 'FAKE-BAJA-'.$invoiceId, ['simulated' => true]);
     }
 
-    public function verifyWebhook(string $rawBody, string $signature): bool
+    public function verifyWebhook(string $rawBody, string $signature, string $secret): bool
     {
         if (IntegrationReadiness::enforced()) {
             return false;
         }
 
-        return $signature !== '' && hash_equals(self::sign($rawBody), $signature);
+        return $signature !== '' && $secret !== '' && hash_equals(self::sign($rawBody, $secret), $signature);
     }
 
-    public static function sign(string $rawBody): string
+    public static function sign(string $rawBody, string $secret): string
     {
-        return hash_hmac('sha256', $rawBody, app(FiscalWebhookSecret::class)->secret() ?: (string) config('services.fake_fiscal.secret', 'local-only'));
+        return hash_hmac('sha256', $rawBody, $secret);
     }
 
     public function healthcheck(): AdapterResult

@@ -61,6 +61,12 @@ it('las opciones del asistente traen roles con su plantilla, canales por plan y 
         ->and(collect($options['channels'])->firstWhere('key', 'ecommerce')['plan_rank'])->toBe(3)
         ->and($options['defaults'])->toHaveKeys(['timezone', 'roles', 'fx_rate', 'invoice_series'])
         ->and($options['plans'])->not->toBeEmpty();
+
+    $roles = collect($options['roles'])->keyBy('id');
+    expect($roles['tenant_admin']['name'])->toBe('Administración')
+        ->and($roles['tenant_admin']['description'])->toBe('Administración completa de la agencia')
+        ->and($roles['manager']['name'])->toBe('Gerencia')
+        ->and($roles['sales']['name'])->toBe('Ventas');
 });
 
 it('validate-step exige los campos del paso, distingue las monedas y bloquea canales fuera del plan', function () {

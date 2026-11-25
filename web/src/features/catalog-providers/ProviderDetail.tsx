@@ -82,8 +82,8 @@ export function ProviderServicesTable({ detail }: { detail: ProviderDetail }) {
     { id: "state", header: "Estado", cell: (service) => <Badge tone={SUPPLY_STATE[service.state].tone}>{SUPPLY_STATE[service.state].label}</Badge> },
   ];
   const metrics: MetricFilter<ServiceItem>[] = [
-    { id: "active", label: "Vigentes", tone: "ok", icon: <CircleCheck size={19} />, matches: (service) => service.state === "activo" },
-    { id: "off", label: "Vencidos o inactivos", tone: "mute", icon: <CircleSlash size={19} />, matches: (service) => service.state !== "activo" },
+    { id: "active", label: "Vigentes", tone: "ok", icon: <CircleCheck size={19} />, matches: (service) => service.state === "activo", info: <p>Servicios de este proveedor activos y con la tarifa todavía vigente.</p> },
+    { id: "off", label: "Vencidos o inactivos", tone: "mute", icon: <CircleSlash size={19} />, matches: (service) => service.state !== "activo", info: <p>Servicios de este proveedor cuya tarifa ya venció o que no están activos.</p> },
   ];
   return (
     <DataTable
@@ -129,8 +129,8 @@ export function ProviderProductsTable({ detail }: { detail: ProviderDetail }) {
     { id: "status", header: "Estado", cell: (product) => <StatusBadge status={product.status} label={productLabel(product.status)} /> },
   ];
   const metrics: MetricFilter<ProductItem>[] = [
-    { id: "main", label: "Principal", tone: "sun", icon: <Crown size={19} />, matches: (product) => product.role === "principal" },
-    { id: "component", label: "Componente", tone: "t1", icon: <Puzzle size={19} />, matches: (product) => product.role === "componente" },
+    { id: "main", label: "Principal", tone: "sun", icon: <Crown size={19} />, matches: (product) => product.role === "principal", info: <p>Productos del catálogo que tienen a este proveedor como proveedor principal.</p> },
+    { id: "component", label: "Componente", tone: "t1", icon: <Puzzle size={19} />, matches: (product) => product.role === "componente", info: <p>Productos que incluyen a este proveedor o a uno de sus servicios entre sus componentes, sin ser su proveedor principal.</p> },
   ];
   return (
     <DataTable
@@ -178,9 +178,9 @@ export function ProviderReservationsTable({ detail }: { detail: ProviderDetail }
     { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
   ];
   const metrics: MetricFilter<ReservationItem>[] = [
-    { id: "upcoming", label: "Próximos", tone: "t1", icon: <Hourglass size={19} />, matches: (row) => row.date >= detail.today && row.status !== "cancelado" },
-    { id: "pending", label: "Por confirmar", tone: "sun", icon: <CircleAlert size={19} />, matches: (row) => ["solicitado", "pendiente"].includes(row.status) },
-    { id: "confirmed", label: "Confirmados", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => ["confirmado", "completado"].includes(row.status) },
+    { id: "upcoming", label: "Próximos", tone: "t1", icon: <Hourglass size={19} />, matches: (row) => row.date >= detail.today && row.status !== "cancelado", info: <p>Servicios de este proveedor en tus reservas con fecha de hoy en adelante, sin contar los cancelados.</p> },
+    { id: "pending", label: "Por confirmar", tone: "sun", icon: <CircleAlert size={19} />, matches: (row) => ["solicitado", "pendiente"].includes(row.status), info: <p>Servicios de este proveedor en tus reservas que siguen solicitados o pendientes de confirmación.</p> },
+    { id: "confirmed", label: "Confirmados", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => ["confirmado", "completado"].includes(row.status), info: <p>Servicios de este proveedor en tus reservas ya confirmados o completados.</p> },
   ];
   return (
     <DataTable
@@ -221,9 +221,9 @@ export function ProviderPayablesTable({ detail }: { detail: ProviderDetail }) {
     { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
   ];
   const metrics: MetricFilter<PayableItem>[] = [
-    { id: "open", label: "Con saldo", tone: "sun", icon: <Hourglass size={19} />, matches: (row) => Number(row.balance) > 0 },
-    { id: "overdue", label: "Vencidas", tone: "bad", icon: <CircleAlert size={19} />, matches: (row) => row.overdue },
-    { id: "paid", label: "Pagadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "pagada" },
+    { id: "open", label: "Con saldo", tone: "sun", icon: <Hourglass size={19} />, matches: (row) => Number(row.balance) > 0, info: <p>Cuentas por pagar a este proveedor con saldo pendiente: monto menos lo ya pagado.</p> },
+    { id: "overdue", label: "Vencidas", tone: "bad", icon: <CircleAlert size={19} />, matches: (row) => row.overdue, info: <p>Cuentas por pagar a este proveedor cuya fecha de vencimiento ya pasó y que no están pagadas ni anuladas.</p> },
+    { id: "paid", label: "Pagadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "pagada", info: <p>Cuentas por pagar a este proveedor ya pagadas por completo.</p> },
   ];
   return (
     <DataTable

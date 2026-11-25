@@ -71,7 +71,7 @@ export function FinancePanel({ data, can }: { data: FinanceData; can: CanOpen })
         <PanelCard icon={CreditCard} title="Pagos por validar" tone="bad" className="lg:col-span-4" aside={<PanelLink href="/finanzas/pagos" can={can}>Pagos</PanelLink>}>
           <RowList
             empty="No hay pagos por validar."
-            items={data.to_validate.map((row) => ({ key: row.code, icon: CreditCard, tone: "warn", title: `${row.code} · ${capitalize(row.method)}`, detail: [row.reservation, shortDate(row.date), row.by ? `reportado por ${row.by}` : null].filter(Boolean).join(" · "), aside: <b className="font-mono">{formatMoney(row.amount, row.currency)}</b> }))}
+            items={data.to_validate.map((row) => ({ key: row.code, icon: CreditCard, tone: "warn", title: `${row.code} · ${row.method}`, detail: [row.reservation, shortDate(row.date), row.by ? `reportado por ${row.by}` : null].filter(Boolean).join(" · "), aside: <b className="font-mono">{formatMoney(row.amount, row.currency)}</b> }))}
           />
         </PanelCard>
         <PanelCard icon={HandCoins} title="Por pagar a proveedores" tone="violet" className="lg:col-span-4" aside={<PanelLink href="/finanzas/proveedores" can={can}>Proveedores</PanelLink>}>
@@ -99,7 +99,7 @@ export function FinancePanel({ data, can }: { data: FinanceData; can: CanOpen })
           <TrendBars labels={months.map((month) => month.label)} unit="money" series={[{ name: "Ventas", tone: "t1", values: months.map((month) => month.sales) }, { name: "Costo de proveedores", tone: "sun", values: months.map((month) => month.cost) }]} />
         </PanelCard>
         <PanelCard icon={Wallet} title={`Caja de ${data.month} por medio de pago`} tone="ok" className="lg:col-span-5">
-          <HBars empty="Aún no hay cobros aplicados este mes." rows={data.methods.map((row) => ({ key: row.label, label: `${capitalize(row.label)} (${row.count})`, value: row.sales, display: formatMoney(row.sales), tone: "ok" }))} />
+          <HBars empty="Aún no hay cobros aplicados este mes." rows={data.methods.map((row) => ({ key: row.label, label: `${row.label} (${row.count})`, value: row.sales, display: formatMoney(row.sales), tone: "ok" }))} />
         </PanelCard>
       </div>
     </>

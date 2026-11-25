@@ -25,10 +25,10 @@ export function PortalTrips({ trips }: { trips: PortalTripSummary[] }) {
     <>
       <PortalTitle title="Mis viajes" subtitle="Itinerario, pasajeros, documentos y pagos de cada viaje." />
       <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={CalendarHeart} tone="t1" label="Total" value={trips.length} note="Viajes con nosotros" />
-        <TintTile icon={Plane} tone="t3" label="Próximos" value={count("proximo")} note="Por empezar" />
-        <TintTile icon={TimerReset} tone="t4" label="En viaje" value={count("en_curso")} note="En curso hoy" />
-        <TintTile icon={CheckCircle2} tone="ok" label="Realizados" value={count("pasado")} note="Para recordar" />
+        <TintTile icon={CalendarHeart} tone="t1" label="Total" value={trips.length} note="Viajes con nosotros" info={<p>Todos tus viajes con nosotros, también los cancelados.</p>} />
+        <TintTile icon={Plane} tone="t3" label="Próximos" value={count("proximo")} note="Por empezar" info={<p>Viajes cuya fecha de inicio aún no llega.</p>} />
+        <TintTile icon={TimerReset} tone="t4" label="En viaje" value={count("en_curso")} note="En curso hoy" info={<p>Viajes que ya empezaron y terminan hoy o más adelante.</p>} />
+        <TintTile icon={CheckCircle2} tone="ok" label="Realizados" value={count("pasado")} note="Para recordar" info={<p>Viajes que ya terminaron o se dieron por completados.</p>} />
       </section>
       <div className="mb-4 flex flex-wrap gap-2">
         {FILTERS.filter((item) => item.id === "todos" || count(item.id) > 0).map((item) => {

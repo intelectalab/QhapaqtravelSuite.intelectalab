@@ -81,7 +81,8 @@ jobs:
       - run: ./vendor/bin/pint --test
       - run: ./vendor/bin/phpstan analyse --memory-limit=1G
       - run: php artisan migrate --database=pgsql_owner --force
-      - run: ./vendor/bin/pest --parallel
+      - run: ./vendor/bin/pest --parallel --exclude-group=base-sola
+      - run: ./vendor/bin/pest --group=base-sola
       - run: php artisan qa:write-coverage
       - name: Contrato OpenAPI
         run: |
@@ -118,6 +119,7 @@ jobs:
       - run: npm run api:gen && git diff --exit-code -- src/lib/api   # el cliente tipado debe estar al día con el contrato
       - run: npm run lint
       - run: npm run test
+      - run: npm run test:unit
       - run: npm run build
 
   mobile:

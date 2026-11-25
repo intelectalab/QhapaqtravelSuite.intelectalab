@@ -42,6 +42,7 @@ use App\Domain\Integrations\Mail\PlatformMailTransport;
 use App\Domain\Integrations\Mail\RoutedMessagingChannel;
 use App\Domain\Integrations\Mail\SmtpConnector;
 use App\Domain\Integrations\Support\ConfiguredCaptchaVerifier;
+use App\Domain\Platform\Support\NotificationThrottler;
 use App\Domain\Platform\Support\OutgoingMail;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Mail;
@@ -77,7 +78,7 @@ final class IntegrationServiceProvider extends ServiceProvider
                 $adapter = $this->driver($app, $contract, $definition);
 
                 return $contract === MessagingChannel::class && $adapter instanceof MessagingChannel
-                    ? new RoutedMessagingChannel($adapter, $app->make(AgencyMailbox::class), $app->make(AgencyMailer::class), $app->make(SmtpConnector::class))
+                    ? new RoutedMessagingChannel($adapter, $app->make(AgencyMailbox::class), $app->make(AgencyMailer::class), $app->make(SmtpConnector::class), $app->make(NotificationThrottler::class))
                     : $adapter;
             });
         }

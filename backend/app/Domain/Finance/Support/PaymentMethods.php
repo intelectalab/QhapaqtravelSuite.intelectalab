@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Support;
 
+use App\Domain\Finance\Actions\PaymentLinks;
+use App\Domain\Site\Support\CheckoutTerms;
 use Illuminate\Contracts\Database\Query\Expression;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class PaymentMethods
 {
+    public const SYSTEM = ['vale_regalo' => 'Vale de regalo'];
+
+    public const FOR_CUSTOMERS = ['tarjeta_e_commerce' => 'Tarjeta en línea', 'tarjeta_pasarela' => 'Tarjeta'];
+
     public const DEFAULTS = [
         'Transferencia BCP' => [true, false],
         'Transferencia Interbank' => [true, false],
@@ -42,7 +49,33 @@ final class PaymentMethods
 
     public function labels(): array
     {
-        return DB::table('fin_payment_methods')->pluck('label', 'code')->all();
+        return [...PaymentLinks::METHODS, ...CheckoutTerms::METHODS, ...self::SYSTEM, ...DB::table('fin_payment_methods')->pluck('label', 'code')->all()];
+    }
+
+    public function customerLabels(): array
+    {
+        return [...$this->labels(), ...self::FOR_CUSTOMERS];
+    }
+
+    public static function display(string $code, array $labels): string
+    {
+        return $labels[$code] ?? Str::ucfirst(str_replace('_', ' ', $code));
+    }
+
+    public function label(string $code): string
+    {
+        return self::display($code, $this->labels());
+    }
+
+    public function relabel(Collection $rows): Collection
+    {
+        $labels = $this->labels();
+
+        return $rows->map(function (object $row) use ($labels): object {
+            $row->method = self::display((string) $row->method, $labels);
+
+            return $row;
+        });
     }
 
     public function find(string $code): ?object

@@ -55,10 +55,10 @@ const CHANNEL_ICONS: Record<string, typeof Mail> = { email: Mail, whatsapp: Mess
 export function PassengerTiles({ kpis }: { kpis: PassengerPortalOverview["kpis"] }) {
   return (
     <TileGrid>
-      <TintTile icon={Send} tone="t1" label="Mensajes enviados" value={kpis.sent} note={`${kpis.scheduled} programados`} />
-      <TintTile icon={CheckCheck} tone="t4" label="Tasa de lectura" value={kpis.read_pct !== null ? `${kpis.read_pct} %` : "—"} note={`${kpis.read} leídos`} />
-      <TintTile icon={MessageSquareHeart} tone="violet" label="Comentarios nuevos" value={`${kpis.feedback_new} de ${kpis.feedback_total}`} note={kpis.rating !== null ? `Calificación media ${kpis.rating}` : "Sin calificaciones"} />
-      <TintTile icon={AlertCircle} tone="bad" label="Envíos fallidos" value={kpis.failed} note={kpis.failed > 0 ? "Revisa el contacto del pasajero" : "Todo entregado"} />
+      <TintTile icon={Send} tone="t1" label="Mensajes enviados" value={kpis.sent} note={`${kpis.scheduled} programados`} info={<p>Avisos enviados a los pasajeros por su portal, WhatsApp o correo. Los programados aún no salen.</p>} />
+      <TintTile icon={CheckCheck} tone="t4" label="Tasa de lectura" value={kpis.read_pct !== null ? `${kpis.read_pct} %` : "—"} note={`${kpis.read} leídos`} info={<p>Mensajes leídos sobre mensajes enviados.</p>} />
+      <TintTile icon={MessageSquareHeart} tone="violet" label="Comentarios nuevos" value={`${kpis.feedback_new} de ${kpis.feedback_total}`} note={kpis.rating !== null ? `Calificación media ${kpis.rating}` : "Sin calificaciones"} info={<p>Comentarios de pasajeros aún sin leer, sobre el total recibido. La calificación media es la de las estrellas que dejaron.</p>} />
+      <TintTile icon={AlertCircle} tone="bad" label="Envíos fallidos" value={kpis.failed} note={kpis.failed > 0 ? "Revisa el contacto del pasajero" : "Todo entregado"} info={<p>Mensajes que no se pudieron entregar, casi siempre por un teléfono o correo del pasajero inválido.</p>} />
     </TileGrid>
   );
 }
@@ -200,9 +200,9 @@ function MessagesTable({ rows }: { rows: PaxMessage[] }) {
     { id: "actions", header: "", cell: (row) => <RowActions><MessageDetail message={row} /></RowActions> },
   ];
   const metrics: MetricFilter<PaxMessage>[] = [
-    { id: "scheduled", label: "Programados", tone: "info", icon: <BellRing size={19} />, matches: (row) => row.status === "programado" },
-    { id: "read", label: "Leídos", tone: "ok", icon: <CheckCheck size={19} />, matches: (row) => row.status === "leido" },
-    { id: "failed", label: "Fallidos", tone: "bad", icon: <AlertCircle size={19} />, matches: (row) => row.status === "fallido" },
+    { id: "scheduled", label: "Programados", tone: "info", icon: <BellRing size={19} />, matches: (row) => row.status === "programado", info: <p>Mensajes con fecha de envío futura.</p> },
+    { id: "read", label: "Leídos", tone: "ok", icon: <CheckCheck size={19} />, matches: (row) => row.status === "leido", info: <p>Mensajes que el pasajero abrió.</p> },
+    { id: "failed", label: "Fallidos", tone: "bad", icon: <AlertCircle size={19} />, matches: (row) => row.status === "fallido", info: <p>Mensajes que no se pudieron entregar.</p> },
   ];
   const filters: FilterConfig<PaxMessage>[] = [
     { id: "channel", label: "Canal", options: Object.entries(MESSAGE_CHANNELS).map(([value, label]) => ({ value, label })), value: (row) => row.channel },
@@ -218,7 +218,17 @@ export function PassengerWorkspace({ overview }: { overview: PassengerPortalOver
     <Card padded={false}>
       <Tabs
         tabs={[
-          { id: "feedback", label: "Comentarios", count: overview.feedback.length, content: <FeedbackBoard rows={overview.feedback} canReply={overview.can_reply} /> },
+          {
+            id: "feedback",
+            label: "Comentarios",
+            count: overview.feedback.length,
+            content: (
+              <div className="flex flex-col gap-5">
+                <PassengerTiles kpis={overview.kpis} />
+                <FeedbackBoard rows={overview.feedback} canReply={overview.can_reply} />
+              </div>
+            ),
+          },
           { id: "messages", label: "Mensajes enviados", count: overview.messages.length, content: <MessagesTable rows={overview.messages} /> },
         ]}
       />

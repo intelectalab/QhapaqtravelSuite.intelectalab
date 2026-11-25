@@ -150,10 +150,10 @@ export function AgencyReservationDetail({ reservation, created, openCancel }: { 
       )}
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={ReceiptText} tone="t3" label="Total neto" value={formatMoney(reservation.total, reservation.currency)} note={reservation.pvp ? `PVP sugerido ${formatMoney(reservation.pvp, reservation.currency)}` : reservation.price_list ?? "Tarifa de convenio"} />
-        <TintTile icon={CheckCircle2} tone="ok" label="Pagado" value={formatMoney(reservation.billing.paid, reservation.billing.currency)} note={`de ${formatMoney(reservation.billing.amount, reservation.billing.currency)}`} />
-        <TintTile icon={Wallet} tone={reservation.billing.balance > 0 ? "t2" : "ok"} label="Saldo" value={reservation.billing.balance > 0 ? formatMoney(reservation.billing.balance, reservation.billing.currency) : "Al día"} note={reservation.billing.installments[0] ? `Vence ${formatDate(reservation.billing.installments[0].due_date)}` : "Sin cuotas"} />
-        <TintTile icon={BadgePercent} tone="violet" label="Tu comisión" value={reservation.commission ? formatMoney(reservation.commission.amount, reservation.commission.currency) : "—"} note={reservation.commission ? `${reservation.commission.pct} % · ${agencyStatus(reservation.commission.status).label.toLowerCase()}` : "Sin comisión"} />
+        <TintTile icon={ReceiptText} tone="t3" label="Total neto" value={formatMoney(reservation.total, reservation.currency)} note={reservation.pvp ? `PVP sugerido ${formatMoney(reservation.pvp, reservation.currency)}` : reservation.price_list ?? "Tarifa de convenio"} info={<p>Total neto de la reserva con tu tarifa de convenio.</p>} />
+        <TintTile icon={CheckCircle2} tone="ok" label="Pagado" value={formatMoney(reservation.billing.paid, reservation.billing.currency)} note={`de ${formatMoney(reservation.billing.amount, reservation.billing.currency)}`} info={<p>Suma de lo pagado en las cuotas de esta reserva.</p>} />
+        <TintTile icon={Wallet} tone={reservation.billing.balance > 0 ? "t2" : "ok"} label="Saldo" value={reservation.billing.balance > 0 ? formatMoney(reservation.billing.balance, reservation.billing.currency) : "Al día"} note={reservation.billing.installments[0] ? `Vence ${formatDate(reservation.billing.installments[0].due_date)}` : "Sin cuotas"} info={<p>Saldo = total de las cuotas − lo pagado.</p>} />
+        <TintTile icon={BadgePercent} tone="violet" label="Tu comisión" value={reservation.commission ? formatMoney(reservation.commission.amount, reservation.commission.currency) : "—"} note={reservation.commission ? `${reservation.commission.pct} % · ${agencyStatus(reservation.commission.status).label.toLowerCase()}` : "Sin comisión"} info={<p>Comisión de tu agencia por esta reserva.</p>} />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">

@@ -218,10 +218,10 @@ export function ConsentBook({ overview, reach }: { overview: ConsentsOverview; r
   ];
   const reachable = (row: MarketingContact) => (consentOf(row, "email")?.status === "otorgado" && Boolean(row.email)) || (consentOf(row, "whatsapp")?.status === "otorgado" && Boolean(row.mobile));
   const metrics: MetricFilter<MarketingContact>[] = [
-    { id: "contactable", label: "Contactables", tone: "t4", icon: <UserRound size={19} />, display: `${reach.email} · ${reach.whatsapp}`, note: "Email · WhatsApp", info: <p>Contactos con consentimiento vigente y un dato válido para el canal: correo para email y celular para WhatsApp. Al presionarla, la tabla muestra a quienes se puede escribir por al menos un canal.</p>, matches: reachable },
-    { id: "both", label: "Ambos canales", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => granted(row) === 2 },
+    { id: "contactable", label: "Contactables", tone: "t4", icon: <UserRound size={19} />, display: `${reach.email} · ${reach.whatsapp}`, note: "Email · WhatsApp", info: <p>Contactos con consentimiento vigente y un dato válido para el canal: correo para email y celular para WhatsApp.</p>, matches: reachable },
+    { id: "both", label: "Ambos canales", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => granted(row) === 2, info: <p>Contactos con consentimiento otorgado tanto para email como para WhatsApp.</p> },
     { id: "revoked", label: "Con baja", tone: "bad", icon: <ShieldOff size={19} />, note: `${reach.revoked30} en los últimos 30 días`, info: <p>Contactos con al menos un canal revocado. La nota cuenta las bajas de los últimos 30 días por enlace de baja, respuesta BAJA, solicitud ARCO o registro manual; se excluyen de los envíos al instante.</p>, matches: (row) => CHANNELS.some((channel) => consentOf(row, channel)?.status === "revocado") },
-    { id: "none", label: "Sin registro", tone: "mute", icon: <CircleSlash size={19} />, matches: (row) => !row.email_consent && !row.whatsapp_consent },
+    { id: "none", label: "Sin registro", tone: "mute", icon: <CircleSlash size={19} />, matches: (row) => !row.email_consent && !row.whatsapp_consent, info: <p>Contactos sin ningún consentimiento registrado, ni para email ni para WhatsApp.</p> },
   ];
   const filters: FilterConfig<MarketingContact>[] = [
     { id: "type", label: "Tipo", options: [{ value: "client", label: "Cliente" }, { value: "lead", label: "Lead" }, { value: "subscriber", label: "Suscriptor" }], value: (row) => row.type },

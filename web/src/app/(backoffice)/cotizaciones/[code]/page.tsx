@@ -1,5 +1,5 @@
 import { ConsultModeNotice } from "@/components/ui/ConsultMode";
-import { BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList, FileText, History, Layers, Percent, Route, Send, Target, TrendingUp, UserRound, Users, Wallet } from "lucide-react";
+import { BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList, FileText, History, Layers, Percent, Plane, Route, Send, Target, TrendingUp, UserRound, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ScopeDenied } from "@/components/shell/ScopeDenied";
@@ -9,9 +9,11 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { SectionLayout, SectionNav } from "@/components/ui/SectionNav";
 import { HeroBand, HeroChip, HeroPanel, Journey, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { AssistantSideAction } from "@/features/growth/AssistantSideAction";
 import { QuoteLifecycleActions } from "@/features/quotes/QuoteActions";
 import { QuoteConvertAction } from "@/features/quotes/QuoteConvertAction";
 import { QuoteDuplicateAction, QuoteReassignAction } from "@/features/quotes/QuoteCopyActions";
+import { QuoteExternalOffers } from "@/features/quotes/QuoteExternalOffers";
 import { ActivitySection, DetailSection, PricingSection, TrackingSection, VersionsSection } from "@/features/quotes/QuoteSections";
 import { QuoteWizardAction } from "@/features/quotes/wizard/QuoteWizard";
 import { formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
@@ -19,7 +21,7 @@ import { paxLabel, QUOTE_JOURNEY } from "@/lib/quotes";
 import { resolveSections } from "@/lib/sections";
 import { isOutOfPortfolio } from "@/lib/server/detail";
 import { getAdvisors } from "@/lib/server/leads";
-import { getQuote, getQuoteActivity, getQuoteConversion, getQuoteFormOptions } from "@/lib/server/quotes";
+import { getQuote, getQuoteActivity, getQuoteConversion, getQuoteExternalOffers, getQuoteFormOptions } from "@/lib/server/quotes";
 import { statusLabel, statusTone } from "@/lib/tone";
 
 export async function generateMetadata({ params }: PageProps<"/cotizaciones/[code]">): Promise<Metadata> {
@@ -49,6 +51,7 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
       { group: "Cotización", id: "detalle", label: "Detalle e ítems", icon: <ClipboardList size={15} />, count: quote.versions[0]?.items.length },
       { group: "Cotización", id: "versiones", label: "Versiones", icon: <Layers size={15} />, count: quote.versions.length },
       { group: "Cotización", id: "pricing", label: "Pricing", icon: <TrendingUp size={15} />, show: quote.see_margin },
+      { group: "Cotización", id: "aereo-hotel", label: "Aéreo y hotel", icon: <Plane size={15} />, show: quote.can.external_offers === true },
       { group: "Seguimiento", id: "seguimiento", label: "Envío y seguimiento", icon: <Send size={15} />, count: quote.timeline.length },
       { group: "Control", id: "actividad", label: "Actividad", icon: <History size={15} /> },
     ],
@@ -60,6 +63,10 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
         return <VersionsSection quote={quote} />;
       case "pricing":
         return <PricingSection quote={quote} />;
+      case "aereo-hotel": {
+        const offers = await getQuoteExternalOffers(code);
+        return <QuoteExternalOffers initial={offers.data} blocked={offers.blocked} versionTotal={String(quote.total)} />;
+      }
       case "seguimiento":
         return <TrackingSection quote={quote} />;
       case "actividad":
@@ -90,6 +97,7 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
           <div className="flex flex-wrap items-center justify-end gap-2">
             {editOptions && <QuoteWizardAction options={editOptions} quote={quote} defaultOpen={editar === "1"} />}
             <DownloadButton href={`/cotizaciones/${quote.code}/pdf/${quote.version}`} label="Propuesta PDF" iconOnlyOnMobile />
+            <AssistantSideAction type="quote" code={quote.code} returnPath={base} />
             <QuoteLifecycleActions quote={quote} />
             {quote.can.duplicate && <QuoteDuplicateAction quote={quote} />}
             {quote.can.reassign && quote.status !== "convertida" && <QuoteReassignAction quote={quote} advisors={advisors} />}
@@ -124,21 +132,22 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
       </HeroBand>
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <TintTile icon={UserRound} tone="t1" label="Cliente" value={<Link href={`/crm/clientes/${quote.client.code}`} className="text-[16px] hover:underline">{quote.client.name}</Link>} note={quote.client.code} />
-        <TintTile icon={Target} tone="violet" label="Oportunidad" value={quote.opportunity ? <Link href={`/crm/oportunidades/${quote.opportunity.code}`} className="text-[16px] hover:underline">{quote.opportunity.code}</Link> : <span className="text-[14px] text-fg-3">Sin oportunidad</span>} note={quote.opportunity ? `${quote.opportunity.title}${quote.opportunity.stage ? ` · etapa ${statusLabel(quote.opportunity.stage).toLowerCase()}` : ""}` : undefined} />
+        <TintTile icon={UserRound} tone="t1" label="Cliente" value={<Link href={`/crm/clientes/${quote.client.code}`} className="text-[16px] hover:underline">{quote.client.name}</Link>} note={quote.client.code} info={<p>Cliente para quien se armó la cotización. Si nace de una oportunidad, debe ser el mismo cliente de esa oportunidad.</p>} />
+        <TintTile icon={Target} tone="violet" label="Oportunidad" value={quote.opportunity ? <Link href={`/crm/oportunidades/${quote.opportunity.code}`} className="text-[16px] hover:underline">{quote.opportunity.code}</Link> : <span className="text-[14px] text-fg-3">Sin oportunidad</span>} note={quote.opportunity ? `${quote.opportunity.title}${quote.opportunity.stage ? ` · etapa ${statusLabel(quote.opportunity.stage).toLowerCase()}` : ""}` : undefined} info={<p>Oportunidad comercial de la que nace la cotización. Solo se liga a una oportunidad abierta, que no esté ganada ni perdida.</p>} />
         <TintTile
           icon={quote.reservation ? Route : CalendarDays}
           tone="sun"
           label={quote.reservation ? "Reserva" : "Vigencia"}
           value={quote.reservation ? <Link href={`/reservas/${quote.reservation.code}`} data-testid="quote-reservation-link" className="text-[16px] hover:underline">{quote.reservation.code}</Link> : <span className="text-[16px]">{quote.days_left === null ? formatDate(quote.valid_until) : quote.days_left < 0 ? "Vencida" : quote.days_left === 0 ? "Vence hoy" : quote.days_left === 1 ? "1 día" : `${quote.days_left} días`}</span>}
           note={quote.reservation ? "Generada desde esta cotización" : `Hasta el ${formatDate(quote.valid_until)}`}
+          info={quote.reservation ? <p>Reserva creada al convertir esta cotización.</p> : <p>Días que quedan hasta la fecha de validez de la cotización. Si ya no está abierta, se muestra esa fecha.</p>}
         />
         {quote.margin_pct === null ? (
-          <TintTile icon={Percent} tone="t4" label="Descuento" value={`${Number(quote.versions[0]?.discount_pct ?? 0)} %`} note={`Versión ${quote.version}`} />
+          <TintTile icon={Percent} tone="t4" label="Descuento" value={`${Number(quote.versions[0]?.discount_pct ?? 0)} %`} note={`Versión ${quote.version}`} info={<p>Descuento aplicado en la última versión de la cotización.</p>} />
         ) : (
-          <TintTile icon={Wallet} tone="t4" label="Margen" value={`${quote.margin_pct} %`} note={`Descuento ${Number(quote.versions[0]?.discount_pct ?? 0)} %`} />
+          <TintTile icon={Wallet} tone="t4" label="Margen" value={`${quote.margin_pct} %`} note={`Descuento ${Number(quote.versions[0]?.discount_pct ?? 0)} %`} info={<p>Margen de la versión vigente: venta neta sin impuestos menos el costo de los servicios, dividido entre la venta neta.</p>} />
         )}
-        <TintTile icon={BriefcaseBusiness} tone="t2" label="Vendedor" value={<span className="flex items-center gap-2 text-[16px]"><Avatar name={quote.owner.name} size="xs" solid />{shortName(quote.owner.name)}</span>} note="Responsable de la cotización" />
+        <TintTile icon={BriefcaseBusiness} tone="t2" label="Vendedor" value={<span className="flex items-center gap-2 text-[16px]"><Avatar name={quote.owner.name} size="xs" solid />{shortName(quote.owner.name)}</span>} note="Responsable de la cotización" info={<p>Asesor dueño de la cotización: quien la creó o a quien se la reasignaron después.</p>} />
       </section>
 
       {quote.status === "vencida" && (

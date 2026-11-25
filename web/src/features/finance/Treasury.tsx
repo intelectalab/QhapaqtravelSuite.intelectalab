@@ -249,10 +249,10 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
   ];
 
   const metrics: MetricFilter<TreasuryMovement>[] = [
-    { id: "manual", label: "Manuales", tone: "t1", icon: <Landmark size={19} />, matches: (row) => row.manual && row.status === "posted" },
-    { id: "petty", label: "Gastos de caja chica", tone: "sun", icon: <Banknote size={19} />, matches: (row) => row.type === "petty_expense" && row.status === "posted" },
-    { id: "gateway", label: "Pasarelas", tone: "violet", icon: <CreditCard size={19} />, matches: (row) => row.type.startsWith("gateway") && row.status === "posted" },
-    { id: "voided", label: "Anulados", tone: "bad", icon: <Wallet size={19} />, matches: (row) => row.status === "voided" },
+    { id: "manual", label: "Manuales", tone: "t1", icon: <Landmark size={19} />, matches: (row) => row.manual && row.status === "posted", info: <p>Movimientos vigentes registrados a mano con «Registrar movimiento»: alquileres, tributos y otros que no nacen de un cobro, un pago a proveedor ni una caja chica.</p> },
+    { id: "petty", label: "Gastos de caja chica", tone: "sun", icon: <Banknote size={19} />, matches: (row) => row.type === "petty_expense" && row.status === "posted", info: <p>Gastos vigentes pagados desde una caja chica, con su comprobante.</p> },
+    { id: "gateway", label: "Pasarelas", tone: "violet", icon: <CreditCard size={19} />, matches: (row) => row.type.startsWith("gateway") && row.status === "posted", info: <p>Movimientos vigentes de las pasarelas: cobros con tarjeta que entran y liquidaciones al banco.</p> },
+    { id: "voided", label: "Anulados", tone: "bad", icon: <Wallet size={19} />, matches: (row) => row.status === "voided", info: <p>Movimientos manuales anulados. Ya no cuentan en el saldo de su cuenta.</p> },
   ];
 
   const filters: FilterConfig<TreasuryMovement>[] = [

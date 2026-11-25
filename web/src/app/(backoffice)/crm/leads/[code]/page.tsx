@@ -14,6 +14,7 @@ import type { LeadDetail } from "@/lib/leads";
 import { ActivityCreateAction } from "@/features/activities/ActivityForms";
 import { RelatedActivities } from "@/features/activities/ActivityRow";
 import { RecordHistory } from "@/features/crm/RecordHistory";
+import { AssistantSideAction } from "@/features/growth/AssistantSideAction";
 import { LeadActions } from "@/features/leads/LeadActions";
 import { LeadDuplicates } from "@/features/leads/LeadDuplicates";
 import { getRelatedOptions } from "@/lib/server/activities";
@@ -63,7 +64,12 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/crm
           </span>
         }
         subtitle={[lead.code, lead.company].filter(Boolean).join(" · ")}
-        actions={catalogs ? <LeadActions lead={lead} catalogs={catalogs} viewerId={me.id} advisors={advisors} opportunityOptions={opportunityOptions} editOpen={editar === "1"} /> : undefined}
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!closed && <AssistantSideAction type="lead" code={lead.code} returnPath={`/crm/leads/${encodeURIComponent(lead.code)}`} />}
+            {catalogs && <LeadActions lead={lead} catalogs={catalogs} viewerId={me.id} advisors={advisors} opportunityOptions={opportunityOptions} editOpen={editar === "1"} />}
+          </div>
+        }
       />
       <ConsultModeNotice permissions={["crm.leads.manage"]} what="gestionar leads" />
 

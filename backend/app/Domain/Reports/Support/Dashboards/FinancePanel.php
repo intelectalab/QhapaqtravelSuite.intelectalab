@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Reports\Support\Dashboards;
 
+use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -13,7 +14,7 @@ final class FinancePanel
 {
     private const AGING = ['Por vencer', '1 a 30 días', '31 a 60 días', '61 a 90 días', 'Más de 90 días'];
 
-    public function __construct(private readonly PanelData $data) {}
+    public function __construct(private readonly PanelData $data, private readonly PaymentMethods $methods) {}
 
     public function build(User $viewer): array
     {
@@ -23,6 +24,7 @@ final class FinancePanel
         $receivables = $this->data->receivables($viewer);
         $overdue = $receivables->filter(fn (object $row): bool => $this->data->overdue($row));
         $cash = DB::table('fin_payments')->where('kind', 'cobro')->whereIn('status', ['aplicado', 'confirmado'])->whereBetween('paid_on', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()])->get(['method', 'amount', 'fx_rate']);
+        $labels = $this->methods->labels();
         $toValidate = $this->toValidate();
         $payables = $this->payables($this->data->now()->addDays(7)->toDateString(), $today);
 
@@ -43,18 +45,20 @@ final class FinancePanel
             'payables' => $payables->take(6)->values(),
             'commissions' => $this->commissions(),
             'months' => $months,
-            'methods' => $cash->groupBy('method')->map(fn (Collection $group, string $method): array => ['label' => $method, 'sales' => round($group->sum(fn (object $row): float => $this->data->pen((float) $row->amount, $row->fx_rate)), 2), 'count' => $group->count()])->sortByDesc('sales')->values(),
+            'methods' => $cash->groupBy('method')->map(fn (Collection $group, string $method): array => ['label' => PaymentMethods::display($method, $labels), 'sales' => round($group->sum(fn (object $row): float => $this->data->pen((float) $row->amount, $row->fx_rate)), 2), 'count' => $group->count()])->sortByDesc('sales')->values(),
         ];
     }
 
     private function toValidate(): Collection
     {
+        $labels = $this->methods->labels();
+
         return DB::table('fin_payments as p')->leftJoin('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->leftJoin('iam_users as u', 'u.id', '=', 'p.registered_by')
             ->where('p.kind', 'cobro')->where('p.status', 'pendiente')->orderBy('p.paid_on')
             ->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.paid_on', 'p.source', 'r.code as reservation', 'u.name as by'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,
-                'method' => $row->method,
+                'method' => PaymentMethods::display((string) $row->method, $labels),
                 'reservation' => $row->reservation,
                 'date' => $row->paid_on,
                 'by' => $row->by,

@@ -9,6 +9,7 @@ use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Contracts\PushSender;
 use App\Domain\Integrations\Data\OutboundMessage;
 use App\Domain\Integrations\Support\PushTickets;
+use App\Domain\Platform\Support\NotificationThrottler;
 use App\Domain\Shared\Tenancy\Jobs\RestoreTenantContext;
 use App\Domain\Shared\Tenancy\Jobs\TenantAware;
 use Illuminate\Bus\Queueable;
@@ -62,6 +63,13 @@ final class RetryNotificationMessage implements ShouldQueue
             }
         } else {
             $result = $message->recipient_address ? $channel->send(new OutboundMessage(channel: (string) $message->channel, to: (string) $message->recipient_address, subject: $message->subject, body: (string) $message->body_rendered)) : null;
+        }
+
+        if ($result !== null && $result->errorClass === 'cuota') {
+            DB::table('notif_messages')->where('id', $message->id)->update(['last_error' => mb_substr((string) $result->message, 0, 500)]);
+            dispatch((new self((string) $message->id))->forTenant((string) $this->tenantId))->delay(app(NotificationThrottler::class)->resumesAt());
+
+            return;
         }
 
         $ok = $result !== null && $result->ok;

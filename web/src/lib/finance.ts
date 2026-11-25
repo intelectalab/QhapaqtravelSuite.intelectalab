@@ -457,6 +457,24 @@ export interface PaymentRoutingRule {
   accounts: { PEN: string | null; USD: string | null };
 }
 
+export interface PaymentMethodRow {
+  code: string;
+  label: string;
+  requires_reference: boolean;
+  b2b: boolean;
+  active: boolean;
+  uses: number;
+  accounts: { PEN: string | null; USD: string | null };
+  destination: RoutingDestination | null;
+  bank: string | null;
+  updated_at: string | null;
+}
+
+export interface PaymentMethodCatalog {
+  rows: PaymentMethodRow[];
+  can: { manage: boolean };
+}
+
 export const ROUTING_DESTINATIONS: Record<RoutingDestination, string> = {
   bank: "Cuenta bancaria",
   gateway: "Pasarela de pagos",

@@ -192,9 +192,9 @@ export function SedesTable({ sedes, managers }: { sedes: TeamSede[]; managers: M
     },
   ];
   const metrics: MetricFilter<TeamSede>[] = [
-    { id: "active", label: "Activas", tone: "ok", icon: <Power size={19} />, matches: (sede) => sede.status === "activa" },
-    { id: "inactive", label: "Inactivas", tone: "mute", icon: <PowerOff size={19} />, matches: (sede) => sede.status !== "activa" },
-    { id: "empty", label: "Sin responsable", tone: "warn", icon: <Users size={19} />, matches: (sede) => sede.manager === null },
+    { id: "active", label: "Activas", tone: "ok", icon: <Power size={19} />, matches: (sede) => sede.status === "activa", info: <p>Sedes activas de tu agencia.</p> },
+    { id: "inactive", label: "Inactivas", tone: "mute", icon: <PowerOff size={19} />, matches: (sede) => sede.status !== "activa", info: <p>Sedes desactivadas de tu agencia.</p> },
+    { id: "empty", label: "Sin responsable", tone: "warn", icon: <Users size={19} />, matches: (sede) => sede.manager === null, info: <p>Sedes, activas o no, que no tienen un responsable asignado.</p> },
   ];
   const filters: FilterConfig<TeamSede>[] = [
     { id: "city", label: "Ciudad", options: [...new Set(sedes.map((sede) => sede.city).filter((city): city is string => Boolean(city)))].map((city) => ({ value: city, label: city })), value: (sede) => sede.city ?? "" },

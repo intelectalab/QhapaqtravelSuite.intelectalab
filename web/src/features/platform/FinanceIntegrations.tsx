@@ -1,17 +1,22 @@
 "use client";
 
-import { CircleCheck, CircleDashed, FileCheck2, KeyRound, Pencil, PlugZap, Plus, ReceiptText, Trash2, Unplug } from "lucide-react";
+import { CircleCheck, CircleDashed, FileCheck2, KeyRound, Pencil, PlugZap, Plus, ReceiptText, Trash2, Unplug, Webhook } from "lucide-react";
 import { useState } from "react";
-import { clearTenantOseCredentials, createFxProvider, createOseProvider, deleteFxProvider, deleteOseProvider, saveTenantOseCredentials, testPlatformFxProvider, testTenantOse, updateFxProvider, updateOseProvider } from "@/app/plataforma/(consola)/integraciones/finanzas-actions";
+import { clearTenantOseCredentials, createFxProvider, createOseProvider, deleteFxProvider, deleteOseProvider, generateOseWebhookSecret, saveTenantOseCredentials, testPlatformFxProvider, testTenantOse, updateFxProvider, updateOseProvider } from "@/app/plataforma/(consola)/integraciones/finanzas-actions";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InfoTip } from "@/components/ui/InfoTip";
+import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
+import { SecretReveal } from "@/features/admin/AdminParts";
 import { OseProgress } from "@/features/finance/OseStatus";
+import { ADMIN_INITIAL, type AdminActionState } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import type { CredentialSlot, DriverOption, FxCatalogOverview, FxCatalogProvider, OseCatalogOverview, OseProvider, TenantOse } from "@/lib/financeProviders";
 import { formatDateTime } from "@/lib/format";
@@ -141,7 +146,57 @@ export function FxCatalogBoard({ data }: { data: FxCatalogOverview }) {
   );
 }
 
-function OseProviderCard({ provider, index }: { provider: OseProvider; index: number }) {
+function OseWebhookBlock({ provider, onSecret }: { provider: OseProvider; onSecret: (secret: string, rotated: boolean) => void }) {
+  const webhook = provider.webhook;
+  if (!webhook) return null;
+  const rotate = webhook.secret_set;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-[11px] border border-line bg-surface-2 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-[12.5px] font-semibold">
+          <Webhook size={14} className="text-[var(--tint)]" />
+          Webhook del OSE
+          <InfoTip>{`${provider.name} avisa a esta dirección cuando SUNAT acepta, observa o rechaza un comprobante, y firma cada aviso con esta clave en la cabecera ${webhook.signature_header}. Cada OSE tiene su propia clave.`}</InfoTip>
+        </span>
+        <Badge tone={webhook.secret_set ? (webhook.still_previous ? "warn" : "ok") : "mute"}>{webhook.secret_set ? (webhook.still_previous ? "Usa la anterior" : "Clave lista") : "Sin clave"}</Badge>
+      </div>
+      <span className="break-all font-mono text-[11.5px] text-fg-2">{webhook.callback_url}</span>
+      <p className="text-[12px] text-fg-3">
+        {webhook.secret_set ? <>Clave <span className="font-mono">{webhook.secret_hint}</span>{webhook.secret_generated_at && ` · generada el ${formatDateTime(webhook.secret_generated_at)}`}</> : "Sin clave, los avisos de este OSE se rechazan."}
+        {webhook.previous_secret_until && (webhook.previous_secret_valid ? ` · la anterior vale hasta el ${formatDateTime(webhook.previous_secret_until)}` : ` · la anterior venció el ${formatDateTime(webhook.previous_secret_until)}`)}
+        {webhook.last_signed_at && ` · último aviso el ${formatDateTime(webhook.last_signed_at)}${webhook.last_key === "anterior" ? " con la clave anterior" : ""}`}
+      </p>
+      <div className="flex justify-end">
+        <PanelAction<AdminActionState>
+          label={rotate ? "Rotar clave" : "Generar clave"}
+          formId={`ose-webhook-${provider.code}`}
+          title={rotate ? `Rotar la clave de ${provider.name}` : `Generar la clave de ${provider.name}`}
+          description={rotate ? "Se crea una clave nueva y la verás una sola vez. La anterior sigue valiendo 24 horas para que la cambies en el OSE sin perder avisos." : "Se crea la clave con la que el OSE firma cada aviso. La verás una sola vez para copiarla en el panel del OSE."}
+          submitLabel={rotate ? "Rotar clave" : "Generar clave"}
+          action={generateOseWebhookSecret}
+          initial={ADMIN_INITIAL}
+          successToast={false}
+          onDone={(state) => state.secret && onSecret(state.secret, state.label === "rotada")}
+          trigger={(open) => (
+            <Button variant={rotate ? "secondary" : "primary"} size="sm" icon={<KeyRound size={15} />} onClick={open}>
+              {rotate ? "Rotar clave" : "Generar clave"}
+            </Button>
+          )}
+        >
+          {() => (
+            <>
+              <input type="hidden" name="code" value={provider.code} />
+              <p className="text-[13px] text-fg-2">Pega la clave y la URL de devolución en la configuración de avisos del OSE. Queda en la auditoría.</p>
+            </>
+          )}
+        </PanelAction>
+      </div>
+    </div>
+  );
+}
+
+function OseProviderCard({ provider, index, onSecret }: { provider: OseProvider; index: number; onSecret: (secret: string, rotated: boolean) => void }) {
   const tone: Tone = provider.status === "homologado" ? "ok" : "warn";
 
   return (
@@ -168,6 +223,7 @@ function OseProviderCard({ provider, index }: { provider: OseProvider; index: nu
         </dl>
         {provider.note && <p className="text-[12.5px] text-fg-2">{provider.note}</p>}
         {provider.homologated_at && <p className="text-[12px] text-fg-3">Homologado el {formatDateTime(provider.homologated_at)}</p>}
+        <OseWebhookBlock provider={provider} onSecret={onSecret} />
         <footer className="mt-auto flex items-center justify-end gap-1">
           <ConsoleAction id={`ose-edit-${provider.code}`} label="Editar" icon={<Pencil size={15} />} rowTone="edit" title={`Editar ${provider.name}`} description="Solo los OSE homologados aparecen para que las agencias los elijan." submitLabel="Guardar" action={updateOseProvider} fields={{ code: provider.code }}>
             <div className="flex flex-col gap-3">
@@ -176,7 +232,7 @@ function OseProviderCard({ provider, index }: { provider: OseProvider; index: nu
               <TextArea label="Nota" name="note" rows={2} maxLength={300} defaultValue={provider.note ?? ""} />
             </div>
           </ConsoleAction>
-          <ConsoleAction id={`ose-delete-${provider.code}`} label="Eliminar" icon={<Trash2 size={15} />} rowTone="delete" title={`Eliminar ${provider.name}`} description="Solo se elimina si ninguna agencia lo tiene elegido." submitLabel="Eliminar" action={deleteOseProvider} fields={{ code: provider.code }} />
+          <ConsoleAction id={`ose-delete-${provider.code}`} label="Eliminar" icon={<Trash2 size={15} />} rowTone="delete" title={`Eliminar ${provider.name}`} description="Solo se elimina si ninguna agencia lo tiene elegido. Su clave de webhook se borra con él."submitLabel="Eliminar" action={deleteOseProvider} fields={{ code: provider.code }} />
         </footer>
       </article>
     </ToneScope>
@@ -184,8 +240,11 @@ function OseProviderCard({ provider, index }: { provider: OseProvider; index: nu
 }
 
 export function OseCatalogBoard({ data }: { data: OseCatalogOverview }) {
+  const [secret, setSecret] = useState<{ value: string; title: string } | null>(null);
+
   return (
     <section aria-label="Catálogo de OSE" className="flex flex-col gap-4">
+      {secret && <SecretReveal secret={secret.value} title={secret.title} onClose={() => setSecret(null)} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-[680px] text-[13px] text-fg-2">
           {data.counts.homologated} de {data.counts.total} homologados · {data.counts.tenants} agencias con OSE elegido. Las credenciales de cada agencia se cargan en su ficha.
@@ -208,7 +267,7 @@ export function OseCatalogBoard({ data }: { data: OseCatalogOverview }) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {data.providers.map((provider, index) => (
-            <OseProviderCard key={provider.code} provider={provider} index={index} />
+            <OseProviderCard key={provider.code} provider={provider} index={index} onSecret={(value, rotated) => setSecret({ value, title: `${rotated ? "Nueva clave" : "Clave"} del webhook de ${provider.name}` })} />
           ))}
         </div>
       )}

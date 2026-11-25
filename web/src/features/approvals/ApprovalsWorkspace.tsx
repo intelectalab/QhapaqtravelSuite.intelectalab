@@ -142,14 +142,14 @@ function ApprovalTable({ rows, screen, overview, csv, decided = false }: { rows:
   const [weekAgo] = useState(() => Date.now() - 7 * 86_400_000);
   const decidedMetrics: MetricFilter<ApprovalItem>[] = [
     { id: "resolved", label: "Resueltas en 7 días", tone: "ok", icon: <CircleCheckBig size={19} />, note: overview.kpis.avg_hours !== null ? `${overview.kpis.avg_hours} h en promedio` : "Sin decisiones recientes", info: <p>Solicitudes aprobadas o rechazadas en los últimos 7 días; la nota es el tiempo promedio desde que se pidieron hasta que se decidieron.</p>, matches: (row) => row.decided_at !== null && ["aprobada", "rechazada"].includes(row.status) && new Date(row.decided_at).getTime() >= weekAgo },
-    { id: "approved", label: "Aprobadas", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => row.status === "aprobada" },
-    { id: "rejected", label: "Rechazadas", tone: "bad", icon: <CircleX size={19} />, matches: (row) => row.status === "rechazada" },
+    { id: "approved", label: "Aprobadas", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => row.status === "aprobada", info: <p>Solicitudes de esta lista que fueron aprobadas.</p> },
+    { id: "rejected", label: "Rechazadas", tone: "bad", icon: <CircleX size={19} />, matches: (row) => row.status === "rechazada", info: <p>Solicitudes de esta lista que fueron rechazadas.</p> },
   ];
   const openMetrics: MetricFilter<ApprovalItem>[] = [
     { id: "overdue", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, note: "Plazo de respuesta vencido", info: <p>Solicitudes pendientes cuyo plazo de respuesta (SLA de la regla de aprobación) ya venció.</p>, matches: (row) => row.sla === "overdue" },
-    { id: "warning", label: "Por vencer", tone: "warn", icon: <Hourglass size={19} />, matches: (row) => row.sla === "warning" },
-    { id: "decide", label: "Puedo decidir", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => row.can_decide },
-    { id: "answer", label: "Consultas por responder", tone: "info", icon: <MessageSquareReply size={19} />, matches: (row) => row.can_answer },
+    { id: "warning", label: "Por vencer", tone: "warn", icon: <Hourglass size={19} />, matches: (row) => row.sla === "warning", info: <p>Solicitudes pendientes a las que les quedan 4 horas o menos de plazo de respuesta.</p> },
+    { id: "decide", label: "Puedo decidir", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => row.can_decide, info: <p>Solicitudes pendientes que puedes aprobar o rechazar con tus permisos.</p> },
+    { id: "answer", label: "Consultas por responder", tone: "info", icon: <MessageSquareReply size={19} />, matches: (row) => row.can_answer, info: <p>Solicitudes con una consulta de quien aprueba que espera tu respuesta.</p> },
   ];
 
   const filters: FilterConfig<ApprovalItem>[] = [

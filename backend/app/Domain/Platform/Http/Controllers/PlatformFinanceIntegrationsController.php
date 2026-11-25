@@ -105,6 +105,11 @@ final class PlatformFinanceIntegrationsController
         return response()->json(['data' => ['deleted' => true]]);
     }
 
+    public function generateOseWebhookSecret(Request $request, string $code, ManageOse $ose): JsonResponse
+    {
+        return response()->json(['data' => $ose->generateWebhookSecret($code, $this->user($request))]);
+    }
+
     public function tenantOse(string $id, ManageOse $ose): JsonResponse
     {
         return response()->json(['data' => $ose->tenant($id)]);

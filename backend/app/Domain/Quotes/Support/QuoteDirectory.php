@@ -286,6 +286,7 @@ final class QuoteDirectory
                 'send' => $viewer->can('quotes.send'),
                 'approve_internal' => $viewer->can('quotes.approve_internal'),
                 'register_approval' => $viewer->can('reservations.create'),
+                'external_offers' => $viewer->can('quotes.external_offers'),
             ],
             'contact' => DB::table('crm_clients')->where('id', $row->client_id)->first(['email', 'phone']),
             'share' => $viewer->can('quotes.send') ? app(QuoteAccessTokens::class)->state((string) $row->id) : null,

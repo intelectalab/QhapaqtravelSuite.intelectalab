@@ -173,12 +173,6 @@ export function MarketplaceBoard({ network, mine, partnerships, orders }: { netw
   return (
     <>
       <PlanNotice enabled={network.enabled} feature="El marketplace entre agencias" />
-      <KpiRow>
-        <TintTile icon={Store} tone="t1" label="Mis publicaciones" value={kpis.published} info={<p>Productos propios publicados que otras agencias pueden vender.</p>} />
-        <TintTile icon={Handshake} tone="violet" label="Aliados" value={kpis.partners} note={kpis.pending > 0 ? `${kpis.pending} solicitudes por responder` : undefined} info={<p>Alianzas activas, como vendedor o como revendedor. Las solicitudes pendientes son las que te toca aceptar o rechazar.</p>} />
-        <TintTile icon={ArrowUpRight} tone="ok" label="Vendido por aliados este mes" value={kpis.sold_month} info={<p>Ventas de tus productos hechas por agencias aliadas en el mes, sin contar rechazadas ni canceladas.</p>} />
-        <TintTile icon={ArrowDownLeft} tone="info" label="Comprado a aliados este mes" value={kpis.bought_month} info={<p>Ventas que tu agencia hizo de productos de otros operadores en el mes.</p>} />
-      </KpiRow>
       <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
         <Tabs
           tabs={[
@@ -188,6 +182,12 @@ export function MarketplaceBoard({ network, mine, partnerships, orders }: { netw
               count: network.listings.length,
               content: (
                 <>
+                  <KpiRow>
+                    <TintTile icon={Store} tone="t1" label="Mis publicaciones" value={kpis.published} info={<p>Productos propios publicados que otras agencias pueden vender.</p>} />
+                    <TintTile icon={Handshake} tone="violet" label="Aliados" value={kpis.partners} note={kpis.pending > 0 ? `${kpis.pending} solicitudes por responder` : undefined} info={<p>Alianzas activas, como vendedor o como revendedor. Las solicitudes pendientes son las que te toca aceptar o rechazar.</p>} />
+                    <TintTile icon={ArrowUpRight} tone="ok" label="Vendido por aliados este mes" value={kpis.sold_month} info={<p>Ventas de tus productos hechas por agencias aliadas en el mes, sin contar rechazadas ni canceladas.</p>} />
+                    <TintTile icon={ArrowDownLeft} tone="info" label="Comprado a aliados este mes" value={kpis.bought_month} info={<p>Ventas que tu agencia hizo de productos de otros operadores en el mes.</p>} />
+                  </KpiRow>
                   <div className="mb-4 max-w-md">
                     <TextField label="Buscar" name="buscar" placeholder="Destino, producto u operador" value={query} onChange={(event) => setQuery(event.target.value)} />
                   </div>
@@ -238,8 +238,8 @@ export function MarketplaceBoard({ network, mine, partnerships, orders }: { netw
                   entityLabel="alianzas"
                   searchText={(partnership) => partnership.partner}
                   metrics={[
-                    { id: "pendientes", label: "Por responder", tone: "sun", icon: <Handshake size={18} />, matches: (partnership) => partnership.actions.includes("aceptar") },
-                    { id: "activas", label: "Activas", tone: "ok", icon: <Check size={18} />, matches: (partnership) => partnership.status === "activa" },
+                    { id: "pendientes", label: "Por responder", tone: "sun", icon: <Handshake size={18} />, matches: (partnership) => partnership.actions.includes("aceptar"), info: <p>Solicitudes de alianza que otra agencia te envió y esperan tu respuesta.</p> },
+                    { id: "activas", label: "Activas", tone: "ok", icon: <Check size={18} />, matches: (partnership) => partnership.status === "activa", info: <p>Alianzas aceptadas por las dos agencias: pueden vender sus productos entre sí.</p> },
                   ]}
                   emptyTitle="Aún no hay alianzas"
                   columns={[
@@ -264,8 +264,8 @@ export function MarketplaceBoard({ network, mine, partnerships, orders }: { netw
                   entityLabel="ventas"
                   searchText={(order) => `${order.code} ${order.partner} ${order.listing.title}`}
                   metrics={[
-                    { id: "venta", label: "Vendidas por aliados", tone: "ok", icon: <ArrowUpRight size={18} />, matches: (order) => order.role === "venta" },
-                    { id: "compra", label: "Compradas a aliados", tone: "info", icon: <ArrowDownLeft size={18} />, matches: (order) => order.role === "compra" },
+                    { id: "venta", label: "Vendidas por aliados", tone: "ok", icon: <ArrowUpRight size={18} />, matches: (order) => order.role === "venta", info: <p>Ventas de tus productos que hicieron agencias aliadas.</p> },
+                    { id: "compra", label: "Compradas a aliados", tone: "info", icon: <ArrowDownLeft size={18} />, matches: (order) => order.role === "compra", info: <p>Ventas que tu agencia hizo de productos de agencias aliadas.</p> },
                   ]}
                   sorts={[{ id: "created", label: "Fecha", type: "date", value: (order) => order.created_at }]}
                   emptyTitle="Aún no hay ventas en el marketplace"

@@ -2,21 +2,24 @@
 
 use App\Domain\Integrations\Fake\FakeFiscalGateway;
 use App\Domain\Platform\Support\FiscalWebhookSecret;
-use App\Domain\Platform\Support\PlatformSettings;
+use App\Domain\Platform\Support\OseCatalog;
 use Illuminate\Routing\Middleware\ThrottleRequests;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 
+const FISCAL_OSE_KEY = 'clave-del-ose-de-pruebas';
+
 beforeEach(function () {
     $this->withoutMiddleware(ThrottleRequests::class);
+    app(OseCatalog::class)->save([['code' => 'OSE-PRUEBA', 'name' => 'OSE de pruebas', 'driver' => 'rest', 'status' => 'homologado'], ['code' => 'OSE-OTRO', 'name' => 'Otro OSE', 'driver' => 'rest', 'status' => 'homologado']], null);
+    app(FiscalWebhookSecret::class)->store('OSE-PRUEBA', FISCAL_OSE_KEY, null);
 });
 
-function fiscalWebhook(array $event, ?string $signature = null, string $provider = 'sandbox'): TestResponse
+function fiscalWebhook(array $event, ?string $signature = null, string $provider = 'ose-prueba'): TestResponse
 {
     $raw = (string) json_encode($event);
 
-    return test()->call('POST', "/api/v1/integrations/fiscal/{$provider}/webhook", [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_FISCAL_SIGNATURE' => $signature ?? FakeFiscalGateway::sign($raw)], $raw);
+    return test()->call('POST', "/api/v1/integrations/fiscal/{$provider}/webhook", [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_FISCAL_SIGNATURE' => $signature ?? FakeFiscalGateway::sign($raw, FISCAL_OSE_KEY)], $raw);
 }
 
 function ticketedInvoice(?string $status = 'emitido'): object
@@ -71,7 +74,7 @@ it('integrationsFiscalWebhook rechaza firma inválida, proveedor ajeno, ticket d
     $event = ['ticket' => $invoice->ose_ticket, 'status' => 'aceptado'];
 
     fiscalWebhook($event, 'firma-falsa')->assertUnauthorized();
-    fiscalWebhook($event, provider: 'otro-ose')->assertNotFound();
+    fiscalWebhook($event, provider: 'no-existe')->assertNotFound();
     fiscalWebhook(['ticket' => 'TICKET-INEXISTENTE', 'status' => 'aceptado'])->assertNotFound();
     fiscalWebhook(['ticket' => $invoice->ose_ticket, 'status' => 'pendiente'])->assertUnprocessable();
     expect(fiscalWebhook([...$event, 'tenant_id' => (string) tenantB()->getKey()]))->toBeApiError(422, 'FIN-WEBHOOK-TENANT');
@@ -79,12 +82,34 @@ it('integrationsFiscalWebhook rechaza firma inválida, proveedor ajeno, ticket d
     expect(rowOf('fin_invoices', $invoice->number, column: 'number')->status)->toBe('emitido');
 });
 
-it('integrationsFiscalWebhook firma con el secreto cifrado de la consola cuando está configurado', function () {
+it('integrationsFiscalWebhook valida con la clave de ese OSE: otro OSE sin clave o con la suya no sirve', function () {
     $invoice = ticketedInvoice();
-    PlatformSettings::write(FiscalWebhookSecret::KEY, ['webhook_secret' => Crypt::encryptString('secreto-del-ose')], null);
     $event = ['ticket' => $invoice->ose_ticket, 'status' => 'aceptado'];
     $raw = (string) json_encode($event);
 
-    fiscalWebhook($event, hash_hmac('sha256', $raw, 'local-only'))->assertUnauthorized();
-    fiscalWebhook($event, hash_hmac('sha256', $raw, 'secreto-del-ose'))->assertOk()->assertJsonPath('data.result', 'aplicado');
+    expect(fiscalWebhook($event, provider: 'ose-otro'))->toBeApiError(401, 'WEBHOOK_SIGNATURE_INVALID')
+        ->and(fiscalWebhook($event, provider: 'ose-otro')->json('message'))->toContain('Falta generar la clave de firma de Otro OSE');
+
+    app(FiscalWebhookSecret::class)->store('OSE-OTRO', 'clave-del-otro-ose', null);
+    fiscalWebhook($event, FakeFiscalGateway::sign($raw, 'clave-del-otro-ose'))->assertUnauthorized();
+    fiscalWebhook($event, provider: 'ose-otro')->assertUnauthorized();
+    fiscalWebhook($event, FakeFiscalGateway::sign($raw, 'clave-del-otro-ose'), 'OSE-OTRO')->assertOk()->assertJsonPath('data.result', 'aplicado');
+});
+
+it('integrationsFiscalWebhook acepta la clave anterior durante 24 horas después de rotarla', function () {
+    $invoice = ticketedInvoice();
+    $event = ['ticket' => $invoice->ose_ticket, 'status' => 'observado', 'code' => '4252'];
+    $raw = (string) json_encode($event);
+    $keys = app(FiscalWebhookSecret::class);
+
+    expect($keys->store('OSE-PRUEBA', 'clave-nueva-del-ose', null))->toBeTrue()
+        ->and($keys->summary('OSE-PRUEBA')['still_previous'])->toBeTrue();
+
+    fiscalWebhook($event)->assertOk()->assertJsonPath('data.result', 'aplicado');
+    expect($keys->summary('OSE-PRUEBA'))->toMatchArray(['still_previous' => true, 'last_key' => 'anterior', 'previous_secret_valid' => true]);
+
+    $this->travel(25)->hours();
+    fiscalWebhook($event)->assertUnauthorized();
+    fiscalWebhook($event, FakeFiscalGateway::sign($raw, 'clave-nueva-del-ose'))->assertOk()->assertJsonPath('data.result', 'duplicado');
+    expect($keys->summary('OSE-PRUEBA'))->toMatchArray(['still_previous' => false, 'last_key' => 'actual', 'previous_secret_valid' => false]);
 });

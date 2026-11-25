@@ -26,6 +26,15 @@ return [
 
     'require_real' => env('INTEGRATIONS_REQUIRE_REAL'),
 
+    'screens' => [
+        'sales_ai' => ['/asistente'],
+        'catalog_import' => ['/catalogo/importar'],
+        'site_content_ai' => ['/canales/contenido-ia'],
+        'ota' => ['/canales/ota'],
+        'reviews' => ['/canales/resenas'],
+        'accounting' => ['/finanzas/exportacion-contable'],
+    ],
+
     'retry' => [
         'max_attempts' => 5,
         'base_seconds' => 60,

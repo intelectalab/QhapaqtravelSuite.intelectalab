@@ -127,9 +127,9 @@ function Redemptions({ coupon }: { coupon: Coupon }) {
 }
 
 const metrics: MetricFilter<Coupon>[] = [
-  { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, matches: (coupon) => state(coupon).label === "Activo" },
-  { id: "spent", label: "Vencidos o agotados", tone: "warn", icon: <Hourglass size={19} />, matches: (coupon) => coupon.status === "active" && (coupon.expired || coupon.exhausted) },
-  { id: "inactive", label: "Desactivados", tone: "mute", icon: <TicketX size={19} />, matches: (coupon) => coupon.status === "inactive" },
+  { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, matches: (coupon) => state(coupon).label === "Activo", info: <p>Cupones encendidos, dentro de su vigencia y con canjes disponibles.</p> },
+  { id: "spent", label: "Vencidos o agotados", tone: "warn", icon: <Hourglass size={19} />, matches: (coupon) => coupon.status === "active" && (coupon.expired || coupon.exhausted), info: <p>Cupones encendidos que pasaron su fecha de vigencia o llegaron al tope de canjes.</p> },
+  { id: "inactive", label: "Desactivados", tone: "mute", icon: <TicketX size={19} />, matches: (coupon) => coupon.status === "inactive", info: <p>Cupones desactivados: ya no se pueden canjear.</p> },
 ];
 
 const sorts: SortOption<Coupon>[] = [

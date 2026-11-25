@@ -1,7 +1,5 @@
 <?php
 
-use App\Domain\Integrations\Fake\FakeFiscalGateway;
-use App\Domain\Platform\Support\FiscalWebhookSecret;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -31,35 +29,6 @@ function g6TenantBody(string $code, array $overrides = []): array
         ...$overrides,
     ];
 }
-
-it('PUT /platform/settings/fiscal-webhook guarda el secreto cifrado, lo audita, no lo devuelve y firma con él', function () {
-    actingAsPlatform();
-
-    $summary = $this->putJson('/api/v1/platform/settings/fiscal-webhook', ['webhook_secret' => 'secreto-del-ose-pruebas'])->assertOk()->json('data');
-
-    expect($summary['secret_set'])->toBeTrue()
-        ->and($summary['callback_url'])->toEndWith('/api/v1/integrations/fiscal/sandbox/webhook')
-        ->and($summary['signature_header'])->toBe(FakeFiscalGateway::SIGNATURE_HEADER)
-        ->and(json_encode($summary))->not->toContain('secreto-del-ose-pruebas')
-        ->and(g6Platform()->table('platform_settings')->where('key', FiscalWebhookSecret::KEY)->value('value'))->not->toContain('secreto-del-ose-pruebas')
-        ->and(app(FiscalWebhookSecret::class)->secret())->toBe('secreto-del-ose-pruebas')
-        ->and(FakeFiscalGateway::sign('{}'))->toBe(hash_hmac('sha256', '{}', 'secreto-del-ose-pruebas'))
-        ->and(g6Platform()->table('audit_events')->whereNull('tenant_id')->where('entity_id', 'Secreto del webhook fiscal')->orderByDesc('occurred_at')->value('after_value'))->toBe('cambiado');
-
-    $this->getJson('/api/v1/platform/settings')->assertOk()->assertJsonPath('data.sections.fiscal_webhook.secret_set', true);
-    expect($this->putJson('/api/v1/platform/settings/fiscal-webhook', ['webhook_secret' => 'secreto-del-ose-pruebas']))->toBeApiError(422, 'CFG-BR-01');
-    $this->putJson('/api/v1/platform/settings/fiscal-webhook', ['webhook_secret' => 'corto'])->assertStatus(422)->assertJsonValidationErrors('webhook_secret');
-
-    $this->putJson('/api/v1/platform/settings/fiscal-webhook', ['clear' => true])->assertOk()->assertJsonPath('data.secret_set', false);
-    expect(app(FiscalWebhookSecret::class)->secret())->toBe('')
-        ->and($this->putJson('/api/v1/platform/settings/fiscal-webhook', ['clear' => true]))->toBeApiError(422, 'CFG-BR-01');
-});
-
-it('un usuario de agencia no puede cambiar el secreto del webhook fiscal', function () {
-    actingAsSeed('U01');
-
-    expect($this->putJson('/api/v1/platform/settings/fiscal-webhook', ['webhook_secret' => 'secreto-del-ose-pruebas'])->status())->toBeIn([401, 403]);
-});
 
 it('no reactiva un cupón vencido ni uno agotado', function () {
     actingAsPlatform();

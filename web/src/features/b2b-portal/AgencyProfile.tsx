@@ -25,10 +25,10 @@ export function AgencyProfileView({ profile }: { profile: AgencyProfile }) {
       <PortalTitle title="Mi agencia" subtitle="Datos del convenio, tu línea de crédito y los usuarios con acceso al portal." actions={<Badge tone={status.tone}>{status.label}</Badge>} />
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={BadgePercent} tone="violet" label="Comisión base" value={`${agency.commission_pct} %`} note={agency.price_list ?? "Lista de precios"} />
-        <TintTile icon={ListChecks} tone="t3" label="Productos con tarifa" value={profile.rates} note="Asignados a tu agencia" />
-        <TintTile icon={CalendarRange} tone={agency.status === "vencida" ? "bad" : "t1"} label="Vigencia" value={formatDate(agency.valid_to)} note={`Desde ${formatDate(agency.valid_from)}`} />
-        <TintTile icon={Users} tone="t4" label="Usuarios" value={profile.users.length} note="Con acceso al portal" />
+        <TintTile icon={BadgePercent} tone="violet" label="Comisión base" value={`${agency.commission_pct} %`} note={agency.price_list ?? "Lista de precios"} info={<p>Porcentaje de comisión de tu convenio. Se aplica sobre la tarifa neta.</p>} />
+        <TintTile icon={ListChecks} tone="t3" label="Productos con tarifa" value={profile.rates} note="Asignados a tu agencia" info={<p>Productos publicados para agencias que tienen una tarifa neta asignada a tu agencia, esté vigente o no.</p>} />
+        <TintTile icon={CalendarRange} tone={agency.status === "vencida" ? "bad" : "t1"} label="Vigencia" value={formatDate(agency.valid_to)} note={`Desde ${formatDate(agency.valid_from)}`} info={<p>Fecha en que termina tu convenio.</p>} />
+        <TintTile icon={Users} tone="t4" label="Usuarios" value={profile.users.length} note="Con acceso al portal" info={<p>Personas de tu agencia con usuario en el portal.</p>} />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">

@@ -89,10 +89,10 @@ export function RuleRequestsInbox({ data }: { data: RuleRequestsOverview }) {
     { id: "actions", header: "", align: "right", mobile: "detail", cell: (item) => <Decisions item={item} rules={data.standard_rules} /> },
   ];
   const metrics: MetricFilter<RuleRequestItem>[] = [
-    { id: "nuevos", label: "Por revisar", tone: "info", icon: <Inbox size={19} />, matches: (item) => item.status === "enviado" },
-    { id: "evaluacion", label: "En evaluación", tone: "sun", icon: <Hourglass size={19} />, matches: (item) => item.status === "en_evaluacion" },
-    { id: "publicados", label: "Publicados", tone: "ok", icon: <CheckCircle2 size={19} />, matches: (item) => item.status === "publicado" },
-    { id: "rechazados", label: "Rechazados", tone: "bad", icon: <XCircle size={19} />, matches: (item) => item.status === "rechazado" },
+    { id: "nuevos", label: "Por revisar", tone: "info", icon: <Inbox size={19} />, matches: (item) => item.status === "enviado", info: <p>Pedidos de reglas nuevas que enviaron las agencias y nadie ha revisado aún.</p> },
+    { id: "evaluacion", label: "En evaluación", tone: "sun", icon: <Hourglass size={19} />, matches: (item) => item.status === "en_evaluacion", info: <p>Pedidos marcados en evaluación, pendientes de publicar o rechazar.</p> },
+    { id: "publicados", label: "Publicados", tone: "ok", icon: <CheckCircle2 size={19} />, matches: (item) => item.status === "publicado", info: <p>Pedidos resueltos con una regla estándar del catálogo.</p> },
+    { id: "rechazados", label: "Rechazados", tone: "bad", icon: <XCircle size={19} />, matches: (item) => item.status === "rechazado", info: <p>Pedidos rechazados; la agencia recibió el motivo.</p> },
   ];
   const filters: FilterConfig<RuleRequestItem>[] = [
     { id: "tenant", label: "Agencia", options: [...new Map(data.items.map((item) => [item.tenant.code, item.tenant.name])).entries()].map(([value, label]) => ({ value, label })), value: (item) => item.tenant.code },

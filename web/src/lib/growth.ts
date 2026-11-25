@@ -217,6 +217,7 @@ export interface OtaOverview {
   enabled: boolean;
   kpis: { connected: number; mapped: number; bookings_30: number; errors: number };
   connections: OtaConnection[];
+  clients?: Option[];
   catalogs: { otas: Labels; statuses: Labels; price_modes: Labels; mapping_statuses: Labels; booking_statuses: Labels };
 }
 
@@ -242,11 +243,41 @@ export interface OtaBooking {
   pax: number | null;
   gross_amount: string | null;
   net_amount: string | null;
+  sale_amount: string | null;
+  payout_amount: string | null;
+  commission_amount: string | null;
+  commission_pct: string;
   currency: string | null;
+  customer: OtaCustomer | null;
+  convertible: boolean;
   status: string;
   status_label: string;
   error: string | null;
   received_at: string;
+}
+
+export interface OtaCustomer {
+  name: string | null;
+  email: string | null;
+  client: { code: string; name: string } | null;
+  creatable: boolean;
+}
+
+export interface OtaConversion {
+  id: string;
+  ota_booking_ref: string;
+  status: string;
+  status_label: string;
+  reservation: string | null;
+  error: string | null;
+}
+
+export function otaConversionNote(booking: Pick<OtaBooking, "customer">): string {
+  const customer = booking.customer;
+  if (customer?.client) return `${customer.client.name} ya es tu cliente: se usa si no eliges otro.`;
+  if (customer?.creatable) return `Se registra a ${customer.name ?? "el viajero"} como cliente nuevo con los datos que envió la OTA.`;
+  if (customer?.name) return `La OTA envió a ${customer.name} sin documento: elige el cliente de tu cartera.`;
+  return "La OTA no envió datos del viajero: elige el cliente de tu cartera.";
 }
 
 export interface MarketKpis {

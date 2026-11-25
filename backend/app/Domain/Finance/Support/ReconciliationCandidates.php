@@ -52,7 +52,7 @@ final class ReconciliationCandidates
                 'id' => $row->id,
                 'code' => $row->code,
                 'order' => $row->order_code,
-                'label' => trim(implode(' · ', array_filter([$row->order_code ? "Pedido {$row->order_code}" : null, $row->reservation_code, $labels[$row->method] ?? $row->method, $row->reference]))),
+                'label' => trim(implode(' · ', array_filter([$row->order_code ? "Pedido {$row->order_code}" : null, $row->reservation_code, PaymentMethods::display((string) $row->method, $labels), $row->reference]))),
                 'amount' => (float) $row->amount,
                 'currency' => $row->currency,
                 'pen' => $this->money->pen($row->amount, $row->currency, $row->fx_rate),

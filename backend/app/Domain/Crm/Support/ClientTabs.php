@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Support;
 
+use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Iam\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 final class ClientTabs
 {
     private ?string $only = null;
+
+    public function __construct(private readonly PaymentMethods $methods) {}
 
     public static function partialFor(object $client, User $viewer): ?string
     {
@@ -149,8 +152,8 @@ final class ClientTabs
 
     private function payments(string $clientId): Collection
     {
-        return DB::table('fin_payments as p')->join('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->where('r.client_id', $clientId)->when($this->only, fn ($query) => $query->where('r.owner_id', $this->only))
-            ->orderByDesc('p.paid_on')->get(['p.code', 'p.paid_on', 'p.method', 'p.reference', 'p.amount', 'p.currency', 'p.status', 'r.code as reservation']);
+        return $this->methods->relabel(DB::table('fin_payments as p')->join('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->where('r.client_id', $clientId)->when($this->only, fn ($query) => $query->where('r.owner_id', $this->only))
+            ->orderByDesc('p.paid_on')->get(['p.code', 'p.paid_on', 'p.method', 'p.reference', 'p.amount', 'p.currency', 'p.status', 'r.code as reservation']));
     }
 
     private function invoices(string $clientId): Collection

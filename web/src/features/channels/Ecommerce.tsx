@@ -64,7 +64,6 @@ function CancelOrderAction({ order }: { order: EcomOrder }) {
   );
 }
 
-const METHOD_LABEL: Record<string, string> = { tarjeta: "Tarjeta", transferencia: "Transferencia", yape: "Yape", plin: "Plin" };
 
 const ATTEMPT_TONE: Record<string, Tone> = { aprobado: "ok", rechazado: "bad", por_validar: "info" };
 
@@ -103,7 +102,7 @@ function AttemptList({ order }: { order: EcomOrder }) {
             <span className="text-[12px] text-fg-3">{formatDateTime(attempt.at)}</span>
           </div>
           <p className="mt-0.5 text-[12.5px] text-fg-2">
-            {METHOD_LABEL[attempt.method] ?? attempt.method}
+            {attempt.method}
             {attempt.card ? ` ${attempt.card}` : ""}
             {attempt.operation ? ` · operación ${attempt.operation}` : ""}
             {attempt.amount !== null ? ` · ${formatMoney(attempt.amount, attempt.currency ?? order.currency)}` : ""}
@@ -209,13 +208,13 @@ function OrdersTable({ rows, canManage, kpis, funnel }: { rows: EcomOrder[]; can
         <div>
           <p>Total de los pedidos web con el pago confirmado, en la moneda de cada pedido. La conversión son los pedidos pagados sobre los creados; cada paso del sitio y el widget al pago muestra cuántos llegan y qué parte del paso anterior, con el consentimiento del visitante:</p>
           <FunnelSteps steps={funnel} />
-          <p className="mt-2">Al presionarla, la tabla muestra solo los pedidos pagados.</p>
+          <p className="mt-2"></p>
         </div>
       ),
       matches: (row) => row.status === "confirmado",
     },
-    { id: "pending", label: "Pago pendiente", tone: "warn", icon: <Clock3 size={19} />, info: <p>Pedidos con el pago pendiente o por validar. Puedes reenviar el enlace de pago o anularlos. Al presionarla, la tabla muestra esos pedidos.</p>, matches: (row) => row.status === "pago_pendiente" || row.status === "pago_por_validar" },
-    { id: "rejected", label: "Pago rechazado", tone: "bad", icon: <CircleX size={19} />, info: <p>Pedidos cuyo pago fue rechazado; se pueden reintentar con un nuevo enlace o anular. Al presionarla, la tabla muestra esos pedidos.</p>, matches: (row) => row.status === "pago_rechazado" },
+    { id: "pending", label: "Pago pendiente", tone: "warn", icon: <Clock3 size={19} />, info: <p>Pedidos con el pago pendiente o por validar. Puedes reenviar el enlace de pago o anularlos.</p>, matches: (row) => row.status === "pago_pendiente" || row.status === "pago_por_validar" },
+    { id: "rejected", label: "Pago rechazado", tone: "bad", icon: <CircleX size={19} />, info: <p>Pedidos cuyo pago fue rechazado; se pueden reintentar con un nuevo enlace o anular.</p>, matches: (row) => row.status === "pago_rechazado" },
   ];
   const filters: FilterConfig<EcomOrder>[] = [
     { id: "status", label: "Estado", options: [...new Set(rows.map((row) => row.status))].map((value) => ({ value, label: channelStatus(value).label })), value: (row) => row.status },
@@ -304,11 +303,11 @@ function ProductsTable({ rows, canManage, siteUrl }: { rows: EcomProduct[]; canM
     { id: "actions", header: "", cell: (row) => <RowActions>{canManage && <PublicationAction product={row} />}</RowActions> },
   ];
   const metrics: MetricFilter<EcomProduct>[] = [
-    { id: "on", label: "Publicados", tone: "ok", icon: <Globe size={19} />, note: `De ${formatNumber(rows.length)} en la tienda`, info: <p>Productos visibles en el sitio y el widget. Los demás están en la tienda pero sin publicar. Al presionarla, la tabla muestra solo los publicados.</p>, matches: (row) => row.published },
-    { id: "off", label: "Sin publicar", tone: "mute", icon: <EyeOff size={19} />, info: <p>Productos de la tienda que no se muestran en el sitio ni en el widget; solo se publican productos activos. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => !row.published },
-    { id: "selling", label: "Con ventas", tone: "t4", icon: <ShoppingBag size={19} />, info: <p>Productos con al menos un pedido web. Al presionarla, la tabla muestra esos productos con lo vendido.</p>, matches: (row) => row.orders > 0 },
-    { id: "promo", label: "Con promoción", tone: "violet", icon: <BadgePercent size={19} />, info: <p>Productos con una promoción vigente aplicada al precio web. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => row.promotion !== null },
-    { id: "rated", label: "Con reseñas", tone: "sun", icon: <Star size={19} />, info: <p>Productos con al menos una reseña publicada, que se muestra con su calificación en la tienda. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => row.rating_count > 0 },
+    { id: "on", label: "Publicados", tone: "ok", icon: <Globe size={19} />, note: `De ${formatNumber(rows.length)} en la tienda`, info: <p>Productos visibles en el sitio y el widget. Los demás están en la tienda pero sin publicar.</p>, matches: (row) => row.published },
+    { id: "off", label: "Sin publicar", tone: "mute", icon: <EyeOff size={19} />, info: <p>Productos de la tienda que no se muestran en el sitio ni en el widget; solo se publican productos activos.</p>, matches: (row) => !row.published },
+    { id: "selling", label: "Con ventas", tone: "t4", icon: <ShoppingBag size={19} />, info: <p>Productos con al menos un pedido web.</p>, matches: (row) => row.orders > 0 },
+    { id: "promo", label: "Con promoción", tone: "violet", icon: <BadgePercent size={19} />, info: <p>Productos con una promoción vigente aplicada al precio web.</p>, matches: (row) => row.promotion !== null },
+    { id: "rated", label: "Con reseñas", tone: "sun", icon: <Star size={19} />, info: <p>Productos con al menos una reseña publicada, que se muestra con su calificación en la tienda.</p>, matches: (row) => row.rating_count > 0 },
   ];
   const sorts: SortOption<EcomProduct>[] = [
     { id: "name", label: "Producto", value: (row) => row.name },

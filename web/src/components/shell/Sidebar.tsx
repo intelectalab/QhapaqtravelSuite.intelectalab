@@ -221,9 +221,10 @@ function GroupBlock({ group, open, active, onToggle, activeHref, onNavigate, tag
 
 function ScreenLink({ screen, active, onNavigate, tagged }: { screen: Screen; active: boolean; onNavigate?: () => void; tagged: boolean }) {
   const Icon = screen.icon;
-  const { counts, lockedFor } = useWorkspace();
+  const { counts, lockedFor, upcomingFor } = useWorkspace();
   const locked = lockedFor(screen.href);
-  const count = !locked && screen.countKey ? counts[screen.countKey] ?? 0 : 0;
+  const upcoming = locked ? null : upcomingFor(screen.href);
+  const count = !locked && !upcoming && screen.countKey ? counts[screen.countKey] ?? 0 : 0;
   return (
     <Link
       href={screen.href}
@@ -234,7 +235,16 @@ function ScreenLink({ screen, active, onNavigate, tagged }: { screen: Screen; ac
     >
       {active && <span className="absolute -left-2.5 bottom-2 top-2 w-[3px] rounded-r bg-t2" />}
       <Icon size={17} strokeWidth={1.8} className={cn("flex-none", active ? "text-t2" : "text-white/50")} />
-      <span className={cn("truncate", locked && "text-white/45")}>{screen.label}</span>
+      <span className={cn("truncate", (locked || upcoming) && "text-white/45")}>{screen.label}</span>
+      {upcoming && (
+        <span
+          data-testid={tagged ? `nav-upcoming:${navKey(screen.href)}` : undefined}
+          className="ml-auto flex-none rounded-full border border-white/15 px-1.5 py-px text-[10.5px] font-semibold text-white/55"
+          title={upcoming.message}
+        >
+          Próximamente
+        </span>
+      )}
       {locked && (
         <span className="ml-auto flex-none text-white/40" title={`${locked.label} no está incluido en tu plan`} aria-label="No incluido en tu plan">
           <Lock size={13} strokeWidth={2} />

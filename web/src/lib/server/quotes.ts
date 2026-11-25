@@ -1,6 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
+import type { ExternalOfferState } from "@/lib/external-offers";
 import type { QuoteAuditEvent, QuoteConversion, QuoteDetail, QuoteFormOptions, QuoteListMeta, QuoteRow } from "@/lib/quotes";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
@@ -35,4 +36,13 @@ export const getQuoteFormOptions = cache(async (): Promise<QuoteFormOptions | nu
 export async function getQuoteActivity(code: string): Promise<QuoteAuditEvent[]> {
   const result = await fetchPages<QuoteAuditEvent>(`/quotes/${encodeURIComponent(code)}/activity`, 500);
   return result.ok && result.data ? result.data.data : [];
+}
+
+export async function getQuoteExternalOffers(code: string): Promise<{ data: ExternalOfferState | null; blocked: string | null }> {
+  const result = await apiFetch<ExternalOfferState>(`/quotes/${encodeURIComponent(code)}/external-offers`);
+  if (result.status === 401) redirect(REALMS.agency.logout);
+  if (result.status === 404) notFound();
+  if (result.status === 403) return { data: null, blocked: result.error?.message ?? "Tu rol no puede ver las ofertas de aéreo y hotel." };
+  if (!result.ok || !result.data) throw new Error(result.error?.message ?? "No pudimos cargar las ofertas de aéreo y hotel.");
+  return { data: result.data, blocked: null };
 }

@@ -36,13 +36,14 @@ export function AgencyCatalogView({ catalog }: { catalog: AgencyCatalog }) {
       <PortalTitle title="Catálogo" subtitle={<>Productos con tarifa neta para tu agencia, disponibilidad por fecha y comisión. <NetInfo /></>} />
 
       <section className="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)]">
-        <TintTile icon={Package} tone="t3" label="Productos reservables" value={bookable.length} note={`de ${catalog.products.length} publicados para agencias`} />
+        <TintTile icon={Package} tone="t3" label="Productos reservables" value={bookable.length} note={`de ${catalog.products.length} publicados para agencias`} info={<p>Productos con tarifa neta vigente para tu agencia, mientras tu convenio esté activo. La nota cuenta todos los publicados para agencias.</p>} />
         <TintTile
           icon={BadgePercent}
           tone="violet"
           label="Mejor comisión"
           value={bestCommission ? `${bestCommission.commission_pct} %` : "—"}
           note={bestCommission ? `${bestCommission.name} · ${formatMoney(bestCommission.commission ?? 0, bestCommission.currency ?? "USD")} por pasajero` : "Sin tarifas asignadas"}
+          info={<p>El porcentaje más alto entre los productos reservables.</p>}
         />
         <Card className="flex flex-col justify-center">
           <CreditMeter credit={catalog.credit} compact />

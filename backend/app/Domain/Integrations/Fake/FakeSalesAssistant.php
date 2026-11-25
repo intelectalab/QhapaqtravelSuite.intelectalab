@@ -169,7 +169,19 @@ final class FakeSalesAssistant implements SalesAssistant
             }
         }
 
-        return null;
+        $known = collect($context['destinations'] ?? [])->keyBy(fn ($name): string => Str::lower(Str::ascii((string) $name)));
+
+        foreach ($context['record']['destinations'] ?? [] as $name) {
+            if ($known->has(Str::lower(Str::ascii((string) $name)))) {
+                return (string) $known->get(Str::lower(Str::ascii((string) $name)));
+            }
+        }
+
+        $conversation = Str::lower(Str::ascii(collect($context['record']['messages'] ?? [])->pluck('text')->implode(' ')));
+
+        $found = $conversation === '' ? null : $known->first(fn ($name, string $key): bool => str_contains($conversation, $key));
+
+        return $found === null ? null : (string) $found;
     }
 
     private function number(string $prompt, string $pattern, int $default, int $min, int $max): int

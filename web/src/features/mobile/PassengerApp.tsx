@@ -95,10 +95,10 @@ export function PassengerSide({ trip }: { trip: PassengerTrip }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="grid gap-3 sm:grid-cols-2">
-        <TintTile icon={CalendarCheck2} tone="t1" label="Servicios confirmados" value={`${confirmed} de ${services.length}`} note={trip.day ? `Hoy es el día ${trip.day}` : formatDate(trip.from)} />
-        <TintTile icon={FileText} tone="t4" label="Vouchers disponibles" value={trip.vouchers.length} note="Los descarga desde la app" />
-        <TintTile icon={BellRing} tone="warn" label="Alertas activas" value={trip.alerts.length} note={trip.alerts.length ? "Esperan confirmación de lectura" : "Sin avisos"} />
-        <TintTile icon={MessageCircle} tone="violet" label="Mensajes en el chat" value={trip.chat.length} note={trip.chat.length ? `Último ${formatDateTime(trip.chat[trip.chat.length - 1].at, false)}` : "Sin conversación"} />
+        <TintTile icon={CalendarCheck2} tone="t1" label="Servicios confirmados" value={`${confirmed} de ${services.length}`} note={trip.day ? `Hoy es el día ${trip.day}` : formatDate(trip.from)} info={<p>Servicios de tu itinerario ya confirmados o realizados, sobre el total del viaje.</p>} />
+        <TintTile icon={FileText} tone="t4" label="Vouchers disponibles" value={trip.vouchers.length} note="Los descarga desde la app" info={<p>Vouchers emitidos para los servicios de este viaje.</p>} />
+        <TintTile icon={BellRing} tone="warn" label="Alertas activas" value={trip.alerts.length} note={trip.alerts.length ? "Esperan confirmación de lectura" : "Sin avisos"} info={<p>Avisos de transporte u horario abiertos que aún no marcaste como leídos.</p>} />
+        <TintTile icon={MessageCircle} tone="violet" label="Mensajes en el chat" value={trip.chat.length} note={trip.chat.length ? `Último ${formatDateTime(trip.chat[trip.chat.length - 1].at, false)}` : "Sin conversación"} info={<p>Mensajes de la conversación sobre este viaje, tuyos y de nuestro equipo.</p>} />
       </section>
       <Card>
         <TintCardTitle icon={MapIcon} title="Itinerario completo" aside={`${trip.itinerary.length} días`} />

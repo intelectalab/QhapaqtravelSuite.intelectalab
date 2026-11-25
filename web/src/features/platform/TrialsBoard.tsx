@@ -27,9 +27,9 @@ export function TrialsBoard({ overview }: { overview: TrialsOverview }) {
   return (
     <>
       <section aria-label="Resumen de pruebas" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <TintTile icon={Hourglass} tone="info" label="Agencias en prueba" value={overview.items.length} />
-        <TintTile icon={TimerReset} tone="warn" label="Vencen en 7 días" value={soon} />
-        <TintTile icon={CreditCard} tone="violet" label="Sin tarjeta registrada" value={withoutCard} note="Se suspenden al vencer" />
+        <TintTile icon={Hourglass} tone="info" label="Agencias en prueba" value={overview.items.length} info={<p>Suscripciones que siguen en periodo de prueba gratis.</p>} />
+        <TintTile icon={TimerReset} tone="warn" label="Vencen en 7 días" value={soon} info={<p>Pruebas a las que les quedan 7 días o menos, incluidas las que ya vencieron y siguen en prueba.</p>} />
+        <TintTile icon={CreditCard} tone="violet" label="Sin tarjeta registrada" value={withoutCard} note="Se suspenden al vencer" info={<p>Agencias en prueba que no tienen un medio de pago principal registrado.</p>} />
       </section>
       {overview.eligible.length > 0 && (
         <div className="mb-4 flex justify-end">

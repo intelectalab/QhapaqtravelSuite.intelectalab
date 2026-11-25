@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { NAV_GROUPS, type NavGroup } from "@/config/navigation";
 import { PLATFORM_NAV_GROUPS } from "@/config/platformNavigation";
-import { isAllowed, lockedFeature, requiredPermissions, type LockedFeature } from "@/lib/access";
+import { isAllowed, lockedFeature, requiredPermissions, upcomingFeature, type LockedFeature, type UpcomingFeature } from "@/lib/access";
 import type { NavCounts } from "@/lib/dashboard";
 
 export type NavigationId = "agency" | "platform";
@@ -18,6 +18,7 @@ export interface WorkspaceInfo {
   screens: Record<string, boolean> | null;
   required?: Record<string, string[]> | null;
   locked?: Record<string, LockedFeature | null> | null;
+  upcoming?: Record<string, UpcomingFeature> | null;
 }
 
 export interface Workspace extends WorkspaceInfo {
@@ -26,6 +27,7 @@ export interface Workspace extends WorkspaceInfo {
   allows: (path: string) => boolean;
   requiredFor: (path: string) => string[];
   lockedFor: (path: string) => LockedFeature | null;
+  upcomingFor: (path: string) => UpcomingFeature | null;
 }
 
 const NAVIGATIONS: Record<NavigationId, { groups: NavGroup[]; searchHint: string }> = {
@@ -43,8 +45,9 @@ export function WorkspaceProvider({ value, children }: { value: WorkspaceInfo; c
       .map((group) => ({ ...group, screens: group.screens.filter((screen) => allows(screen.href)) }))
       .filter((group) => group.screens.length > 0);
     const lockedFor = (path: string) => lockedFeature(value.locked, path);
+    const upcomingFor = (path: string) => upcomingFeature(value.upcoming, path);
     const requiredFor = (path: string) => requiredPermissions(value.required, path);
-    return { ...value, ...base, groups, allows, lockedFor, requiredFor };
+    return { ...value, ...base, groups, allows, lockedFor, upcomingFor, requiredFor };
   }, [value]);
   return <WorkspaceContext.Provider value={workspace}>{children}</WorkspaceContext.Provider>;
 }

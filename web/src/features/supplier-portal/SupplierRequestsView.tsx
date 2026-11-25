@@ -97,12 +97,12 @@ export function SupplierRequestsView({ data, contact }: { data: SupplierRequests
   ];
 
   const metrics: MetricFilter<SupplierRequest>[] = [
-    { id: "pending", label: "Por responder", icon: <Hourglass size={16} />, tone: "warn", matches: (row) => row.state === "por_responder" },
-    { id: "alternative", label: "Alternativa propuesta", icon: <Repeat2 size={16} />, tone: "info", matches: (row) => row.state === "alternativa_propuesta" },
-    { id: "overdue", label: "Fuera de plazo", icon: <AlarmClock size={16} />, tone: "bad", matches: (row) => row.state === "por_responder" && row.overdue },
-    { id: "confirmed", label: "Confirmados", icon: <CheckCircle2 size={16} />, tone: "ok", matches: (row) => ["confirmado", "en_curso", "completado"].includes(row.state) },
-    { id: "rejected", label: "Rechazados", icon: <XCircle size={16} />, tone: "mute", matches: (row) => row.state === "rechazado" },
-    { id: "cancelled", label: "Cancelados por la agencia", icon: <XCircle size={16} />, tone: "bad", matches: (row) => row.state === "cancelado" },
+    { id: "pending", label: "Por responder", icon: <Hourglass size={16} />, tone: "warn", matches: (row) => row.state === "por_responder" , info: <p>Servicios que la agencia te pidió y aún esperan tu confirmación o rechazo.</p> },
+    { id: "alternative", label: "Alternativa propuesta", icon: <Repeat2 size={16} />, tone: "info", matches: (row) => row.state === "alternativa_propuesta" , info: <p>Solicitudes en las que propusiste una alternativa y la agencia aún la revisa.</p> },
+    { id: "overdue", label: "Fuera de plazo", icon: <AlarmClock size={16} />, tone: "bad", matches: (row) => row.state === "por_responder" && row.overdue , info: <p>Solicitudes por responder que superaron el plazo de respuesta, contado desde que la agencia las pidió.</p> },
+    { id: "confirmed", label: "Confirmados", icon: <CheckCircle2 size={16} />, tone: "ok", matches: (row) => ["confirmado", "en_curso", "completado"].includes(row.state) , info: <p>Servicios confirmados, incluidos los que están en curso o ya se realizaron.</p> },
+    { id: "rejected", label: "Rechazados", icon: <XCircle size={16} />, tone: "mute", matches: (row) => row.state === "rechazado" , info: <p>Solicitudes que quedaron rechazadas.</p> },
+    { id: "cancelled", label: "Cancelados por la agencia", icon: <XCircle size={16} />, tone: "bad", matches: (row) => row.state === "cancelado" , info: <p>Servicios que la agencia canceló después de pedírtelos.</p> },
   ];
 
   const states = [...new Set(data.rows.map((row) => row.state))];

@@ -6,6 +6,7 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintTile } from "@/components/ui/Tinted";
+import { AssistantSideAction } from "@/features/growth/AssistantSideAction";
 import { Composer, ThreadActions } from "@/features/inbox/InboxActions";
 import { ChannelIcon, ContactCard, ConversationList, MessageBubble } from "@/features/inbox/InboxViews";
 import { ConversationCrmActions } from "@/features/leads/ConversationCrmActions";
@@ -92,6 +93,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {overview.can.manage && <AssistantSideAction key={thread.code} type="conversation" code={thread.code} returnPath="/inbox" />}
                   {audit && <AuditPanelButton title={`Auditoría de ${thread.code}`} description="Quién respondió, asignó, vinculó o cambió el estado, con fecha e IP." entries={audit} />}
                   <ThreadActions thread={thread} agents={overview.agents} canReassign={overview.can.reassign} canManage={overview.can.manage} />
                 </div>

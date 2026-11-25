@@ -458,7 +458,7 @@ export function PaymentsSection({ reservation, finance }: { reservation: Reserva
                   {payment.reference && <span className="text-xs text-fg-3">Operación {payment.reference}</span>}
                 </td>
                 <td>{formatDate(payment.paid_on)}</td>
-                <td className="first-letter:uppercase">{payment.method.replaceAll("_", " ")}</td>
+                <td>{payment.method}</td>
                 <td className="text-xs">{payment.receivable_concept ?? "—"}</td>
                 <td className="text-right font-mono">{formatMoney(payment.amount, payment.currency)}</td>
                 <td>

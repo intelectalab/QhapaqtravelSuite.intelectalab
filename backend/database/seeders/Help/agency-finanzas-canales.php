@@ -181,12 +181,13 @@ return [
             ['title' => 'Revisar los saldos', 'text' => 'Las tarjetas suman bancos, cajas chicas, pasarelas por liquidar, el flujo del mes y el saldo proyectado a 30 días. El Resumen muestra la composición del saldo y su evolución de los últimos 28 días. Debajo, cada cuenta muestra su saldo en su moneda; las cajas chicas indican su fondo, su custodio y si hoy están abiertas, cerradas o sin aperturar.'],
             ['title' => 'Registrar un movimiento', 'text' => 'Pulsa «Registrar movimiento», elige «Egreso» o «Ingreso», la cuenta, el importe, la fecha, la categoría y la descripción. Úsalo para alquileres, tributos y otros gastos que no nacen de un cobro, un pago a proveedor ni una caja chica.'],
             ['title' => 'Anular un movimiento', 'text' => 'En un movimiento manual pulsa «Anular» y escribe el motivo. Deja de contar en el saldo de la cuenta y queda marcado como «Anulado».'],
-            ['title' => 'Moverte por tesorería', 'text' => 'El menú de la izquierda tiene «Resumen» (alertas y cuentas), «Movimientos», «Cajas y arqueos», «Flujo proyectado» y «Cuentas». El nombre de cada cuenta abre su página con el libro y el saldo acumulado.'],
+            ['title' => 'Moverte por tesorería', 'text' => 'El menú de la izquierda tiene «Resumen» (alertas y cuentas), «Movimientos», «Cajas y arqueos», «Flujo proyectado», «Diferencia cambiaria», «Cuentas», «Medios de cobro» y «Parámetros». El nombre de cada cuenta abre su página con el libro y el saldo acumulado.'],
             ['title' => 'Transferir entre cuentas', 'text' => '«Transferencia» saca el importe de una cuenta y lo ingresa en otra en la misma operación. Si las monedas difieren, pide el tipo de cambio pactado. En cada pasarela, «Liquidar» registra el lote que deposita en el banco: descuenta la comisión y transfiere el neto.'],
             ['title' => 'Operar una caja chica', 'text' => 'En «Cajas y arqueos», «Abrir» cuenta el efectivo del día. Con la caja abierta, «Gasto» registra cada pago con su comprobante, «Arqueo» hace un conteo sorpresa y «Cerrar» cuenta billetes y monedas y cierra la sesión. Si hay diferencia, se explica y otra persona la aprueba; luego Contabilidad da el visto bueno.'],
             ['title' => 'Reponer una caja chica', 'text' => '«Reponer» propone lo que falta para completar el fondo. La aprueba o la rechaza alguien distinto de quien la pidió, y «Pagar» la transfiere desde un banco.'],
             ['title' => 'Mirar el flujo proyectado', 'text' => '«Flujo proyectado» suma las cuotas por cobrar, las cuentas por pagar, las comisiones aprobadas y los egresos fijos para los próximos 30, 60 y 90 días, con su desglose por concepto y un gráfico de 13 semanas. Los interruptores quitan las cuotas vencidas o los egresos fijos, y el detalle se filtra por tipo y horizonte. Avisa si el saldo podría quedar en negativo.'],
             ['title' => 'Dar de alta cuentas', 'text' => 'En «Cuentas», «Nueva cuenta» registra un banco, una caja chica (con su fondo y su custodio) o una pasarela (con el banco donde liquida). Una cuenta solo se desactiva con saldo cero.'],
+            ['title' => 'Configurar los medios de cobro', 'text' => 'En «Medios de cobro», «Nuevo medio de cobro» agrega un medio con su nombre y si pide número de operación. Editar cambia el nombre en todos los pagos ya registrados con ese medio. Un medio con pagos no se elimina: se desactiva, y deja de ofrecerse al registrar pagos. El crédito B2B no se desactiva ni se elimina. La cuenta que recibe cada medio se elige en «Parámetros».'],
             ['title' => 'Buscar movimientos', 'text' => 'Filtra por «Cuenta», «Tipo» o «Categoría», usa las tarjetas «Ingresos», «Egresos» y «Gastos de caja chica», y ordena por «Fecha» o «Importe en soles».'],
         ],
         'faqs' => [
@@ -194,7 +195,7 @@ return [
             ['question' => 'Me dice que el egreso supera el saldo', 'answer' => 'No se permite dejar una cuenta en negativo. Revisa la cuenta elegida o registra antes el ingreso que falta.'],
             ['question' => '¿Cómo se calculan los saldos en dólares?', 'answer' => 'Cada cuenta en USD muestra su saldo propio; en las tarjetas se convierte a soles con el tipo de cambio de hoy, que se registra en «Monedas y tipo de cambio».'],
         ],
-        'keywords' => ['caja chica', 'bancos', 'egreso', 'ingreso', 'flujo de caja', 'arqueo'],
+        'keywords' => ['caja chica', 'bancos', 'egreso', 'ingreso', 'flujo de caja', 'arqueo', 'medio de cobro', 'medio de pago'],
         'roles' => [],
     ],
     [

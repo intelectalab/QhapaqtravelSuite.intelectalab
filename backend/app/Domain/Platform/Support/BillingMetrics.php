@@ -67,7 +67,7 @@ final class BillingMetrics
             'arpa' => $live['arpa'],
             'mrr_change' => $previous && $previous['mrr'] > 0 ? round(($live['mrr'] - $previous['mrr']) / $previous['mrr'] * 100, 1) : null,
             'paying_tenants' => $live['active_tenants'],
-            'churn' => $this->churn($live),
+            'churn' => $this->churn(),
             'failed' => $this->failed(),
             'series' => $series->values(),
             'by_plan' => $plans->map(fn (object $plan) => [
@@ -124,13 +124,14 @@ final class BillingMetrics
         ];
     }
 
-    private function churn(array $live): array
+    private function churn(): array
     {
         $since = Carbon::today('America/Lima')->subDays(90);
         $base = $this->db()->table('platform_metrics_daily')->where('day', '<=', $since)->orderByDesc('day')->first();
         $window = $this->db()->table('platform_metrics_daily')->where('day', '>', $since)->get();
         $lost = $window->flatMap(fn (object $row) => (array) (json_decode((string) $row->breakdown, true)['cancellations'] ?? []));
-        $churned = (int) $window->sum('churned_tenants') + $live['churned_tenants'];
+        $canceled = $this->db()->table('subscriptions')->where('status', 'canceled')->where('updated_at', '>', $since)->distinct()->count('tenant_id');
+        $churned = max($canceled, $lost->count());
         $lostMrr = round((float) $lost->sum('mrr'), 2);
 
         return [

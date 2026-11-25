@@ -20,7 +20,6 @@ export interface PlatformSettingsOverview {
     form_protection: { provider: string; enabled: boolean; site_key: string; secret_set: boolean; secret_hint: string | null; verified_at: string | null; status: "activa" | "incompleta" | "apagada" };
     outgoing_mail: OutgoingMailSummary;
     whatsapp_webhook: { verify_token_set: boolean; callback_url: string; changed_at: string | null };
-    fiscal_webhook: { secret_set: boolean; callback_url: string; signature_header: string; simulated: boolean; changed_at: string | null };
     antivirus: { driver: string; simulated: boolean; ok: boolean; message: string | null };
   };
   lock_version: number;

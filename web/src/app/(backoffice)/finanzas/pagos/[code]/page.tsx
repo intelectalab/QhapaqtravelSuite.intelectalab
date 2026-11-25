@@ -43,7 +43,7 @@ export default async function PagoPage({ params }: PageProps<"/finanzas/pagos/[c
             <StatusBadge status={row.status} primary />
           </span>
         }
-        subtitle={`${row.code} · ${row.method.replaceAll("_", " ")} · ${formatDate(row.paid_on)}`}
+        subtitle={`${row.code} · ${row.method} · ${formatDate(row.paid_on)}`}
         actions={
           row.status === "rechazado" && row.can.retry ? (
             <RetryPaymentAction
@@ -51,7 +51,7 @@ export default async function PagoPage({ params }: PageProps<"/finanzas/pagos/[c
               lockVersion={row.lock_version}
               retries={row.retries}
               summary={[
-                { label: "Pago", value: `${row.code} · ${row.method.replaceAll("_", " ")}` },
+                { label: "Pago", value: `${row.code} · ${row.method}` },
                 { label: "Motivo del rechazo", value: row.reject_reason ?? "—" },
                 { label: "Monto", value: formatMoney(row.amount, row.currency), strong: true },
               ]}

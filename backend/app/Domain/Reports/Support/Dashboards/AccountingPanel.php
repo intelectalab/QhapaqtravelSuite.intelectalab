@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Reports\Support\Dashboards;
 
 use App\Domain\Finance\Actions\PeriodCloseWorkflow;
+use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ final class AccountingPanel
 
     private const OBSERVED = ['observado', 'rechazado'];
 
-    public function __construct(private readonly PanelData $data, private readonly PeriodCloseWorkflow $closes) {}
+    public function __construct(private readonly PanelData $data, private readonly PeriodCloseWorkflow $closes, private readonly PaymentMethods $methods) {}
 
     public function build(User $viewer): array
     {
@@ -59,6 +60,7 @@ final class AccountingPanel
 
     private function undocumented(): Collection
     {
+        $labels = $this->methods->labels();
         $payments = DB::table('fin_payments as p')->leftJoin('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->where('p.kind', 'cobro')->whereIn('p.status', ['aplicado', 'confirmado'])
             ->orderByDesc('p.paid_on')->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.paid_on', 'p.reservation_id', 'r.code as reservation']);
         $invoices = DB::table('fin_invoices')->whereIn('reservation_id', $payments->pluck('reservation_id')->filter())->where('doc_type', '<>', self::CREDIT_NOTE)->whereNotIn('status', ['anulado', 'rechazado'])
@@ -70,7 +72,7 @@ final class AccountingPanel
             return ! collect($invoices->get($payment->reservation_id, []))->contains(fn (object $invoice): bool => abs($this->data->pen((float) $invoice->total_amount, $invoice->fx_rate) - $amount) < 0.5);
         })->map(fn (object $row): array => [
             'code' => $row->code,
-            'method' => $row->method,
+            'method' => PaymentMethods::display((string) $row->method, $labels),
             'reservation' => $row->reservation,
             'date' => $row->paid_on,
             'amount' => round((float) $row->amount, 2),

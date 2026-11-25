@@ -118,10 +118,10 @@ export function TagsTable<S extends PanelActionState>({ screen, rows, providers,
     },
   ];
   const metrics: MetricFilter<TrackingTag>[] = [
-    { id: "active", label: "Activas", tone: "ok", matches: (row) => row.status === "activo" },
-    { id: "paused", label: "Pausadas o borrador", tone: "mute", matches: (row) => ["pausado", "borrador"].includes(row.status) },
-    { id: "review", label: "Por revisar", tone: "warn", matches: (row) => row.status === "en_revision" || row.pending_revision !== null },
-    { id: "unverified", label: "Sin verificar", tone: "info", matches: (row) => row.status === "activo" && row.verify_result !== "ok" },
+    { id: "active", label: "Activas", tone: "ok", matches: (row) => row.status === "activo", info: <p>Etiquetas activas, que cargan en el sitio.</p> },
+    { id: "paused", label: "Pausadas o borrador", tone: "mute", matches: (row) => ["pausado", "borrador"].includes(row.status), info: <p>Etiquetas pausadas o guardadas como borrador: no cargan en el sitio.</p> },
+    { id: "review", label: "Por revisar", tone: "warn", matches: (row) => row.status === "en_revision" || row.pending_revision !== null, info: <p>Etiquetas enviadas a revisión y etiquetas con un cambio pendiente de aprobar.</p> },
+    { id: "unverified", label: "Sin verificar", tone: "info", matches: (row) => row.status === "activo" && row.verify_result !== "ok", info: <p>Etiquetas activas que aún no se verificaron o cuya última verificación de instalación falló.</p> },
   ];
   const filters: FilterConfig<TrackingTag>[] = [{ id: "provider", label: "Proveedor", options: [...new Map(rows.map((row) => [row.provider, row.provider_name])).entries()].map(([value, label]) => ({ value, label })), value: (row) => row.provider }];
 

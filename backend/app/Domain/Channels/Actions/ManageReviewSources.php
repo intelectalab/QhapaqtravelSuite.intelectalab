@@ -143,7 +143,7 @@ final class ManageReviewSources
         });
     }
 
-    public function sync(string $provider, User $actor): array
+    public function sync(string $provider, ?User $actor): array
     {
         $lock = Cache::lock("review-sync:{$this->context->idOrFail()}:{$provider}", 120);
 
@@ -167,10 +167,10 @@ final class ManageReviewSources
                 foreach ($this->provider->fetch(['provider' => $provider, 'account' => $row->account_ref, 'today' => $today], $since) as $review) {
                     assert($review instanceof ExternalReview);
                     $existing = DB::table('channel_external_reviews')->where('source_id', $row->id)->where('external_id', $review->externalId)->value('id');
-                    $values = ['author_display' => mb_substr($review->authorDisplay, 0, 120), 'review_date' => $review->reviewDate, 'rating' => $review->rating, 'title' => $review->title, 'body' => $review->body, 'lang' => $review->lang, 'url' => $review->url, 'updated_by' => $actor->getKey(), 'updated_at' => now()];
+                    $values = ['author_display' => mb_substr($review->authorDisplay, 0, 120), 'review_date' => $review->reviewDate, 'rating' => $review->rating, 'title' => $review->title, 'body' => $review->body, 'lang' => $review->lang, 'url' => $review->url, 'updated_by' => $actor?->getKey(), 'updated_at' => now()];
 
                     if ($existing === null) {
-                        DB::table('channel_external_reviews')->insert(['id' => (string) Str::uuid7(), 'source_id' => $row->id, 'external_id' => $review->externalId, 'response_status' => $row->can_reply ? 'sin_responder' : 'no_admite', 'raw' => json_encode(['simulated' => true]), 'created_by' => $actor->getKey(), ...$values]);
+                        DB::table('channel_external_reviews')->insert(['id' => (string) Str::uuid7(), 'source_id' => $row->id, 'external_id' => $review->externalId, 'response_status' => $row->can_reply ? 'sin_responder' : 'no_admite', 'raw' => json_encode(['simulated' => true]), 'created_by' => $actor?->getKey(), ...$values]);
                         $created++;
                     } else {
                         DB::table('channel_external_reviews')->where('id', $existing)->update($values);
@@ -184,7 +184,7 @@ final class ManageReviewSources
                     'last_sync_at' => now(),
                     'review_count' => max((int) $row->review_count, (int) $stats->total),
                     'rating' => $row->rating ?? ($stats->average !== null ? round((float) $stats->average, 2) : null),
-                    'updated_by' => $actor->getKey(),
+                    'updated_by' => $actor?->getKey(),
                     'updated_at' => now(),
                 ]);
                 $this->audit->log(self::ENTITY, $provider, 'sincronizar', null, "{$created} nuevas · {$updated} actualizadas");
@@ -194,6 +194,17 @@ final class ManageReviewSources
         } finally {
             $lock->release();
         }
+    }
+
+    public function fail(string $provider, string $message): bool
+    {
+        $changed = DB::table('integration_review_sources')->where('provider', $provider)->where('status', 'conectado')->update(['status' => 'error', 'updated_at' => now()]);
+
+        if ($changed > 0) {
+            $this->audit->log(self::ENTITY, $provider, 'sincronizar', 'conectado', 'error · '.mb_substr($message, 0, 200));
+        }
+
+        return $changed > 0;
     }
 
     private function one(string $provider): array

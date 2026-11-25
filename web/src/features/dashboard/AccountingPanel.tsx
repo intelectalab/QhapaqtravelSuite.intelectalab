@@ -4,7 +4,7 @@ import { ProgressBar } from "@/components/ui/MiniTable";
 import { SimpleTable } from "@/components/ui/SimpleTable";
 import { TintTile } from "@/components/ui/Tinted";
 import type { AccountingData } from "@/lib/dashboard";
-import { capitalize, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { toneStyle } from "@/lib/tone";
 import { PanelCard, PanelLink, RowList, shortDate, type CanOpen } from "./DashboardBlocks";
 import { money } from "./panelFormat";
@@ -77,7 +77,7 @@ export function AccountingPanel({ data, can }: { data: AccountingData; can: CanO
         <PanelCard icon={Receipt} title="Cobros sin comprobante" tone="sun" className="lg:col-span-6" aside={<PanelLink href="/finanzas/facturacion" can={can}>Emitir</PanelLink>}>
           <RowList
             empty="Todos los cobros aplicados tienen comprobante."
-            items={data.undocumented.map((row) => ({ key: row.code, icon: Receipt, tone: "sun", title: `${row.code} · ${capitalize(row.method)}`, detail: [row.reservation, shortDate(row.date)].filter(Boolean).join(" · "), aside: <b className="font-mono">{formatMoney(row.amount, row.currency)}</b> }))}
+            items={data.undocumented.map((row) => ({ key: row.code, icon: Receipt, tone: "sun", title: `${row.code} · ${row.method}`, detail: [row.reservation, shortDate(row.date)].filter(Boolean).join(" · "), aside: <b className="font-mono">{formatMoney(row.amount, row.currency)}</b> }))}
           />
         </PanelCard>
         <PanelCard icon={Wallet} title="Cuentas por cobrar" tone="violet" className="lg:col-span-6" aside={<PanelLink href="/finanzas/cobros" can={can}>Cobros</PanelLink>}>

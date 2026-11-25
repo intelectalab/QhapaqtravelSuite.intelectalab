@@ -92,7 +92,7 @@ function EditProfile({ profile }: { profile: PortalProfile }) {
 
 function DataRightsRequest() {
   return (
-    <PanelAction label="Solicitar" icon={<FileLock2 size={15} />} size="sm" title="Ejercer mis derechos" description="La agencia responde en 10 días hábiles, o en 20 si pides acceso a tus datos. Te avisaremos por este portal." submitLabel="Enviar solicitud" action={requestDataRights} initial={initial} testId="arco-request">
+    <PanelAction label="Solicitar" icon={<FileLock2 size={15} />} size="sm" title="Ejercer mis derechos" description="La agencia responde en 10 días hábiles, o en 20 si pides acceso a tus datos. Te avisaremos por este portal." submitLabel="Enviar solicitud" action={requestDataRights} initial={initial} successToast={() => "Solicitud enviada. Te avisaremos por este portal."} testId="arco-request">
       {() => (
         <>
           <SelectField label="¿Qué necesitas?" name="type" defaultValue="acceso" options={ARCO_RIGHTS} />
@@ -150,7 +150,7 @@ export function PortalProfileView({ profile }: { profile: PortalProfile }) {
                 { label: "Correo", value: client.email ?? "—" },
                 { label: "Teléfono", value: client.phone ?? "—" },
                 { label: "Ciudad y país", value: [client.city, client.country].filter(Boolean).join(", ") || "—" },
-                { label: "Fecha de nacimiento", value: client.birth_date ? formatDate(client.birth_date, "long") : "—" },
+                { label: "Fecha de nacimiento", value: client.birth_date ? formatDate(client.birth_date) : "—" },
               ]}
             />
             {!profile.editable && <p className="mt-3 text-[12.5px] text-fg-3">Para cambiar estos datos, pide a quien hizo la reserva que los actualice o escríbenos.</p>}

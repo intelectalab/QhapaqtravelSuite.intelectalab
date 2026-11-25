@@ -6,6 +6,7 @@ namespace App\Domain\Inbox\Support;
 
 use App\Domain\Booking\Actions\ReservationWorkflow;
 use App\Domain\Catalog\Support\CatalogAccess;
+use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -47,7 +48,7 @@ final class ApprovalInbox
 
     private ?float $usd = null;
 
-    public function __construct(private readonly ApprovalRules $rules) {}
+    public function __construct(private readonly ApprovalRules $rules, private readonly PaymentMethods $methods) {}
 
     public function items(User $viewer): Collection
     {
@@ -120,11 +121,11 @@ final class ApprovalInbox
     {
         $codes = $rows->where('request_type', 'reversal')->pluck('subject_code')->filter()->values();
 
-        return $codes->isEmpty() ? collect() : DB::table('fin_payments as p')
+        return $codes->isEmpty() ? collect() : $this->methods->relabel(DB::table('fin_payments as p')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'p.reservation_id')
             ->leftJoin('fin_receivables as x', 'x.id', '=', 'p.receivable_id')
             ->whereIn('p.code', $codes)
-            ->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.paid_on', 'p.reference', 'p.status', 'r.code as reservation', 'x.code as receivable'])
+            ->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.paid_on', 'p.reference', 'p.status', 'r.code as reservation', 'x.code as receivable']))
             ->keyBy('code');
     }
 
@@ -597,7 +598,7 @@ final class ApprovalInbox
     private function paymentFacts(object $payment): array
     {
         return array_values(array_filter([
-            "Pago: {$payment->code} · ".ucfirst((string) $payment->method),
+            "Pago: {$payment->code} · {$payment->method}",
             'Monto del pago: '.$payment->currency.' '.number_format((float) $payment->amount, 2, '.', ' '),
             $payment->reservation ? "Reserva: {$payment->reservation}" : null,
             $payment->reference ? "Operación: {$payment->reference}" : null,

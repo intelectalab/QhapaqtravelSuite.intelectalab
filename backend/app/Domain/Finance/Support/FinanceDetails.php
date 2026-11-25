@@ -33,8 +33,8 @@ final class FinanceDetails
             'balance_pen' => (string) $this->money->penExact(Decimal::of($row->amount)->minus((string) $row->paid_amount), $row->currency, $row->fx_rate),
             'reservation' => ['code' => $row->reservation_code, 'title' => $row->reservation_title, 'status' => $row->reservation_status],
             'client' => ['code' => $row->client_code, 'name' => $row->client_name, 'email' => $row->client_email],
-            'payments' => DB::table('fin_payment_applications as a')->join('fin_payments as p', 'p.id', '=', 'a.payment_id')->where('a.receivable_id', $row->id)->orderByDesc('a.applied_at')
-                ->get(['p.code', 'p.paid_on', 'p.method', 'p.reference', 'p.status', 'a.amount', 'a.applied_at', 'a.reversed_at']),
+            'payments' => $this->methods->relabel(DB::table('fin_payment_applications as a')->join('fin_payments as p', 'p.id', '=', 'a.payment_id')->where('a.receivable_id', $row->id)->orderByDesc('a.applied_at')
+                ->get(['p.code', 'p.paid_on', 'p.method', 'p.reference', 'p.status', 'a.amount', 'a.applied_at', 'a.reversed_at'])),
             'invoices' => DB::table('fin_invoices')->where('receivable_id', $row->id)->orderByDesc('issue_date')->get(['number', 'doc_type', 'issue_date', 'total_amount', 'currency', 'status']),
             'reminders' => DB::table('fin_receivable_reminders as m')->leftJoin('iam_users as u', 'u.id', '=', 'm.sent_by')->where('m.receivable_id', $row->id)->orderByDesc('m.sent_at')
                 ->get(['m.channels', 'm.sent_at', 'm.balance_at_send', 'u.name as sent_by']),
@@ -57,7 +57,7 @@ final class FinanceDetails
         }
 
         return [
-            'code' => $row->code, 'kind' => $row->kind, 'source' => $row->source, 'method' => $row->method, 'amount' => (string) $row->amount, 'currency' => $row->currency, 'fx_rate' => (string) $row->fx_rate,
+            'code' => $row->code, 'kind' => $row->kind, 'source' => $row->source, 'method' => $this->methods->label((string) $row->method), 'amount' => (string) $row->amount, 'currency' => $row->currency, 'fx_rate' => (string) $row->fx_rate,
             'pen' => (string) $this->money->penExact($row->amount, $row->currency, $row->fx_rate)->toScale(2, RoundingMode::HALF_UP),
             'paid_on' => $row->paid_on, 'reference' => $row->reference, 'note' => $row->note, 'status' => $row->status, 'reject_reason' => $row->reject_reason, 'retries' => (int) $row->retries, 'lock_version' => (int) $row->lock_version,
             'reverted_at' => $row->reverted_at, 'revert_reason' => $row->revert_reason, 'reported_by_agency' => (bool) $row->reported_by_agency, 'registered_by' => $row->registered_name, 'created_at' => $row->created_at,
@@ -93,7 +93,12 @@ final class FinanceDetails
             'provider' => $row->provider_name ? ['ref' => $row->provider_ref, 'name' => $row->provider_name, 'ruc' => $row->provider_ruc, 'terms' => $row->payment_terms] : null,
             'reservation' => $row->reservation_code ? ['code' => $row->reservation_code, 'title' => $row->reservation_title, 'service' => $row->service_name] : null,
             'payouts' => DB::table('fin_payable_payouts as o')->leftJoin('fin_treasury_accounts as a', 'a.id', '=', 'o.bank_account_id')->where('o.payable_id', $row->id)->orderByDesc('o.paid_on')
-                ->get(['o.code', 'o.paid_on', 'o.amount', 'o.method', 'o.operation_ref', 'a.name as account']),
+                ->get(['o.code', 'o.paid_on', 'o.amount', 'o.method', 'o.operation_ref', 'a.name as account'])
+                ->map(function (object $payout): object {
+                    $payout->method = PaymentMethods::display((string) $payout->method, PayableDirectory::PAYOUT_METHODS);
+
+                    return $payout;
+                }),
             'history' => $this->statusHistory('payable', $row->id),
             'audit' => $this->audit('Cuenta por pagar', $row->code),
             'bank_accounts' => self::bankAccounts($row->currency),

@@ -80,11 +80,11 @@ export function CampaignRecipientsTable({ campaign, recipients, truncated }: { c
     },
   ];
   const metrics: MetricFilter<CampaignRecipient>[] = [
-    { id: "delivered", label: "Entregados", tone: "ok", icon: <CheckCheck size={19} />, matches: (row) => row.status === "entregado" },
-    { id: "opened", label: "Abrieron", tone: "info", icon: <MailOpen size={19} />, matches: (row) => row.opened_at !== null },
-    { id: "clicked", label: "Hicieron clic", tone: "violet", icon: <MousePointerClick size={19} />, matches: (row) => row.clicked_at !== null },
-    { id: "failed", label: "Rebotes y fallos", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.status === "rebotado" || row.status === "fallido" },
-    { id: "unsubscribed", label: "Bajas", tone: "warn", icon: <UserX size={19} />, matches: (row) => row.unsubscribed_at !== null },
+    { id: "delivered", label: "Entregados", tone: "ok", icon: <CheckCheck size={19} />, matches: (row) => row.status === "entregado", info: <p>Destinatarios de esta campaña cuyo mensaje llegó, según el aviso de entrega del servicio de envío.</p> },
+    { id: "opened", label: "Abrieron", tone: "info", icon: <MailOpen size={19} />, matches: (row) => row.opened_at !== null, info: <p>Destinatarios que abrieron o leyeron el mensaje. Un clic también cuenta como apertura.</p> },
+    { id: "clicked", label: "Hicieron clic", tone: "violet", icon: <MousePointerClick size={19} />, matches: (row) => row.clicked_at !== null, info: <p>Destinatarios que abrieron al menos un enlace del mensaje.</p> },
+    { id: "failed", label: "Rebotes y fallos", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.status === "rebotado" || row.status === "fallido", info: <p>Destinatarios cuyo mensaje rechazó el servidor de destino o no se pudo entregar.</p> },
+    { id: "unsubscribed", label: "Bajas", tone: "warn", icon: <UserX size={19} />, matches: (row) => row.unsubscribed_at !== null, info: <p>Destinatarios de esta campaña que se dieron de baja de los envíos.</p> },
   ];
   const filters: FilterConfig<CampaignRecipient>[] = [{ id: "status", label: "Estado", options: campaign.recipient_statuses.filter((status) => status.count > 0).map((status) => ({ value: status.value, label: status.label })), value: (row) => row.status }];
   const sorts: SortOption<CampaignRecipient>[] = [

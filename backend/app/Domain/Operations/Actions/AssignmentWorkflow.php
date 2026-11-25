@@ -130,7 +130,7 @@ final class AssignmentWorkflow
         $this->audit->log('Asignación', $assignment->order_code.' · '.$assignment->service_label, 'asignar', $assignment->status, 'asignada'.($warnings === [] ? '' : ' · '.count($warnings).' advertencias'));
         $channels = array_values(array_intersect(OpsNotices::CHANNELS, (array) ($data['notify'] ?? [])));
         $current = $this->recipients($resources);
-        $notified = $channels === [] ? 0 : $this->notify($assignment, $current);
+        $notified = $channels === [] ? 0 : $this->notify($assignment, $current, in_array('whatsapp', $channels, true) ? $resources : null);
         $this->notifyRemoved($assignment, $previous->diff($current), 'asignacion.reasignada', 'Tu servicio pasó a otro operador');
 
         return ['warnings' => $warnings, 'notified' => $notified, 'channels' => $channels, 'delivery' => $channels === [] ? null : 'portal'];
@@ -159,13 +159,20 @@ final class AssignmentWorkflow
         $this->notices->toUsers($users, $event, "{$title}: {$assignment->service_label}", "{$assignment->service_label} del {$date} ({$assignment->order_code}) ya no está a tu cargo.", 'ops_assignment', (string) $assignment->id, $assignment->reservation_id);
     }
 
-    private function notify(object $assignment, Collection $recipients): int
+    private function notify(object $assignment, Collection $recipients, ?array $whatsapp = null): int
     {
         $time = OpsCommon::time($assignment->service_time);
         $date = CarbonImmutable::parse($assignment->service_date)->format('d/m/Y');
         $body = "Tienes un servicio asignado: {$assignment->service_label} el {$date}".($time ? " a las {$time}" : '')." ({$assignment->order_code}).";
+        $subject = "Servicio asignado: {$assignment->service_label}";
 
-        return $this->notices->toUsers($recipients, 'asignacion.creada', "Servicio asignado: {$assignment->service_label}", $body, 'ops_assignment', $assignment->id, $assignment->reservation_id);
+        $sent = $recipients->isEmpty() ? 0 : $this->notices->toUsers($recipients, 'asignacion.creada', $subject, $body, 'ops_assignment', $assignment->id, $assignment->reservation_id);
+
+        if ($whatsapp !== null) {
+            $this->notices->whatsappResources($whatsapp['guide_id'], $whatsapp['driver_id'], 'asignacion.creada', $subject, $body, (string) $assignment->id, $assignment->reservation_id);
+        }
+
+        return $sent;
     }
 
     private function recipients(array $resources): Collection
@@ -261,6 +268,9 @@ final class AssignmentWorkflow
         $this->recompute($assignment->order_id);
         $this->audit->log('Asignación', $assignment->order_code.' · '.$assignment->service_label, 'liberar', $assignment->status, 'pendiente');
         $this->notifyRemoved($assignment, $previous, 'asignacion.liberada', 'Se liberó tu servicio');
+        $date = CarbonImmutable::parse($assignment->service_date)->format('d/m/Y');
+        $this->notices->whatsappResources($assignment->guide_id, $assignment->driver_id, 'asignacion.liberada', "Asignación liberada: {$assignment->service_label}",
+            "Se liberó tu servicio {$assignment->service_label} del {$date} ({$assignment->order_code}): ya no está a tu cargo.", (string) $assignment->id, $assignment->reservation_id);
     }
 
     public function recompute(string $orderId): void

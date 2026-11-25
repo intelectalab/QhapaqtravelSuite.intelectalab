@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Jobs;
 
+use App\Jobs\AiCreditsLow;
 use App\Jobs\AlertClaimDeadlines;
 use App\Jobs\ApprovalSlaCheck;
 use App\Jobs\CashDepositAlerts;
@@ -23,13 +24,16 @@ use App\Jobs\ExpireQuotes;
 use App\Jobs\ExpireSupplierAlternativeHolds;
 use App\Jobs\ExpireUnconfirmedAssignments;
 use App\Jobs\ExpireWidgetHandoffs;
+use App\Jobs\GrantMonthlyAiCredits;
 use App\Jobs\InboxFirstResponseSla;
 use App\Jobs\MaintainMonthlyPartitions;
+use App\Jobs\MarkB2bAgreementsExpired;
 use App\Jobs\MarkExpiredProviderContracts;
 use App\Jobs\MarkOverdueReceivables;
 use App\Jobs\MonitorIncidentSla;
 use App\Jobs\NotifyUpcomingTrips;
 use App\Jobs\PurgeWebhookDeliveries;
+use App\Jobs\RecalculateB2bCredit;
 use App\Jobs\RefreshFxRates;
 use App\Jobs\RelayOutbox;
 use App\Jobs\ReleaseAllotments;
@@ -38,6 +42,7 @@ use App\Jobs\ReleasePayLaterHolds;
 use App\Jobs\RemindCrmActivities;
 use App\Jobs\RemindPendingSupplierRequests;
 use App\Jobs\RemindTravelDocuments;
+use App\Jobs\RenewCertificates;
 use App\Jobs\RenewSubscriptions;
 use App\Jobs\ResourceDocumentAlerts;
 use App\Jobs\RetryFailedCharges;
@@ -50,13 +55,16 @@ use App\Jobs\SendCorporateStatements;
 use App\Jobs\SendDueReviewRequests;
 use App\Jobs\SendPaymentReminders;
 use App\Jobs\SendScheduledReports;
+use App\Jobs\SeoNightlyAudit;
 use App\Jobs\ShowcaseMonthlyFees;
 use App\Jobs\ShowcaseReminder;
 use App\Jobs\SnapshotPlatformMetrics;
+use App\Jobs\SyncExternalReviews;
 use App\Jobs\SyncSupplierAdapters;
 use App\Jobs\TransferValidationWatch;
 use App\Jobs\TreasuryCashFlowSnapshot;
 use App\Jobs\TreasuryOpenSessionCheck;
+use App\Jobs\VerifyDomains;
 use App\Jobs\VerifyWidgetDomain;
 use App\Jobs\VoucherDeadlineAlerts;
 use App\Jobs\WarnExpiringCards;
@@ -109,6 +117,14 @@ final class JobCatalog
         'JOB-PUSH-1' => ['class' => CheckPushReceipts::class, 'name' => 'Recibos de push de Expo', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
         'JOB-SITIO-1' => ['class' => TransferValidationWatch::class, 'name' => 'Vigilar transferencias por validar', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
         'JOB-WEB-1' => ['class' => VerifyWidgetDomain::class, 'name' => 'Verificar dominios del widget', 'cron' => '*/10 * * * *', 'label' => 'cada 10 min', 'queue' => 'low'],
+        'JOB-WEB-2' => ['class' => VerifyDomains::class, 'name' => 'Verificar dominios propios y emitir SSL', 'cron' => '*/10 * * * *', 'label' => 'cada 10 min', 'queue' => 'default'],
+        'JOB-WEB-3' => ['class' => RenewCertificates::class, 'name' => 'Renovar certificados SSL', 'cron' => '30 3 * * *', 'label' => 'diario 03:30', 'queue' => 'default'],
+        'JOB-WEB-4' => ['class' => SeoNightlyAudit::class, 'name' => 'Auditoría SEO nocturna', 'cron' => '0 2 * * *', 'label' => 'diario 02:00', 'queue' => 'reports'],
+        'JOB-RES-1' => ['class' => SyncExternalReviews::class, 'name' => 'Sincronizar reseñas externas', 'cron' => '0 */6 * * *', 'label' => 'cada 6 h', 'queue' => 'integrations'],
+        'JOB-IA-1' => ['class' => GrantMonthlyAiCredits::class, 'name' => 'Asignar créditos de IA del mes', 'cron' => '5 0 1 * *', 'label' => 'mensual, día 1 00:05', 'queue' => 'default'],
+        'JOB-IA-2' => ['class' => AiCreditsLow::class, 'name' => 'Avisar créditos de IA por agotarse', 'cron' => '0 9 * * *', 'label' => 'diario 09:00', 'queue' => 'notifications'],
+        'JOB-B2B-1' => ['class' => MarkB2bAgreementsExpired::class, 'name' => 'Avisar convenios B2B por vencer y vencidos', 'cron' => '10 0 * * *', 'label' => 'diario 00:10', 'queue' => 'low'],
+        'JOB-B2B-2' => ['class' => RecalculateB2bCredit::class, 'name' => 'Cuadrar el crédito B2B con sus movimientos', 'cron' => '40 0 * * *', 'label' => 'diario 00:40', 'queue' => 'low'],
     ];
 
     public const PLATFORM = [

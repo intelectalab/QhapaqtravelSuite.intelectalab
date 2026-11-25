@@ -84,9 +84,9 @@ const columns: Column<PlanSummary>[] = [
 ];
 
 const metrics: MetricFilter<PlanSummary>[] = [
-  { id: "active", label: "Disponibles", tone: "ok", icon: <CircleCheck size={19} />, matches: (plan) => plan.status === "active" },
-  { id: "inactive", label: "No disponibles", tone: "mute", icon: <CircleOff size={19} />, matches: (plan) => plan.status !== "active" },
-  { id: "trial", label: "Con prueba gratis", tone: "info", icon: <Hourglass size={19} />, matches: (plan) => plan.trial_days > 0 },
+  { id: "active", label: "Disponibles", tone: "ok", icon: <CircleCheck size={19} />, matches: (plan) => plan.status === "active", info: <p>Planes que se pueden contratar hoy.</p> },
+  { id: "inactive", label: "No disponibles", tone: "mute", icon: <CircleOff size={19} />, matches: (plan) => plan.status !== "active", info: <p>Planes desactivados: ya no se pueden contratar.</p> },
+  { id: "trial", label: "Con prueba gratis", tone: "info", icon: <Hourglass size={19} />, matches: (plan) => plan.trial_days > 0, info: <p>Planes con días de prueba gratis configurados, estén disponibles o no.</p> },
 ];
 
 const sorts: SortOption<PlanSummary>[] = [

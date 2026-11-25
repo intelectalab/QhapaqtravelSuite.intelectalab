@@ -185,10 +185,10 @@ export function PromotionsTable({ catalog, canManage, showProduct = true, screen
     },
   ];
   const metrics: MetricFilter<Promotion>[] = [
-    { id: "vigente", label: "Vigentes", tone: "ok", icon: <TicketPercent size={19} />, matches: (row) => row.state === "vigente" },
-    { id: "programada", label: "Programadas", tone: "info", icon: <CalendarClock size={19} />, matches: (row) => row.state === "programada" },
-    { id: "pausada", label: "Pausadas", tone: "mute", icon: <CirclePause size={19} />, matches: (row) => row.state === "pausada" },
-    { id: "codigo", label: "Con código", tone: "violet", icon: <Tag size={19} />, matches: (row) => row.promo_code !== null },
+    { id: "vigente", label: "Vigentes", tone: "ok", icon: <TicketPercent size={19} />, matches: (row) => row.state === "vigente", info: <p>Promociones activas cuyo periodo de vigencia incluye hoy.</p> },
+    { id: "programada", label: "Programadas", tone: "info", icon: <CalendarClock size={19} />, matches: (row) => row.state === "programada", info: <p>Promociones activas que empiezan en una fecha futura.</p> },
+    { id: "pausada", label: "Pausadas", tone: "mute", icon: <CirclePause size={19} />, matches: (row) => row.state === "pausada", info: <p>Promociones desactivadas que todavía no llegan a su fecha de fin.</p> },
+    { id: "codigo", label: "Con código", tone: "violet", icon: <Tag size={19} />, matches: (row) => row.promo_code !== null, info: <p>Promociones que piden un código para aplicarse, en cualquier estado. Las demás se aplican solas.</p> },
   ];
   const filters: FilterConfig<Promotion>[] = [
     { id: "channel", label: "Canal", options: [...new Set(rows.map((row) => row.channel))].map((value) => ({ value, label: value })), value: (row) => row.channel },

@@ -32,10 +32,10 @@ export default async function CuentaPage() {
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={Building2} tone="t1" label="Plan" value={agency.plan?.name ?? "Sin plan"} note={agency.trial_ends_at ? `Prueba hasta el ${formatDate(agency.trial_ends_at)}` : agency.status_label} />
-        <TintTile icon={MapPin} tone="t2" label="Sedes" value={agency.sedes} note={agency.main_sede ? `Principal: ${agency.main_sede.name}` : undefined} />
-        <TintTile icon={Users} tone="t3" label="Usuarios activos" value={agency.active_users} note={agency.my_sede ? `Tu sede: ${agency.my_sede.name}` : undefined} />
-        <TintTile icon={Coins} tone="t4" label="Moneda base" value={agency.base_currency} note={agency.alt_currency ? `También ${agency.alt_currency}` : undefined} />
+        <TintTile icon={Building2} tone="t1" label="Plan" value={agency.plan?.name ?? "Sin plan"} note={agency.trial_ends_at ? `Prueba hasta el ${formatDate(agency.trial_ends_at)}` : agency.status_label} info={<p>Plan contratado por tu agencia en Suscripción. Define los módulos y los límites de uso.</p>} />
+        <TintTile icon={MapPin} tone="t2" label="Sedes" value={agency.sedes} note={agency.main_sede ? `Principal: ${agency.main_sede.name}` : undefined} info={<p>Sedes activas de tu agencia, configuradas en Usuarios y sedes.</p>} />
+        <TintTile icon={Users} tone="t3" label="Usuarios activos" value={agency.active_users} note={agency.my_sede ? `Tu sede: ${agency.my_sede.name}` : undefined} info={<p>Usuarios de todas tus sedes con acceso activo. Los invitados que aún no aceptan y los desactivados no cuentan.</p>} />
+        <TintTile icon={Coins} tone="t4" label="Moneda base" value={agency.base_currency} note={agency.alt_currency ? `También ${agency.alt_currency}` : undefined} info={<p>Moneda en la que tu agencia lleva sus cifras y reportes, según su configuración.</p>} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">

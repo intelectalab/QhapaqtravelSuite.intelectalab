@@ -7,6 +7,8 @@ namespace App\Domain\Finance\Http\Controllers;
 use App\Domain\Finance\Actions\QueryFiscalStatus;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Fake\FakeFiscalGateway;
+use App\Domain\Platform\Support\FiscalWebhookSecret;
+use App\Domain\Platform\Support\OseCatalog;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantDatabase;
 use Illuminate\Http\JsonResponse;
@@ -16,19 +18,18 @@ use Illuminate\Support\Facades\Validator;
 
 final class FiscalWebhookController
 {
-    public function __invoke(Request $request, string $provider, FiscalGateway $adapter, TenantDatabase $database, QueryFiscalStatus $query): JsonResponse
+    public function __invoke(Request $request, string $provider, FiscalGateway $adapter, TenantDatabase $database, QueryFiscalStatus $query, OseCatalog $catalog, FiscalWebhookSecret $keys): JsonResponse
     {
-        $driver = (string) config('integrations.drivers.fiscal', 'fake');
-
-        if ($provider !== $driver && ! ($driver === 'fake' && $provider === FakeFiscalGateway::NAME)) {
-            throw ApiException::notFound('El proveedor fiscal indicado no está configurado.');
-        }
-
+        $ose = $catalog->find($provider) ?? throw ApiException::notFound('El OSE indicado no está en el catálogo de KipuControl.');
         $raw = $request->getContent();
+        $signature = (string) $request->header(FakeFiscalGateway::SIGNATURE_HEADER, '');
+        $key = $keys->signedWith($ose['code'], $raw, $signature, fn (string $body, string $sent, string $secret): bool => $adapter->verifyWebhook($body, $sent, $secret));
 
-        if (! $adapter->verifyWebhook($raw, (string) $request->header(FakeFiscalGateway::SIGNATURE_HEADER, ''))) {
-            throw ApiException::unauthorized('WEBHOOK_SIGNATURE_INVALID', 'La firma del webhook no es válida.');
+        if ($key === null) {
+            throw ApiException::unauthorized('WEBHOOK_SIGNATURE_INVALID', $keys->secrets($ose['code']) === [] ? "Falta generar la clave de firma de {$ose['name']} en la consola." : 'La firma del webhook no es válida.');
         }
+
+        $keys->recordSigned($ose['code'], $key);
 
         $event = Validator::make((array) json_decode($raw, true), [
             'ticket' => ['required', 'string', 'max:80'],

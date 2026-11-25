@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Growth\Ota;
 
+use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Growth\Shared\GrowthRules;
 use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Contracts\OtaConnector;
@@ -38,9 +39,10 @@ final class OtaChannel
         private readonly OtaConnector $connector,
         private readonly SequenceService $sequences,
         private readonly AuditLogger $audit,
+        private readonly OtaBookingConversion $conversion,
     ) {}
 
-    public function connections(): array
+    public function connections(?User $viewer = null): array
     {
         $mappings = DB::table('channel_ota_product_mappings')->groupBy('connection_id')->selectRaw("connection_id, count(*) as total, count(*) filter (where status = 'activo') as active")->get()->keyBy('connection_id');
         $bookings = DB::table('channel_ota_bookings')->groupBy('connection_id')->selectRaw("connection_id, count(*) as total, count(*) filter (where status in ('rechazada','error')) as failed")->get()->keyBy('connection_id');
@@ -59,6 +61,8 @@ final class OtaChannel
                 'errors' => $rows->where('status', 'error')->count() + DB::table('channel_ota_bookings')->whereIn('status', ['rechazada', 'error'])->where('received_at', '>=', now()->subDays(30))->count(),
             ],
             'connections' => $rows->all(),
+            'clients' => $viewer === null ? [] : Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $viewer)->orderBy('name')->limit(500)->get(['code', 'name'])
+                ->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name, 'hint' => $row->code])->all(),
             'catalogs' => ['otas' => self::OTAS, 'statuses' => self::STATUSES, 'price_modes' => self::PRICE_MODES, 'mapping_statuses' => self::MAPPING_STATUSES, 'booking_statuses' => self::BOOKING_STATUSES],
         ];
     }
@@ -235,25 +239,35 @@ final class OtaChannel
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'b.reservation_id')
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('b.status', $status))
             ->when($filters['connection'] ?? null, fn ($query, $connection) => $query->where('c.code', $connection))
-            ->select(['b.*', 'c.code as connection_code', 'c.name as connection_name', 'c.ota', 'p.code as product_code', 'p.name as product_name', 'r.code as reservation_code']);
+            ->select(['b.*', 'c.code as connection_code', 'c.name as connection_name', 'c.ota', 'c.commission_pct', 'm.price_mode', 'm.fixed_price', 'p.code as product_code', 'p.name as product_name', 'r.code as reservation_code']);
         $counts = DB::table('channel_ota_bookings')->groupBy('status')->selectRaw('status, count(*) as total')->pluck('total', 'status')->map(fn ($total): int => (int) $total)->all();
 
-        return CursorPage::respond($request, $query, ['received_at' => 'b.received_at', 'travel_date' => 'b.travel_date'], '-received_at', fn (object $row): array => [
-            'id' => (string) $row->id,
-            'ota_booking_ref' => $row->ota_booking_ref,
-            'connection' => ['code' => $row->connection_code, 'name' => $row->connection_name, 'ota' => $row->ota, 'ota_label' => self::OTAS[$row->ota] ?? $row->ota],
-            'product' => $row->product_code === null ? null : ['code' => $row->product_code, 'name' => $row->product_name],
-            'reservation' => $row->reservation_code,
-            'travel_date' => $row->travel_date,
-            'pax' => $row->pax === null ? null : (int) $row->pax,
-            'gross_amount' => Decimal::toApi($row->gross_amount),
-            'net_amount' => Decimal::toApi($row->net_amount),
-            'currency' => $row->currency,
-            'status' => $row->status,
-            'status_label' => self::BOOKING_STATUSES[$row->status] ?? $row->status,
-            'error' => $row->error,
-            'received_at' => $row->received_at,
-        ], ['counts' => $counts, 'statuses' => self::BOOKING_STATUSES]);
+        return CursorPage::respond($request, $query, ['received_at' => 'b.received_at', 'travel_date' => 'b.travel_date'], '-received_at', function (object $row): array {
+            $amounts = OtaBookingConversion::amounts($row, $row->price_mode === null ? null : $row, (string) $row->commission_pct);
+
+            return [
+                'id' => (string) $row->id,
+                'ota_booking_ref' => $row->ota_booking_ref,
+                'connection' => ['code' => $row->connection_code, 'name' => $row->connection_name, 'ota' => $row->ota, 'ota_label' => self::OTAS[$row->ota] ?? $row->ota],
+                'product' => $row->product_code === null ? null : ['code' => $row->product_code, 'name' => $row->product_name],
+                'reservation' => $row->reservation_code,
+                'travel_date' => $row->travel_date,
+                'pax' => $row->pax === null ? null : (int) $row->pax,
+                'gross_amount' => Decimal::toApi($row->gross_amount),
+                'net_amount' => Decimal::toApi($row->net_amount),
+                'sale_amount' => Decimal::toApi($amounts['gross']),
+                'payout_amount' => Decimal::toApi($amounts['net']),
+                'commission_amount' => Decimal::toApi($amounts['commission']),
+                'commission_pct' => (string) $row->commission_pct,
+                'currency' => $row->currency,
+                'customer' => $row->status === 'recibida' ? $this->conversion->suggestion($row) : null,
+                'convertible' => $row->status === 'recibida',
+                'status' => $row->status,
+                'status_label' => self::BOOKING_STATUSES[$row->status] ?? $row->status,
+                'error' => $row->error,
+                'received_at' => $row->received_at,
+            ];
+        }, ['counts' => $counts, 'statuses' => self::BOOKING_STATUSES]);
     }
 
     private function listings(string $connectionId, float $markup): array

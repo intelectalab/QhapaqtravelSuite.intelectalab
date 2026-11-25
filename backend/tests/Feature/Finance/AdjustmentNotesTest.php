@@ -32,6 +32,7 @@ function noteAudit(string $entityId, string $action): bool
 
 beforeEach(function () {
     Queue::fake();
+    freezeBusinessToday();
     lockSeededBookings();
 });
 

@@ -18,9 +18,9 @@ export function PortalQuotes({ quotes }: { quotes: PortalQuoteSummary[] }) {
     <>
       <PortalTitle title="Propuestas" subtitle="Las cotizaciones que tu asesor preparó para ti. Acéptalas o cuéntanos qué cambiar." />
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
-        <TintTile icon={Clock} tone="violet" label="Por responder" value={open.length} note={open.length ? "Esperan tu decisión" : "Nada pendiente"} />
-        <TintTile icon={CheckCircle2} tone="ok" label="Aceptadas" value={accepted.length} note={`${accepted.filter((quote) => quote.status === "convertida").length} ya convertidas en viaje`} />
-        <TintTile icon={XCircle} tone="mute" label="Cerradas" value={closed.length} note="No aceptadas o vencidas" />
+        <TintTile icon={Clock} tone="violet" label="Por responder" value={open.length} note={open.length ? "Esperan tu decisión" : "Nada pendiente"} info={<p>Propuestas vigentes que puedes aceptar o pedir cambiar.</p>} />
+        <TintTile icon={CheckCircle2} tone="ok" label="Aceptadas" value={accepted.length} note={`${accepted.filter((quote) => quote.status === "convertida").length} ya convertidas en viaje`} info={<p>Propuestas que aprobaste, incluidas las que ya se volvieron viaje.</p>} />
+        <TintTile icon={XCircle} tone="mute" label="Cerradas" value={closed.length} note="No aceptadas o vencidas" info={<p>Propuestas que no aceptaste o cuyo plazo de respuesta venció.</p>} />
       </section>
       {quotes.length === 0 ? (
         <EmptyLine>Todavía no recibiste propuestas. Escríbele a tu asesor para cotizar tu próximo viaje.</EmptyLine>

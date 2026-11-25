@@ -60,11 +60,11 @@ export function AgencyStatementView({ statement }: { statement: Statement }) {
       <PortalTitle title="Estado de cuenta" subtitle="Cuotas de tus reservas, pagos informados y comisiones a favor." actions={statement.can_settle ? <SettlementPanel statement={statement} /> : undefined} />
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <TintTile icon={ReceiptText} tone="t3" label="Facturado" value={<MoneyLines values={statement.kpis.billed} empty="—" />} note="Total neto de tus reservas" />
-        <TintTile icon={BadgeCheck} tone="ok" label="Pagado" value={<MoneyLines values={statement.kpis.paid} empty="—" />} note="Aplicado por Finanzas" />
-        <TintTile icon={Wallet} tone="t2" label="Por pagar" value={<MoneyLines values={statement.kpis.due} empty="Al día" />} note={statement.kpis.overdue ? `${statement.kpis.overdue} cuotas vencidas` : "Sin cuotas vencidas"} />
-        <TintTile icon={BadgePercent} tone="violet" label="Comisiones a favor" value={<MoneyLines values={statement.kpis.commission_pending} empty="—" />} note="Calculadas y aprobadas" />
-        <TintTile icon={HandCoins} tone="info" label="Comisiones pagadas" value={<MoneyLines values={statement.kpis.commission_paid} empty="—" />} note="Liquidadas a tu agencia" />
+        <TintTile icon={ReceiptText} tone="t3" label="Facturado" value={<MoneyLines values={statement.kpis.billed} empty="—" />} note="Total neto de tus reservas" info={<p>Suma de las cuotas de cobro de tus reservas, sin las anuladas. Se muestra por moneda.</p>} />
+        <TintTile icon={BadgeCheck} tone="ok" label="Pagado" value={<MoneyLines values={statement.kpis.paid} empty="—" />} note="Aplicado por Finanzas" info={<p>Suma de lo ya pagado en las cuotas de tus reservas, por moneda.</p>} />
+        <TintTile icon={Wallet} tone="t2" label="Por pagar" value={<MoneyLines values={statement.kpis.due} empty="Al día" />} note={statement.kpis.overdue ? `${statement.kpis.overdue} cuotas vencidas` : "Sin cuotas vencidas"} info={<p>Por pagar = monto de tus cuotas abiertas, parciales o vencidas − lo ya pagado en ellas. La nota cuenta las cuotas con la fecha de vencimiento ya pasada.</p>} />
+        <TintTile icon={BadgePercent} tone="violet" label="Comisiones a favor" value={<MoneyLines values={statement.kpis.commission_pending} empty="—" />} note="Calculadas y aprobadas" info={<p>Suma de tus comisiones calculadas o aprobadas que aún no se pagan.</p>} />
+        <TintTile icon={HandCoins} tone="info" label="Comisiones pagadas" value={<MoneyLines values={statement.kpis.commission_paid} empty="—" />} note="Liquidadas a tu agencia" info={<p>Comisiones ya liquidadas a tu agencia. Antes de pagarse pasan por calculada y aprobada, y mientras tanto cuentan en «Comisiones a favor».</p>} />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">

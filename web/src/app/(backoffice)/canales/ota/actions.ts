@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { OtaConversion } from "@/lib/growth";
+import { apiFetch } from "@/lib/server/api";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -23,6 +25,19 @@ export async function otaConnectionStep(_state: StepResult, form: FormData): Pro
   const step = text(form, "step");
   if (step === "sync") return refresh(await sendStep(`/channels/ota/connections/${code}/sync`, "POST", {}, "No pudimos sincronizar."));
   return refresh(await sendStep(`/channels/ota/connections/${code}`, "PATCH", { action: step, lock_version: Number(text(form, "lock_version")) }, "No pudimos cambiar el estado de la conexión."));
+}
+
+export async function convertOtaBooking(_state: StepResult, form: FormData): Promise<StepResult> {
+  const id = encodeURIComponent(text(form, "id"));
+  const client = text(form, "client_id");
+  const result = await apiFetch<OtaConversion>(`/channels/ota/bookings/${id}/convert`, { method: "POST", body: client ? { client_id: client } : {} });
+  if (!result.ok || !result.data) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos convertir la reserva.", done: false };
+  }
+  revalidatePath("/canales/ota");
+  if (result.data.status === "confirmada") return { message: result.data.reservation, done: true };
+  return { message: result.data.error ?? `La reserva quedó ${result.data.status_label.toLowerCase()}.`, done: false };
 }
 
 export async function saveOtaMapping(_state: StepResult, form: FormData): Promise<StepResult> {

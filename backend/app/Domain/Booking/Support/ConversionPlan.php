@@ -41,6 +41,11 @@ final class ConversionPlan
         $currency = (string) ($version->currency ?? $quote->currency);
         $availability = $this->availabilityOf($items, $products, $departures);
         $checks = $this->checks($quote, $version, $items, $products, $total, $currency);
+        $external = app(ExternalOfferIssuer::class)->check((string) $quote->id, $currency);
+        if ($external !== null) {
+            $checks[] = $external['check'];
+            $total = $total->plus($external['total']);
+        }
         $blocked = collect($availability)->contains(fn (array $row): bool => $row['status'] === 'bloqueado');
         $ready = collect($checks)->every(fn (array $check): bool => $check['ok']);
 

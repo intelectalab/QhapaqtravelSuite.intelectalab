@@ -1,7 +1,9 @@
 <?php
 
 use App\Domain\Iam\Models\AccessToken;
+use App\Domain\Platform\Support\Entitlements;
 use App\Http\Middleware\AssignCorrelationId;
+use App\Http\Middleware\EnsureFeature;
 use Illuminate\Database\QueryException;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
@@ -99,7 +101,21 @@ it('X-10 / T-14: el Super Admin no opera datos del tenant', function () {
     $this->getJson('/api/v1/quotes')->assertForbidden();
 });
 
-it('el entitlement es independiente del rol: sin la función en el plan responde 403 FEATURE_NOT_IN_PLAN', function () {})->todo('Fase B: falta ChangeTenantPlan y GET /integrations/api-keys; además el cambio de plan corre por la conexión de plataforma y la API lee por la de la app (ver informe).');
+it('el entitlement es independiente del rol: sin la función en el plan responde 403 FEATURE_NOT_IN_PLAN', function () {
+    lockPlatformBilling();
+    $admin = actingAsSeed('U01');
+
+    expect($admin->can('admin.api.manage'))->toBeTrue();
+    $this->getJson('/api/v1/integrations/api-keys')->assertOk();
+
+    $platform = DB::connection('pgsql_platform');
+    $platform->table('tenants')->where('id', tenantA()->getKey())->update(['plan_id' => $platform->table('plans')->where('code', 'starter')->value('id')]);
+    Entitlements::flush();
+
+    expect(app(Entitlements::class)->for((string) tenantA()->getKey())['module.api_access']['enabled'])->toBeFalse()
+        ->and($this->getJson('/api/v1/integrations/api-keys'))->toBeApiError(403, EnsureFeature::CODE)
+        ->and($admin->fresh()->can('admin.api.manage'))->toBeTrue();
+});
 
 it('T-25 / REP-BR-03: Contabilidad recibe la variante contable sin costos ni márgenes', function () {
     requireRoute('GET', '/api/v1/reports/finanzas');

@@ -12,6 +12,16 @@ use Illuminate\Http\Response;
 
 final class ExternalOfferController
 {
+    public function index(Request $request, string $id, ExternalOffers $offers): JsonResponse
+    {
+        return response()->json(['data' => $offers->overview($id, $this->user($request))]);
+    }
+
+    public function hold(Request $request, string $id, string $offerId, ExternalOffers $offers): JsonResponse
+    {
+        return response()->json(['data' => $offers->hold($id, $offerId, $this->user($request))]);
+    }
+
     public function search(Request $request, string $id, ExternalOffers $offers): JsonResponse
     {
         $data = $request->validate([
@@ -20,14 +30,14 @@ final class ExternalOfferController
             'destination' => ['required', 'string', 'min:3', 'max:60'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
-            'pax' => ['nullable', 'integer', 'between:1,40'],
+            'pax' => ['nullable', 'integer', 'between:1,500'],
         ], [
             'kind.*' => 'Elige qué buscar: aéreo, hotel, auto o seguro.',
             'origin.*' => 'Escribe la ciudad o el código de origen del vuelo.',
             'destination.*' => 'Escribe el destino.',
             'date_from.*' => 'La fecha de salida no es válida.',
             'date_to.*' => 'La fecha de regreso no es válida.',
-            'pax.*' => 'Los pasajeros van de 1 a 40.',
+            'pax.*' => 'Los pasajeros van de 1 a 500.',
         ]);
 
         return response()->json(['data' => $offers->search($id, $data, $this->user($request))]);

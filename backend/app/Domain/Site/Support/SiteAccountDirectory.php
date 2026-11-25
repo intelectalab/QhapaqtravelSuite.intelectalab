@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Site\Support;
 
 use App\Domain\Crm\Actions\ArcoRequests;
+use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -16,7 +17,7 @@ use stdClass;
 
 final class SiteAccountDirectory
 {
-    public function __construct(private readonly SiteCatalog $catalog) {}
+    public function __construct(private readonly SiteCatalog $catalog, private readonly PaymentMethods $methods) {}
 
     public function me(PortalAccount $account): array
     {
@@ -75,6 +76,7 @@ final class SiteAccountDirectory
         $passengers = DB::table('booking_passengers')->where('reservation_id', $row->id)->orderBy('seq')->get(['full_name', 'pax_type', 'pending', 'is_lead']);
         $payments = DB::table('fin_payments')->where('reservation_id', $row->id)->where('kind', 'cobro')->orderByDesc('paid_on')->get(['id', 'code', 'method', 'amount', 'currency', 'status', 'paid_on']);
         $order = DB::table('booking_reservations as r')->join('channel_ecom_orders as o', 'o.id', '=', 'r.ecom_order_id')->where('r.id', $row->id)->value('o.code');
+        $labels = $this->methods->customerLabels();
         $proofs = app(TransferProofs::class)->latest($payments->where('status', 'pendiente')->pluck('id')->map(fn (mixed $id): string => (string) $id)->all());
 
         return [
@@ -90,7 +92,7 @@ final class SiteAccountDirectory
             'passengers' => $passengers->map(fn (stdClass $p): array => ['name' => $p->full_name, 'type' => $p->pax_type, 'pending' => (bool) $p->pending, 'lead' => (bool) $p->is_lead])->all(),
             'receivables' => $account->isPassenger() ? [] : $this->receivableRows($account, [$row->id])->map(fn (array $r): array => $this->receivable($r))->values()->all(),
             'vouchers' => $this->voucherRows([$row->id])->all(),
-            'payments' => $account->isPassenger() ? [] : $payments->map(fn (stdClass $p): array => ['code' => $p->code, 'method' => $p->method, 'amount' => Decimal::toApi((string) $p->amount), 'currency' => $p->currency, 'status' => $p->status, 'date' => $p->paid_on, 'proof_at' => $proofs[(string) $p->id]['last_at'] ?? null, 'can_upload_proof' => $p->status === 'pendiente' && $p->method !== 'tarjeta_e_commerce'])->all(),
+            'payments' => $account->isPassenger() ? [] : $payments->map(fn (stdClass $p): array => ['code' => $p->code, 'method' => PaymentMethods::display((string) $p->method, $labels), 'amount' => Decimal::toApi((string) $p->amount), 'currency' => $p->currency, 'status' => $p->status, 'date' => $p->paid_on, 'proof_at' => $proofs[(string) $p->id]['last_at'] ?? null, 'can_upload_proof' => $p->status === 'pendiente' && $p->method !== 'tarjeta_e_commerce'])->all(),
         ];
     }
 

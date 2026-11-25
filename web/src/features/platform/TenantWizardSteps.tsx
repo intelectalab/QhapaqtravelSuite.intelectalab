@@ -11,6 +11,7 @@ import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import type { ProvisionOptions, ProvisionPayload } from "@/lib/platform";
+import { SCOPE_LABEL, type RoleScope } from "@/lib/roles";
 
 export interface StepProps {
   form: ProvisionPayload;
@@ -143,7 +144,7 @@ export function RolesStep({ form, set, options }: StepProps) {
             <b className="pr-6 text-[13.5px]">{role.name}</b>
             {role.description && <span className="mt-0.5 line-clamp-2 text-[12px] text-fg-3">{role.description}</span>}
             <span className="mt-2 flex gap-1.5">
-              <Badge tone="mute" dot={false}>{role.scope}</Badge>
+              <Badge tone="mute" dot={false}>{SCOPE_LABEL[role.scope as RoleScope] ?? role.scope}</Badge>
               {role.required && <Badge tone="t1" dot={false}>Siempre incluido</Badge>}
             </span>
           </SelectCard>

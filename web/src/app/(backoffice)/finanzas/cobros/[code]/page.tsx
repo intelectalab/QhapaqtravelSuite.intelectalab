@@ -61,10 +61,10 @@ export default async function CuotaPage({ params }: PageProps<"/finanzas/cobros/
       />
       {row.cancel_reason && <p className="mb-5 rounded-card border border-line bg-surface-2 px-4 py-3 text-[13.5px] text-fg-2"><b className="text-fg">Anulada.</b> {row.cancel_reason}</p>}
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={Receipt} tone="t1" label="Monto" value={formatMoney(row.amount, row.currency)} />
-        <TintTile icon={Wallet} tone="ok" label="Pagado" value={formatMoney(row.paid, row.currency)} />
-        <TintTile icon={HandCoins} tone={row.status === "vencida" ? "bad" : "sun"} label="Saldo" value={formatMoney(row.balance, row.currency)} />
-        <TintTile icon={CalendarClock} tone="violet" label="Vence" value={<span className="text-[16px]">{formatDate(row.due_date)}</span>} />
+        <TintTile icon={Receipt} tone="t1" label="Monto" value={formatMoney(row.amount, row.currency)} info={<p>Importe de la cuota. Sale del plan de pagos de la reserva, o de un cambio, una penalidad o un cargo agregado a mano.</p>} />
+        <TintTile icon={Wallet} tone="ok" label="Pagado" value={formatMoney(row.paid, row.currency)} info={<p>Suma de los pagos registrados a esta cuota.</p>} />
+        <TintTile icon={HandCoins} tone={row.status === "vencida" ? "bad" : "sun"} label="Saldo" value={formatMoney(row.balance, row.currency)} info={<p>Lo que falta cobrar: monto menos lo pagado.</p>} />
+        <TintTile icon={CalendarClock} tone="violet" label="Vence" value={<span className="text-[16px]">{formatDate(row.due_date)}</span>} info={<p>Fecha límite de pago que fija el plan de pagos de la reserva. Pasada esa fecha con saldo, la cuota queda vencida.</p>} />
       </section>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">
@@ -86,7 +86,7 @@ export default async function CuotaPage({ params }: PageProps<"/finanzas/cobros/
                       {payment.reference && <span className="block text-xs text-fg-3">Operación {payment.reference}</span>}
                     </td>
                     <td className="whitespace-nowrap">{formatDate(payment.paid_on)}</td>
-                    <td className="first-letter:uppercase">{payment.method.replaceAll("_", " ")}</td>
+                    <td>{payment.method}</td>
                     <td className="text-right font-mono">{formatMoney(payment.amount, row.currency)}</td>
                     <td>
                       <StatusBadge status={payment.reversed_at ? "revertido" : payment.status} />

@@ -64,7 +64,7 @@ final class OtaWebhookEvents
             ->where('status', 'activo')->orderByRaw('ota_option_ref is null')->first(['id']);
         $status = $mapping === null ? 'rechazada' : 'recibida';
 
-        DB::table('channel_ota_bookings')->insert([
+        $id = (string) DB::table('channel_ota_bookings')->insertGetId([
             'tenant_id' => $this->context->idOrFail(),
             'connection_id' => $connection->id,
             'ota_booking_ref' => $booking['ref'],
@@ -81,7 +81,7 @@ final class OtaWebhookEvents
         ]);
         $this->audit->log('Reserva OTA', $connection->code.'/'.$booking['ref'], 'recibir', after: $status.($mapping === null ? ' · sin mapeo' : ''));
 
-        return ['result' => $status, 'status' => $status];
+        return ['result' => $status, 'status' => $status, 'booking_id' => $id];
     }
 
     private function modify(object $connection, ?object $existing, array $booking, array $event): array
@@ -123,6 +123,6 @@ final class OtaWebhookEvents
         DB::table('channel_ota_bookings')->where('id', $existing->id)->update(['status' => 'cancelada', 'processed_at' => now(), 'payload' => json_encode($event, JSON_UNESCAPED_UNICODE)]);
         $this->audit->log('Reserva OTA', $connection->code.'/'.$booking['ref'], 'cancelar', $existing->status, 'cancelada');
 
-        return ['result' => 'cancelada', 'status' => 'cancelada'];
+        return ['result' => 'cancelada', 'status' => 'cancelada', 'booking_id' => (string) $existing->id];
     }
 }

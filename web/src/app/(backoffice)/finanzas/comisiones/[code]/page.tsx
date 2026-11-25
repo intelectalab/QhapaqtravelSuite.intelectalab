@@ -62,10 +62,10 @@ export default async function ComisionPage({ params }: PageProps<"/finanzas/comi
         }
       />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={Calculator} tone="t1" label="Base" value={formatMoney(row.base, row.currency)} />
-        <TintTile icon={BadgePercent} tone="violet" label="Porcentaje" value={`${Number(row.pct)} %`} />
-        <TintTile icon={Coins} tone="ok" label="Comisión" value={formatMoney(row.amount, row.currency)} />
-        <TintTile icon={Scale} tone={rule && Number(rule.difference) !== 0 ? "warn" : "sun"} label="Frente a la regla vigente" value={rule ? (Number(rule.difference) === 0 ? "Coincide" : formatMoney(rule.difference, row.currency)) : <span className="text-[14px] text-fg-3">Sin regla</span>} />
+        <TintTile icon={Calculator} tone="t1" label="Base" value={formatMoney(row.base, row.currency)} info={<p>Monto sobre el que se calcula la comisión. En una reserva es su total o su venta neta sin IGV, según la regla aplicada.</p>} />
+        <TintTile icon={BadgePercent} tone="violet" label="Porcentaje" value={`${Number(row.pct)} %`} info={<p>Porcentaje de la regla de comisión que regía cuando se calculó. Si la regla cambió después, la diferencia aparece en «Frente a la regla vigente».</p>} />
+        <TintTile icon={Coins} tone="ok" label="Comisión" value={formatMoney(row.amount, row.currency)} info={<p>Monto de la comisión: base por porcentaje.</p>} />
+        <TintTile icon={Scale} tone={rule && Number(rule.difference) !== 0 ? "warn" : "sun"} label="Frente a la regla vigente" value={rule ? (Number(rule.difference) === 0 ? "Coincide" : formatMoney(rule.difference, row.currency)) : <span className="text-[14px] text-fg-3">Sin regla</span>} info={<p>Comisión registrada menos lo que daría hoy la regla: base por el porcentaje vigente de la regla. Dice Coincide cuando no hay diferencia.</p>} />
       </section>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">

@@ -71,7 +71,7 @@ it('el guía recibe aviso cuando le liberan o reasignan el servicio', function (
     actingAsSeed('U05');
     $busy = opsAsgFind('OP-2026-0413', '2026-10-02', '07:30:00');
     $guideUser = idOf('iam_users', 'U09');
-    $notice = fn (string $event, string $user) => withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', $event)->where('recipient_user_id', $user)->where('source_id', $busy->id)->count());
+    $notice = fn (string $event, string $user) => withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', $event)->where('recipient_user_id', $user)->where('source_id', $busy->id)->where('channel', 'portal')->count());
 
     $this->postJson("/api/v1/ops/assignments/{$busy->id}/release", [], critical((int) $busy->lock_version))->assertOk();
     expect($notice('asignacion.liberada', $guideUser))->toBe(1);

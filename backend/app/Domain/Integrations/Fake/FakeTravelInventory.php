@@ -27,6 +27,8 @@ final class FakeTravelInventory implements TravelInventory
 
     private const MARKUP = '1.12';
 
+    private const HOLD_HOURS = ['aereo' => 72, 'otro' => 168];
+
     public function search(array $criteria): array
     {
         if (IntegrationReadiness::enforced()) {
@@ -58,6 +60,47 @@ final class FakeTravelInventory implements TravelInventory
         $offer = $this->offer($match[1], $expanded, (int) $match[2]);
 
         return $offer['provider'] === $provider ? $offer : null;
+    }
+
+    public function hold(string $provider, string $offerRef): AdapterResult
+    {
+        if (($unavailable = IntegrationReadiness::unavailable('travel_inventory')) !== null) {
+            return $unavailable;
+        }
+
+        $offer = $this->find($provider, $offerRef);
+
+        if ($offer === null) {
+            return AdapterResult::permanent('El proveedor ya no tiene esta oferta.');
+        }
+
+        $until = now()->addHours($offer['kind'] === 'aereo' ? self::HOLD_HOURS['aereo'] : self::HOLD_HOURS['otro']);
+
+        return AdapterResult::success('retenida', null, ['expires_at' => $until->toIso8601String(), 'simulated' => true]);
+    }
+
+    public function issue(string $provider, string $offerRef, string $idempotencyKey): AdapterResult
+    {
+        if (($unavailable = IntegrationReadiness::unavailable('travel_inventory')) !== null) {
+            return $unavailable;
+        }
+
+        if ($this->find($provider, $offerRef) === null) {
+            return AdapterResult::permanent('El proveedor ya no tiene esta oferta.');
+        }
+
+        $pnr = mb_strtoupper(substr(strtr(base64_encode(hash('sha256', $provider.'|'.$offerRef.'|'.$idempotencyKey, true)), '+/=', 'XYZ'), 0, 6));
+
+        return AdapterResult::success('emitida', $pnr, ['simulated' => true]);
+    }
+
+    public function void(string $provider, string $reference): AdapterResult
+    {
+        if (($unavailable = IntegrationReadiness::unavailable('travel_inventory')) !== null) {
+            return $unavailable;
+        }
+
+        return AdapterResult::success('anulada', $reference, ['simulated' => true]);
     }
 
     public function healthcheck(): AdapterResult

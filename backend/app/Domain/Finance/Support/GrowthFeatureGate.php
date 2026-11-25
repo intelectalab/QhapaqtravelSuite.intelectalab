@@ -26,10 +26,10 @@ final class GrowthFeatureGate
         return $this->rules->on($rule);
     }
 
-    public function require(string $rule): void
+    public function require(string $rule, array $permissions = []): void
     {
         if (! $this->rules->on($rule)) {
-            throw ApiException::forbidden('RULE_NOT_IN_PLAN', 'El plan de tu agencia no incluye '.(self::LABELS[$rule] ?? $rule).' o la función está apagada. La administración puede activarla desde Reglas o mejorar el plan.');
+            throw ApiException::forbidden('RULE_NOT_IN_PLAN', 'El plan de tu agencia no incluye '.(self::LABELS[$rule] ?? $rule).' o la función está apagada. La administración puede activarla desde Reglas o mejorar el plan.', $permissions);
         }
     }
 

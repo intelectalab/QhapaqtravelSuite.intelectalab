@@ -68,9 +68,9 @@ export function SupplierCalendarView({ data }: { data: SupplierCalendar }) {
       />
 
       <section className="mb-5 grid gap-3 sm:grid-cols-3">
-        <TintTile icon={CalendarCheck2} tone="ok" label="Servicios del mes" value={data.rows.length} note={data.rows.length ? "Confirmados o realizados" : "Sin servicios confirmados"} />
-        <TintTile icon={Users} tone="t1" label="Pasajeros del mes" value={pax} note="Suma de todos los servicios" />
-        <TintTile icon={CalendarCheck2} tone="t3" label="Día con más servicios" value={busiest ? Number(busiest[0].slice(8, 10)) : "—"} note={busiest ? `${busiest[1].length} ${busiest[1].length === 1 ? "servicio" : "servicios"}` : "Sin actividad"} />
+        <TintTile icon={CalendarCheck2} tone="ok" label="Servicios del mes" value={data.rows.length} note={data.rows.length ? "Confirmados o realizados" : "Sin servicios confirmados"} info={<p>Servicios confirmados, en curso o realizados con fecha en el mes que estás viendo.</p>} />
+        <TintTile icon={Users} tone="t1" label="Pasajeros del mes" value={pax} note="Suma de todos los servicios" info={<p>Pasajeros de tus servicios confirmados, en curso o realizados con fecha en el mes que estás viendo. Los pendientes y cancelados no cuentan.</p>} />
+        <TintTile icon={CalendarCheck2} tone="t3" label="Día con más servicios" value={busiest ? Number(busiest[0].slice(8, 10)) : "—"} note={busiest ? `${busiest[1].length} ${busiest[1].length === 1 ? "servicio" : "servicios"}` : "Sin actividad"} info={<p>El día del mes con más servicios.</p>} />
       </section>
 
       {data.months.length > 0 && (

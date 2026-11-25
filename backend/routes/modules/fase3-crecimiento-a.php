@@ -46,8 +46,10 @@ Route::prefix('portal/passenger')->name('portal.passenger.crecimiento-a.')->cont
 });
 
 Route::middleware('permission:quotes.external_offers')->prefix('quotes/{id}/external-offers')->name('crecimiento-a.quotes.external-offers.')->controller(ExternalOfferController::class)->group(function (): void {
+    Route::get('/', 'index')->name('index');
     Route::post('search', 'search')->middleware('throttle:60,1')->name('search');
     Route::post('/', 'store')->name('store');
+    Route::post('{offerId}/hold', 'hold')->middleware('throttle:30,1')->name('hold');
     Route::delete('{offerId}', 'destroy')->name('destroy');
 });
 

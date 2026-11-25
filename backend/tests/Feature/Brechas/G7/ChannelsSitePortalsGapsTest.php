@@ -123,6 +123,17 @@ it('la sesión del pasajero trae el menú según las reglas, los contadores y la
     expect($this->getJson('/api/v1/portal/client/session')->assertOk()->json('data.menu'))->toBeNull();
 });
 
+it('la alerta de viaje del pasajero no aparece cuando el viaje ya terminó o se completó', function () {
+    actingAsSeed('U15');
+    $reservation = withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('code', 'RES-2026-000347')->first(['id', 'status', 'travel_from', 'travel_to']));
+
+    withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('id', $reservation->id)->update(['travel_from' => now()->subDays(6)->toDateString(), 'travel_to' => now()->subDays(2)->toDateString()]));
+    expect($this->getJson('/api/v1/portal/client/session')->assertOk()->json('data.menu.alert'))->toBeNull();
+
+    withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('id', $reservation->id)->update(['travel_to' => now()->addDays(3)->toDateString(), 'status' => 'completada']));
+    expect($this->getJson('/api/v1/portal/client/session')->assertOk()->json('data.menu.alert'))->toBeNull();
+});
+
 it('portal cliente: el mensaje guarda la prioridad elegida y salud siempre va con prioridad alta', function () {
     actingAsSeed('U14');
     $low = $this->postJson('/api/v1/portal/client/tickets', ['body' => 'Consulta sin apuro sobre facturas.', 'topic' => 'pagos', 'priority' => 'baja'])->assertOk()->json('data.code');

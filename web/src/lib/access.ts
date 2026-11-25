@@ -5,6 +5,7 @@ export interface AccessInfo {
   screens: Record<string, boolean>;
   required?: Record<string, string[]>;
   locked?: Record<string, LockedFeature | null>;
+  upcoming?: Record<string, UpcomingFeature>;
 }
 
 function longestPrefix(keys: string[], path: string): string | undefined {
@@ -22,10 +23,22 @@ export interface LockedFeature {
   label: string;
 }
 
+export interface UpcomingFeature extends LockedFeature {
+  message: string;
+}
+
+function featureAt<T>(map: Record<string, T | null> | null | undefined, path: string): T | null {
+  if (!map) return null;
+  const match = longestPrefix(Object.keys(map), path);
+  return match === undefined ? null : (map[match] ?? null);
+}
+
 export function lockedFeature(locked: Record<string, LockedFeature | null> | null | undefined, path: string): LockedFeature | null {
-  if (!locked) return null;
-  const match = longestPrefix(Object.keys(locked), path);
-  return match === undefined ? null : (locked[match] ?? null);
+  return featureAt(locked, path);
+}
+
+export function upcomingFeature(upcoming: Record<string, UpcomingFeature> | null | undefined, path: string): UpcomingFeature | null {
+  return featureAt(upcoming, path);
 }
 
 export function isAllowed(screens: Record<string, boolean> | null, path: string): boolean {

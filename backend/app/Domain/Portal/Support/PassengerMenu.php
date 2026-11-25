@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\Portal\Support;
 
 use App\Domain\Booking\Rules\RuleResolver;
+use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Channels\Support\OwnReviewIntake;
 use App\Domain\Shared\Errors\ApiException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 
@@ -27,7 +29,8 @@ final class PassengerMenu
         $reviews = $this->rules->on('R-OWN-REVIEWS');
         $alerts = $this->trips->incidents($reservation)->reject(fn (stdClass $row): bool => (bool) $row->acked);
         $critical = $alerts->sortBy(fn (stdClass $row): int => array_search($row->severity, ['critica', 'alta', 'media', 'baja'], true) ?: 0)->first();
-        $full = DB::table('booking_reservations')->where('id', $reservation->id)->first(['id', 'code', 'title', 'status', 'travel_from']);
+        $full = DB::table('booking_reservations')->where('id', $reservation->id)->first(['id', 'code', 'title', 'status', 'travel_from', 'travel_to']);
+        $ongoing = $full !== null && ! in_array($full->status, (new ReservationStateMachine)->terminal(), true) && ($full->travel_to === null || (string) $full->travel_to >= Carbon::today('America/Lima')->toDateString());
 
         return [
             'trip' => $reservation->code,
@@ -43,7 +46,7 @@ final class PassengerMenu
                 'reviews' => $reviews && $full !== null ? count(array_filter(OwnReviewIntake::items($full, (string) $account->user->getKey()), fn (array $item): bool => $item['eligible'])) : 0,
                 'alerts' => $alerts->count(),
             ],
-            'alert' => $critical ? ['code' => $critical->code, 'severity' => $critical->severity, 'title' => $critical->public_title ?: $critical->title] : null,
+            'alert' => $critical && $ongoing ? ['code' => $critical->code, 'severity' => $critical->severity, 'title' => $critical->public_title ?: $critical->title] : null,
         ];
     }
 

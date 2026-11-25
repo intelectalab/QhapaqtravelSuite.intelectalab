@@ -25,6 +25,7 @@ export async function AgencyWorkspace({ children }: { children?: ReactNode }) {
     screens: access?.screens ?? null,
     required: access?.required ?? null,
     locked: access?.locked ?? null,
+    upcoming: access?.upcoming ?? null,
   };
 
   return (

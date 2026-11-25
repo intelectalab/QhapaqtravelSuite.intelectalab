@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Support;
 
+use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 final class EcommerceDirectory
 {
-    public function __construct(private readonly SiteCatalog $catalog, private readonly TenantContext $context) {}
+    public function __construct(private readonly SiteCatalog $catalog, private readonly TenantContext $context, private readonly PaymentMethods $methods) {}
 
     public const OPEN_STATUSES = ['pago_pendiente', 'pago_por_validar', 'pago_rechazado'];
 
@@ -56,11 +57,12 @@ final class EcommerceDirectory
             ->get(['p.id', 'p.code', 'p.slug', 'p.name', 'p.status', 'p.is_featured', 'p.rating_avg', 'p.rating_count', 'c.is_published', 'c.published_at']);
 
         $attempts = [];
+        $labels = $this->methods->labels();
         foreach (DB::table('channel_ecom_payment_attempts')->whereIn('order_id', $orders->pluck('id'))->orderByDesc('attempted_at')
             ->get(['order_id', 'attempted_at', 'method', 'card_masked', 'operation_ref', 'result', 'gateway_code', 'message', 'amount', 'currency']) as $a) {
             $attempts[(string) $a->order_id][] = [
                 'at' => $a->attempted_at,
-                'method' => $a->method,
+                'method' => PaymentMethods::display((string) $a->method, $labels),
                 'card' => $a->card_masked,
                 'operation' => $a->operation_ref,
                 'result' => $a->result,

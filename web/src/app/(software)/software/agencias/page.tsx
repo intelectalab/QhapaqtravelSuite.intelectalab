@@ -27,10 +27,10 @@ export default async function AgenciasPage() {
       >
         {overview && (
           <div className="grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <TintTile variant="bento" tone="t1" icon={Building2} label="Agencias trabajando" value={formatNumber(overview.agencies.live)} note={`${overview.agencies.active} con suscripción activa`} />
-            <TintTile variant="bento" tone="t4" icon={MapPin} label="Ciudades con sedes" value={formatNumber(overview.agencies.cities)} note="Oficinas registradas" />
-            <TintTile variant="bento" tone="t3" icon={MapIcon} label="Productos turísticos" value={formatNumber(overview.catalog.products)} note="Tours, paquetes y servicios" />
-            <TintTile variant="bento" tone="sun" icon={ShieldCheck} label="Reglas de reserva" value={formatNumber(overview.catalog.rules)} note="Configurables por agencia" />
+            <TintTile variant="bento" tone="t1" icon={Building2} label="Agencias trabajando" value={formatNumber(overview.agencies.live)} note={`${overview.agencies.active} con suscripción activa`} info={<p>Agencias que hoy usan KipuControl, activas o en prueba gratis. Debajo, las que ya pagan su suscripción.</p>} />
+            <TintTile variant="bento" tone="t4" icon={MapPin} label="Ciudades con sedes" value={formatNumber(overview.agencies.cities)} note="Oficinas registradas" info={<p>Ciudades distintas donde esas agencias tienen sedes registradas.</p>} />
+            <TintTile variant="bento" tone="t3" icon={MapIcon} label="Productos turísticos" value={formatNumber(overview.catalog.products)} note="Tours, paquetes y servicios" info={<p>Productos cargados en los catálogos de todas las agencias.</p>} />
+            <TintTile variant="bento" tone="sun" icon={ShieldCheck} label="Reglas de reserva" value={formatNumber(overview.catalog.rules)} note="Configurables por agencia" info={<p>Reglas estándar de reserva incluidas en algún plan.</p>} />
           </div>
         )}
       </PageHero>

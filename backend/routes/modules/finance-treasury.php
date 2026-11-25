@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Finance\Http\Controllers\PaymentMethodController;
 use App\Domain\Finance\Http\Controllers\TreasuryController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,12 @@ Route::middleware('permission:finance.treasury')->group(function (): void {
     Route::post('treasury/sync', [TreasuryController::class, 'sync'])->name('finance.treasury.sync');
     Route::get('treasury/settings', [TreasuryController::class, 'settings'])->name('finance.treasury.settings.show');
     Route::patch('treasury/settings', [TreasuryController::class, 'updateSettings'])->middleware('permission:admin.settings.manage')->name('finance.treasury.settings.update');
+    Route::get('treasury/payment-methods', [PaymentMethodController::class, 'index'])->name('finance.treasury.payment-methods.index');
+    Route::middleware('permission:admin.settings.manage')->group(function (): void {
+        Route::post('treasury/payment-methods', [PaymentMethodController::class, 'store'])->name('finance.treasury.payment-methods.store');
+        Route::patch('treasury/payment-methods/{code}', [PaymentMethodController::class, 'update'])->name('finance.treasury.payment-methods.update');
+        Route::delete('treasury/payment-methods/{code}', [PaymentMethodController::class, 'destroy'])->name('finance.treasury.payment-methods.destroy');
+    });
     Route::get('treasury/fx/revaluation-preview', [TreasuryController::class, 'revaluationPreview'])->name('finance.treasury.fx.preview');
     Route::post('treasury/fx/revaluations', [TreasuryController::class, 'revalue'])->middleware('permission:finance.invoicing')->name('finance.treasury.fx.store');
 });

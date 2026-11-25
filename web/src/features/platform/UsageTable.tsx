@@ -84,9 +84,9 @@ const columns: Column<UsageItem>[] = [
 ];
 
 const metrics: MetricFilter<UsageItem>[] = [
-  { id: "alert", label: "Con aviso de consumo", tone: "warn", icon: <Flame size={19} />, matches: (item) => item.alert !== null },
-  { id: "limit", label: "Al límite o encima", tone: "bad", icon: <Gauge size={19} />, matches: (item) => (item.top?.pct ?? 0) >= 100 },
-  { id: "ok", label: "Holgadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (item) => (item.top?.pct ?? 0) < 80 },
+  { id: "alert", label: "Con aviso de consumo", tone: "warn", icon: <Flame size={19} />, matches: (item) => item.alert !== null, info: <p>Agencias con algún límite del plan al 80 % o más. Usuarios y sedes solo avisan al pasar el límite.</p> },
+  { id: "limit", label: "Al límite o encima", tone: "bad", icon: <Gauge size={19} />, matches: (item) => (item.top?.pct ?? 0) >= 100, info: <p>Agencias cuyo mayor consumo llega al 100 % de su límite o lo supera, contando los extras otorgados.</p> },
+  { id: "ok", label: "Holgadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (item) => (item.top?.pct ?? 0) < 80, info: <p>Agencias cuyo mayor consumo está por debajo del 80 % de su límite, o sin límites que medir.</p> },
 ];
 
 const sorts: SortOption<UsageItem>[] = [

@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { AdminActionState } from "@/lib/admin";
+import { apiFetch } from "@/lib/server/api";
 import { platformSend, type ConsoleResult } from "@/lib/server/platformConsole";
 
 const text = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
@@ -60,6 +62,13 @@ export async function saveTenantOseCredentials(_state: ConsoleResult, form: Form
 
 export async function clearTenantOseCredentials(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
   return done(await platformSend(`/tenants/${encodeURIComponent(text(form, "tenant"))}/ose/credentials`, "DELETE", {}, "No pudimos quitar las credenciales."), "/plataforma/agencias");
+}
+
+export async function generateOseWebhookSecret(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  const result = await apiFetch<{ secret: string; rotated: boolean }>(`/platform/ose-providers/${encodeURIComponent(text(form, "code"))}/webhook-secret`, { method: "POST", body: {}, realm: "platform" });
+  if (!result.ok || !result.data) return { done: false, message: (result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined) ?? result.error?.message ?? "No pudimos generar la clave de firma." };
+  revalidatePath(OSE, "layout");
+  return { done: true, message: null, secret: result.data.secret, label: result.data.rotated ? "rotada" : "generada" };
 }
 
 export async function testTenantOse(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {

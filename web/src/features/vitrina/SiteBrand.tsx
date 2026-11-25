@@ -138,8 +138,8 @@ export function AuditPanel({ seo }: { seo: SeoOverview }) {
     { id: "actions", header: "", cell: (row) => <RowActions><PageSeoAction page={row} /></RowActions> },
   ];
   const metrics: MetricFilter<SeoPage>[] = [
-    { id: "good", label: "Puntaje 80 o más", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => (row.score ?? 0) >= 80 },
-    { id: "issues", label: "Con pendientes", tone: "warn", icon: <CircleAlert size={19} />, matches: (row) => row.issues.length > 0 },
+    { id: "good", label: "Puntaje 80 o más", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => (row.score ?? 0) >= 80, info: <p>Páginas cuya última auditoría SEO dio 80 puntos o más.</p> },
+    { id: "issues", label: "Con pendientes", tone: "warn", icon: <CircleAlert size={19} />, matches: (row) => row.issues.length > 0, info: <p>Páginas con al menos un punto por corregir en su auditoría: título, descripción u otros.</p> },
   ];
   const sorts: SortOption<SeoPage>[] = [
     { id: "score", label: "Puntaje", type: "number", value: (row) => row.score },
@@ -204,7 +204,17 @@ export function BrandTabs({ domains, seo, redirects }: { domains: DomainsOvervie
   return (
     <TabCard
       tabs={[
-        { id: "dominios", label: "Dominios y SSL", count: domains.kpis.total, content: <DomainsPanel domains={domains} /> },
+        {
+          id: "dominios",
+          label: "Dominios y SSL",
+          count: domains.kpis.total,
+          content: (
+            <div className="flex flex-col gap-5">
+              <BrandTiles domains={domains} seo={seo} redirects={redirects} />
+              <DomainsPanel domains={domains} />
+            </div>
+          ),
+        },
         { id: "auditoria", label: "Auditoría por página", count: seo.kpis.pages, content: <AuditPanel seo={seo} /> },
         { id: "redirecciones", label: "Redirecciones", count: redirects.kpis.active, content: <RedirectsPanel redirects={redirects} /> },
         { id: "sitemap", label: "Sitemap y robots", content: <SitemapPanel seo={seo} /> },

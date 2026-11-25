@@ -415,13 +415,13 @@ final class PortalDirectory
 
     private function payments($query): Collection
     {
-        $labels = $this->methods->labels();
+        $labels = $this->methods->customerLabels();
 
         return $query->leftJoin('fin_receivables as f', 'f.id', '=', 'p.receivable_id')->where('p.kind', 'cobro')->orderByDesc('p.paid_on')->orderByDesc('p.created_at')
             ->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.paid_on', 'p.status', 'p.source', 'p.reference', 'p.reject_reason', 'f.code as receivable', 'f.concept'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,
-                'method' => $labels[$row->method] ?? $row->method,
+                'method' => PaymentMethods::display((string) $row->method, $labels),
                 'amount' => ChannelKit::money($row->amount),
                 'currency' => $row->currency,
                 'paid_on' => $row->paid_on,

@@ -25,10 +25,10 @@ export function DunningKpis({ items }: { items: DunningItem[] }) {
 
   return (
     <section aria-label="Resumen de cobranza" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <TintTile icon={CreditCard} tone="bad" label="En reintento" value={active.length} note={formatMoney(active.reduce((sum, item) => sum + item.total, 0))} />
-      <TintTile icon={FileWarning} tone="warn" label="Incobrables" value={lost.length} note={formatMoney(lost.reduce((sum, item) => sum + item.total, 0))} />
-      <TintTile icon={Wallet} tone="violet" label="Agencias con deuda" value={new Set(items.map((item) => item.tenant.code)).size} />
-      <TintTile icon={CalendarClock} tone="t1" label="Próximo reintento" value={next ? formatDateTime(next, false) : "Sin agenda"} />
+      <TintTile icon={CreditCard} tone="bad" label="En reintento" value={active.length} note={formatMoney(active.reduce((sum, item) => sum + item.total, 0))} info={<p>Facturas con cobro rechazado que siguen en reintentos. Debajo, la suma de sus totales.</p>} />
+      <TintTile icon={FileWarning} tone="warn" label="Incobrables" value={lost.length} note={formatMoney(lost.reduce((sum, item) => sum + item.total, 0))} info={<p>Facturas que agotaron los reintentos sin cobrarse. Debajo, la suma de sus totales.</p>} />
+      <TintTile icon={Wallet} tone="violet" label="Agencias con deuda" value={new Set(items.map((item) => item.tenant.code)).size} info={<p>Agencias distintas con al menos una factura en reintento o incobrable.</p>} />
+      <TintTile icon={CalendarClock} tone="t1" label="Próximo reintento" value={next ? formatDateTime(next, false) : "Sin agenda"} info={<p>La fecha más cercana entre los reintentos programados de las facturas en cobranza.</p>} />
     </section>
   );
 }

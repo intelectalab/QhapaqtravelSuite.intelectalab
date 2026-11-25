@@ -10,6 +10,7 @@ use App\Domain\Booking\Events\ReservationCreated;
 use App\Domain\Booking\Models\Reservation;
 use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Booking\Support\ConversionPlan;
+use App\Domain\Booking\Support\ExternalOfferIssuer;
 use App\Domain\Booking\Support\ReservationAssembler;
 use App\Domain\Booking\Support\ReservationReceivables;
 use App\Domain\Corporate\Actions\CorporateApprovals;
@@ -51,6 +52,7 @@ final class ConvertQuoteToReservation
         private readonly SyncServicePayables $payables,
         private readonly QuoteStateMachine $quoteStates,
         private readonly ReservationStateMachine $reservationStates,
+        private readonly ExternalOfferIssuer $externalOffers,
     ) {}
 
     public function handle(string $quoteId, string $idempotencyKey, ?int $lockVersion, User $actor, ?string $notes = null): Reservation
@@ -70,6 +72,10 @@ final class ConvertQuoteToReservation
                 fn (): Reservation => $this->convert($quoteId, $idempotencyKey, $lockVersion, $actor, $notes),
                 attempts: 3,
             );
+        } catch (ApiException $exception) {
+            $this->externalOffers->reportFailure($exception);
+
+            throw $exception;
         } finally {
             $lock->release();
         }
@@ -115,20 +121,24 @@ final class ConvertQuoteToReservation
             throw ApiException::unprocessable('RT-3', 'La cotización necesita las fechas del viaje y un cliente vigente en el CRM.');
         }
 
+        $offers = $this->externalOffers->pending((string) $quote->id, true);
+        $reservationTotal = $grandTotal->plus($this->externalOffers->assertIssuable($offers, (string) $version->currency));
+
         $products = $this->plan->products($items);
         $departureByItem = $this->plan->departures($items, $products, $today);
         $departureIds = array_values(array_unique(array_filter($departureByItem)));
 
         return $this->inventory->withLocks('departure', $departureIds, function () use (
-            $quote, $version, $items, $products, $departureByItem, $departureIds, $grandTotal, $today, $actor, $idempotencyKey, $notes,
+            $quote, $version, $items, $products, $departureByItem, $departureIds, $reservationTotal, $offers, $today, $actor, $idempotencyKey, $notes,
         ): Reservation {
             $departures = $this->inventory->lockRows('catalog_product_departures', $departureIds);
             $this->plan->assertAvailable($items, $products, $departureByItem, $departures);
 
-            $reservation = $this->createReservation($quote, $version, $grandTotal, $actor, $notes);
-            $this->createServicesAndHolds($reservation, $items, $products, $departureByItem, $version, $actor);
+            $reservation = $this->createReservation($quote, $version, $reservationTotal, $actor, $notes);
+            $seq = $this->createServicesAndHolds($reservation, $items, $products, $departureByItem, $version, $actor);
+            $this->externalOffers->issue($reservation, (string) $quote->code, $offers, (string) $version->fx_rate, $seq, $idempotencyKey, $actor);
             $this->assembler->placeholders($reservation, (int) $quote->pax_adt, (int) $quote->pax_chd, (int) $quote->pax_inf);
-            $this->receivables->create($reservation, $actor, $grandTotal);
+            $this->receivables->create($reservation, $actor, $reservationTotal);
             $this->payables->handle((string) $reservation->id, $actor);
 
             $before = $this->quoteStates->transition($quote, QuoteStatus::Convertida);
@@ -137,7 +147,7 @@ final class ConvertQuoteToReservation
             $this->winOpportunity($quote, $today, $actor);
 
             $this->audit->log('Reserva', $reservation->code, 'crear_desde_cotizacion', "{$quote->code} v{$version->version_no}",
-                "confirmada · {$reservation->currency} {$grandTotal}", actor: $actor);
+                "confirmada · {$reservation->currency} {$reservationTotal}", actor: $actor);
             $this->audit->log('Cotización', $quote->code, 'convertir', $before, 'convertida → '.$reservation->code,
                 evidence: ['idempotency_key' => $idempotencyKey], actor: $actor);
 
@@ -189,7 +199,7 @@ final class ConvertQuoteToReservation
         return $reservation;
     }
 
-    private function createServicesAndHolds(Reservation $reservation, Collection $items, Collection $products, array $departureByItem, object $version, User $actor): void
+    private function createServicesAndHolds(Reservation $reservation, Collection $items, Collection $products, array $departureByItem, object $version, User $actor): int
     {
         $seq = 0;
 
@@ -197,6 +207,8 @@ final class ConvertQuoteToReservation
             $seq = $this->assembler->addServices($reservation, $item, $departureByItem[$item->id] ?? null, (string) $version->discount_pct,
                 (string) $version->currency, (string) $version->fx_rate, $products->get($item->product_id)?->main_provider_id, $seq, $actor);
         }
+
+        return $seq;
     }
 
     private function winOpportunity(Quote $quote, CarbonImmutable $today, User $actor): void

@@ -133,7 +133,7 @@ export interface QuoteDetail extends QuoteRow {
   viewed_at: string | null;
   see_margin: boolean;
   internal: { required: boolean; status: string | null; note: string | null } | null;
-  can: { edit: boolean; send: boolean; approve_internal: boolean; register_approval: boolean; reassign: boolean; duplicate: boolean };
+  can: { edit: boolean; send: boolean; approve_internal: boolean; register_approval: boolean; reassign: boolean; duplicate: boolean; external_offers?: boolean };
   contact: { email: string | null; phone: string | null } | null;
   share: { active: boolean; url: string | null; created_at: string | null; expires_at: string | null; last_view_at: string | null; last_view_source: string | null } | null;
   evidence_types: string[];

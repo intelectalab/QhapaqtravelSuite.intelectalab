@@ -92,9 +92,9 @@ export function PortalUsersTable({ users, centers, travelers, actions, extraActi
     },
   ];
   const metrics: MetricFilter<PortalUser>[] = [
-    { id: "activo", label: "Activos", tone: "ok", icon: <UserCheck size={19} />, matches: (row) => row.status === "activo" },
-    { id: "invitado", label: "Invitados", tone: "info", icon: <UserPlus size={19} />, matches: (row) => row.status === "invitado" },
-    { id: "inactivo", label: "Inactivos", tone: "mute", icon: <UserMinus size={19} />, matches: (row) => row.status === "inactivo" },
+    { id: "activo", label: "Activos", tone: "ok", icon: <UserCheck size={19} />, matches: (row) => row.status === "activo" , info: <p>Usuarios con acceso al panel corporativo.</p> },
+    { id: "invitado", label: "Invitados", tone: "info", icon: <UserPlus size={19} />, matches: (row) => row.status === "invitado" , info: <p>Usuarios invitados que aún no aceptan la invitación.</p> },
+    { id: "inactivo", label: "Inactivos", tone: "mute", icon: <UserMinus size={19} />, matches: (row) => row.status === "inactivo" , info: <p>Usuarios desactivados: ya no pueden entrar al panel.</p> },
   ];
   const filters: FilterConfig<PortalUser>[] = [{ id: "role", label: "Rol", options: ROLE_OPTIONS, value: (row) => row.portal_role }];
 

@@ -14,7 +14,6 @@ export const metadata: Metadata = { title: "Detalle de mi reserva", robots: { in
 
 const PAX: Record<string, string> = { ADT: "Adulto", CHD: "Niño", INF: "Infante" };
 
-const METHOD: Record<string, string> = { tarjeta_e_commerce: "Tarjeta en línea", transferencia: "Transferencia", yape: "Yape", plin: "Plin", efectivo: "Efectivo", tarjeta: "Tarjeta" };
 
 function Panel({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
@@ -124,7 +123,7 @@ export default async function AccountReservationPage({ params }: PageProps<"/sit
                 <li key={payment.code} className="grid gap-2.5 text-[13.5px]">
                   <span className="flex items-center justify-between gap-3">
                     <span>
-                      <b className="block font-semibold text-fg">{METHOD[payment.method] ?? capitalize(payment.method.replaceAll("_", " "))}</b>
+                      <b className="block font-semibold text-fg">{payment.method}</b>
                       <span className="text-[12px] text-fg-3">
                         {payment.code} · {formatDate(payment.date)}
                       </span>

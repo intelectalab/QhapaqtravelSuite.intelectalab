@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertTriangle, CircleCheck, Globe2, KeyRound, Link2, Pause, Play, Plus, Power, RefreshCw, Share2, Ticket, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, CircleCheck, Globe2, Info, KeyRound, Link2, Pause, Play, Plus, Power, RefreshCw, Share2, Ticket, XCircle } from "lucide-react";
 import { useActionState, useState, type ReactNode } from "react";
-import { otaConnectionStep, saveOtaConnection, saveOtaMapping } from "@/app/(backoffice)/canales/ota/actions";
+import { convertOtaBooking, otaConnectionStep, saveOtaConnection, saveOtaMapping } from "@/app/(backoffice)/canales/ota/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +15,7 @@ import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
-import { labelOptions, type OtaBooking, type OtaConnection, type OtaMapping, type OtaOverview, type Option } from "@/lib/growth";
+import { labelOptions, otaConversionNote, type OtaBooking, type OtaConnection, type OtaMapping, type OtaOverview, type Option } from "@/lib/growth";
 import type { StepResult } from "@/lib/server/resource";
 import { toneStyle } from "@/lib/tone";
 import { KpiRow, PlanNotice, StatusPill } from "./GrowthUi";
@@ -175,6 +175,56 @@ function ConnectionCard({ connection, overview, set, index }: { connection: OtaC
   );
 }
 
+function ConvertForm({ booking, clients }: { booking: OtaBooking; clients: Option[] }) {
+  const currency = booking.currency ?? "USD";
+  const amounts = [
+    { label: "Venta en la OTA", value: booking.sale_amount, tone: "text-fg-2" },
+    { label: `Comisión (${Number(booking.commission_pct)} %)`, value: booking.commission_amount, tone: "text-bad" },
+    { label: "Neto que recibes", value: booking.payout_amount, tone: "text-ok" },
+  ];
+  return (
+    <PanelAction<StepResult>
+      label="Convertir"
+      formId={`convertir-${booking.id}`}
+      title={`Convertir ${booking.ota_booking_ref}`}
+      description="Crea la reserva confirmada por el neto de la OTA y toma el cupo de la salida. Si ya no hay cupo, queda rechazada con el motivo."
+      submitLabel="Crear reserva"
+      action={convertOtaBooking}
+      initial={initial}
+      successToast={(state) => (state.message ? `Reserva ${state.message} creada.` : "Reserva creada.")}
+      trigger={(open) => <Button size="sm" variant="secondary" icon={<ArrowRightLeft size={14} />} onClick={open}>Convertir</Button>}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="id" value={booking.id} />
+          <div className="rounded-xl border border-line px-3.5 py-3 text-[13px]">
+            <p className="font-semibold">{booking.product?.name ?? "Sin mapeo"}</p>
+            <p className="mt-0.5 text-fg-3">
+              {booking.connection.ota_label} · {booking.travel_date ? formatDate(booking.travel_date) : "Sin fecha"}
+              {booking.pax ? ` · ${booking.pax} pax` : ""}
+            </p>
+          </div>
+          <dl className="grid grid-cols-3 gap-2 text-center">
+            {amounts.map((item) => (
+              <div key={item.label} className="lift rounded-xl bg-surface-2 px-2 py-2.5">
+                <dt className="text-[11px] text-fg-3">{item.label}</dt>
+                <dd className={cn("text-[14px] font-bold", item.tone)}>{item.value ? formatMoney(item.value, currency) : "—"}</dd>
+              </div>
+            ))}
+          </dl>
+          <SelectField label="Cliente" name="client_id" options={clients} placeholder="Elegir cliente de tu cartera" searchable defaultValue={booking.customer?.client?.code} hint={otaConversionNote(booking)} />
+          {booking.error && booking.status !== "recibida" && (
+            <p className="flex items-start gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-[12.5px] text-fg-2">
+              <Info size={14} className="mt-0.5 flex-none" />
+              {booking.error}
+            </p>
+          )}
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
 function BookingsTable({ bookings, overview }: { bookings: OtaBooking[]; overview: OtaOverview }) {
   return (
     <DataTable
@@ -185,8 +235,9 @@ function BookingsTable({ bookings, overview }: { bookings: OtaBooking[]; overvie
       searchText={(booking) => `${booking.ota_booking_ref} ${booking.product?.name ?? ""} ${booking.reservation ?? ""}`}
       searchPlaceholder="Buscar por referencia o producto"
       metrics={[
-        { id: "confirmada", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={18} />, matches: (booking) => booking.status === "confirmada" },
-        { id: "rechazada", label: "Rechazadas o con error", tone: "bad", icon: <XCircle size={18} />, matches: (booking) => booking.status === "rechazada" || booking.status === "error" },
+        { id: "recibida", label: "Por convertir", tone: "info", icon: <ArrowRightLeft size={18} />, matches: (booking) => booking.status === "recibida", info: <p>Reservas que envió la OTA y todavía no son reserva de la agencia, por ejemplo porque falta el cliente.</p> },
+        { id: "confirmada", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={18} />, matches: (booking) => booking.status === "confirmada", info: <p>Reservas de OTA ya convertidas en reserva de la agencia.</p> },
+        { id: "rechazada", label: "Rechazadas o con error", tone: "bad", icon: <XCircle size={18} />, matches: (booking) => booking.status === "rechazada" || booking.status === "error", info: <p>Reservas de OTA rechazadas por falta de cupo o que fallaron al convertirse.</p> },
       ]}
       filters={[
         { id: "status", label: "Estado", options: labelOptions(overview.catalogs.booking_statuses), value: (booking) => booking.status },
@@ -200,7 +251,7 @@ function BookingsTable({ bookings, overview }: { bookings: OtaBooking[]; overvie
         { id: "travel", header: "Viaje", cell: (booking) => <span className="text-[13px] text-fg-2">{booking.travel_date ? formatDate(booking.travel_date) : "—"}{booking.pax ? ` · ${booking.pax} pax` : ""}</span> },
         { id: "amount", header: "Monto", align: "right", cell: (booking) => (booking.gross_amount ? <span className="text-[13px] font-semibold">{formatMoney(booking.gross_amount, booking.currency ?? "USD")}</span> : <span className="text-fg-3">—</span>) },
         { id: "status", header: "Estado", cell: (booking) => <div><StatusPill status={booking.status} label={booking.status_label} />{booking.error && <p className="mt-1 max-w-[240px] truncate text-[11.5px] text-bad" title={booking.error}>{booking.error}</p>}</div> },
-        { id: "reservation", header: "Reserva", align: "right", cell: (booking) => (booking.reservation ? <RowIcon tone="view" label={`Ver ${booking.reservation}`} href={`/reservas/${booking.reservation}`} /> : <span className="text-fg-3">—</span>) },
+        { id: "reservation", header: "Reserva", align: "right", cell: (booking) => (booking.reservation ? <RowIcon tone="view" label={`Ver ${booking.reservation}`} href={`/reservas/${booking.reservation}`} /> : booking.convertible && overview.enabled ? <ConvertForm booking={booking} clients={overview.clients ?? []} /> : <span className="text-fg-3">—</span>) },
       ]}
     />
   );
@@ -211,12 +262,6 @@ export function OtaBoard({ overview, bookings, mappings }: { overview: OtaOvervi
   return (
     <>
       <PlanNotice enabled={overview.enabled} feature="La conexión con OTAs" />
-      <KpiRow>
-        <TintTile icon={Share2} tone="t1" label="OTAs conectadas" value={kpis.connected} note={`de ${overview.connections.length} conexiones`} info={<p>Conexiones con la clave verificada que publican disponibilidad y reciben reservas.</p>} />
-        <TintTile icon={Link2} tone="violet" label="Productos publicados" value={kpis.mapped} info={<p>Mapeos activos: productos del catálogo enlazados con su código en alguna OTA.</p>} />
-        <TintTile icon={Ticket} tone="ok" label="Reservas en 30 días" value={kpis.bookings_30} info={<p>Reservas que enviaron las OTAs en los últimos 30 días, confirmadas o no.</p>} />
-        <TintTile icon={AlertTriangle} tone="bad" label="Errores" value={kpis.errors} info={<p>Conexiones con error de sincronización más reservas rechazadas o con error en los últimos 30 días.</p>} />
-      </KpiRow>
       <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
         <Tabs
           tabs={[
@@ -226,6 +271,12 @@ export function OtaBoard({ overview, bookings, mappings }: { overview: OtaOvervi
               count: overview.connections.length,
               content: (
                 <>
+                  <KpiRow>
+                    <TintTile icon={Share2} tone="t1" label="OTAs conectadas" value={kpis.connected} note={`de ${overview.connections.length} conexiones`} info={<p>Conexiones con la clave verificada que publican disponibilidad y reciben reservas.</p>} />
+                    <TintTile icon={Link2} tone="violet" label="Productos publicados" value={kpis.mapped} info={<p>Mapeos activos: productos del catálogo enlazados con su código en alguna OTA.</p>} />
+                    <TintTile icon={Ticket} tone="ok" label="Reservas en 30 días" value={kpis.bookings_30} info={<p>Reservas que enviaron las OTAs en los últimos 30 días, confirmadas o no.</p>} />
+                    <TintTile icon={AlertTriangle} tone="bad" label="Errores" value={kpis.errors} info={<p>Conexiones con error de sincronización más reservas rechazadas o con error en los últimos 30 días.</p>} />
+                  </KpiRow>
                   <div className="mb-4 flex justify-end">
                     <ConnectionForm overview={overview} />
                   </div>

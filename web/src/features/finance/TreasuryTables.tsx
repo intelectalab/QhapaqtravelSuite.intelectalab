@@ -70,9 +70,9 @@ export function AccountsDataTable({ data, editable }: { data: TreasuryOverview; 
   ];
 
   const metrics: MetricFilter<TreasuryAccount>[] = [
-    { id: "bank", label: "Bancos", tone: "t1", icon: <Landmark size={19} />, matches: (account) => account.kind === "bank" && account.active },
-    { id: "closed", label: "Cajas sin aperturar hoy", tone: "warn", icon: <Wallet size={19} />, matches: (account) => account.kind === "petty_cash" && account.active && account.session_today !== "open" },
-    { id: "settle", label: "Pasarelas por liquidar", tone: "violet", icon: <CreditCard size={19} />, matches: (account) => account.kind === "gateway" && account.active && account.balance > 0 },
+    { id: "bank", label: "Bancos", tone: "t1", icon: <Landmark size={19} />, matches: (account) => account.kind === "bank" && account.active, info: <p>Cuentas bancarias activas de la agencia, en soles y en dólares.</p> },
+    { id: "closed", label: "Cajas sin aperturar hoy", tone: "warn", icon: <Wallet size={19} />, matches: (account) => account.kind === "petty_cash" && account.active && account.session_today !== "open", info: <p>Cajas chicas activas que hoy todavía no se abrieron con su conteo inicial.</p> },
+    { id: "settle", label: "Pasarelas por liquidar", tone: "violet", icon: <CreditCard size={19} />, matches: (account) => account.kind === "gateway" && account.active && account.balance > 0, info: <p>Pasarelas activas con saldo cobrado que aún no se liquida al banco.</p> },
   ];
 
   const filters: FilterConfig<TreasuryAccount>[] = [
@@ -167,9 +167,9 @@ export function CountsTable({ data, editable }: { data: TreasuryOverview; editab
   ];
 
   const metrics: MetricFilter<CashCount>[] = [
-    { id: "balanced", label: "Cuadrados", tone: "ok", icon: <CircleCheck size={19} />, matches: (count) => count.result === "Cuadrado" },
-    { id: "difference", label: "Con diferencia", tone: "warn", icon: <Scale size={19} />, matches: (count) => count.result !== "Cuadrado" },
-    { id: "pending", label: "Por aprobar", tone: "bad", icon: <CircleAlert size={19} />, matches: (count) => count.status === "pending_approval" },
+    { id: "balanced", label: "Cuadrados", tone: "ok", icon: <CircleCheck size={19} />, matches: (count) => count.result === "Cuadrado", info: <p>Arqueos en los que el efectivo contado coincide con el saldo del sistema.</p> },
+    { id: "difference", label: "Con diferencia", tone: "warn", icon: <Scale size={19} />, matches: (count) => count.result !== "Cuadrado", info: <p>Arqueos con sobrante o faltante frente al saldo del sistema.</p> },
+    { id: "pending", label: "Por aprobar", tone: "bad", icon: <CircleAlert size={19} />, matches: (count) => count.status === "pending_approval", info: <p>Arqueos con diferencia mayor a la tolerancia que esperan la aprobación de otra persona.</p> },
   ];
 
   const filters: FilterConfig<CashCount>[] = [

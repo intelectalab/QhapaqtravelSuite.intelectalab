@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Growth\Assistant;
 
-use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Growth\Shared\GrowthRules;
 use App\Domain\Iam\Models\User;
-use App\Domain\Inbox\Support\ConversationDirectory;
 use App\Domain\Integrations\Contracts\SalesAssistant;
 use App\Domain\Platform\Support\EffectiveLimits;
 use App\Domain\Platform\Support\UsageMeter;
@@ -37,7 +35,7 @@ final class AssistantWorkflow
         private readonly GrowthRules $rules,
         private readonly AuditLogger $audit,
         private readonly TenantContext $context,
-        private readonly ConversationDirectory $conversations,
+        private readonly AssistantSources $sources,
         private readonly QuoteLifecycle $quotes,
     ) {}
 
@@ -50,7 +48,7 @@ final class AssistantWorkflow
             throw new ApiException(429, 'AI_QUOTA_EXCEEDED', 'AI_QUOTA_EXCEEDED', 'La agencia ya usó los '.$usage['limit'].' pedidos de IA del mes. El cupo se renueva el 1 del mes siguiente o con un paquete adicional.');
         }
 
-        [$sourceId, $input] = $this->source($data['source_type'] ?? null, $data['source_code'] ?? null, $actor);
+        [$sourceId, $input, $record] = $this->source($data['source_type'] ?? null, $data['source_code'] ?? null, $actor);
         $prompt = $this->sanitizer->clean((string) $data['prompt']);
         $id = (string) Str::uuid7();
         DB::table('sys_ai_requests')->insert([
@@ -66,7 +64,7 @@ final class AssistantWorkflow
             'created_by' => $actor->getKey(),
         ]);
 
-        $completion = $this->assistant->complete((string) $data['kind'], $prompt, [...$this->catalogContext(), 'client' => $input['client'] ?? []]);
+        $completion = $this->assistant->complete((string) $data['kind'], $prompt, [...$this->catalogContext(), 'client' => $input['client'] ?? [], 'record' => $record]);
         DB::table('sys_ai_requests')->where('id', $id)->update([
             'status' => $completion->ok ? 'completed' : 'failed',
             'output' => $completion->ok ? json_encode($completion->output, JSON_UNESCAPED_UNICODE) : null,
@@ -160,6 +158,21 @@ final class AssistantWorkflow
         ];
     }
 
+    public function context(string $type, string $code, User $actor): array
+    {
+        $source = $this->sources->resolve($type, $code, $actor);
+        $usage = $this->usage($actor);
+
+        return [
+            'source' => ['type' => $type, 'label' => self::SOURCES[$type], 'code' => $code, 'title' => $source['title']],
+            'facts' => $source['facts'],
+            'usage' => ['enabled' => $usage['enabled'], 'limit' => $usage['limit'], 'remaining' => $usage['remaining'], 'exhausted' => $usage['exhausted'], 'warning' => $usage['warning']],
+            'kinds' => self::KINDS,
+            'recent' => DB::table('sys_ai_requests')->where('user_id', $actor->getKey())->where('source_type', $type)->where('source_id', $source['id'])
+                ->orderByDesc('created_at')->limit(5)->get()->map(fn (object $row): array => $this->present($row))->all(),
+        ];
+    }
+
     public function quoteImpact(Quote $quote): ?array
     {
         if (in_array($quote->status, ['borrador', 'convertida'], true)) {
@@ -234,27 +247,12 @@ final class AssistantWorkflow
     private function source(?string $type, ?string $code, User $actor): array
     {
         if ($type === null || $code === null || $code === '') {
-            return [null, []];
+            return [null, [], []];
         }
 
-        if ($type === 'quote') {
-            $quote = Quote::query()->where('code', $code)->first() ?? throw ApiException::notFound('La cotización no existe.');
-            Gate::forUser($actor)->authorize('view', $quote);
-            $client = DB::table('crm_clients')->where('id', $quote->client_id)->value('name');
+        $source = $this->sources->resolve($type, $code, $actor);
 
-            return [(string) $quote->id, ['source' => $code, 'client' => ['name' => $this->firstName($client), 'pax' => (int) $quote->pax_adt + (int) $quote->pax_chd + (int) $quote->pax_inf, 'travel_from' => $quote->travel_from ? Carbon::parse($quote->travel_from)->toDateString() : null]]];
-        }
-
-        if ($type === 'lead') {
-            $lead = Portfolio::scope(DB::table('crm_leads'), $actor, 'owner_id')->whereNull('deleted_at')->where('code', $code)->first(['id', 'full_name', 'pax', 'travel_date'])
-                ?? throw ApiException::notFound('El lead no existe o está fuera de tu cartera.');
-
-            return [(string) $lead->id, ['source' => $code, 'client' => ['name' => $this->firstName($lead->full_name), 'pax' => (int) $lead->pax, 'travel_from' => $lead->travel_date]]];
-        }
-
-        $conversation = $this->conversations->find($code, $actor);
-
-        return [(string) $conversation->id, ['source' => $code, 'client' => ['name' => $this->firstName($conversation->contact_name)]]];
+        return [$source['id'], $source['input'], $source['record']];
     }
 
     private function catalogContext(): array
@@ -269,11 +267,6 @@ final class AssistantWorkflow
             'destinations' => DB::table('catalog_destinations')->whereNull('deleted_at')->orderBy('name')->limit(200)->pluck('name')->all(),
             'products' => $products,
         ];
-    }
-
-    private function firstName(?string $name): string
-    {
-        return Str::before(trim((string) $name), ' ');
     }
 
     private function find(string $id, User $actor, bool $lock = false): object

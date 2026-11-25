@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Integrations\Fake\FakeFiscalGateway;
+use App\Domain\Platform\Support\FiscalWebhookSecret;
 use App\Domain\Platform\Support\OseCatalog;
 use App\Jobs\SendInvoiceToFiscalProvider;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -37,6 +39,46 @@ it('la consola administra el catálogo de OSE con estado homologado y lo audita'
     $this->deleteJson('/api/v1/platform/ose-providers/OSE-DOS')->assertOk();
     expect(collect($this->getJson('/api/v1/platform/ose-providers')->json('data.providers'))->pluck('code')->all())->toBe(['OSE-REST'])
         ->and(finanzasOseAudit('OSE · OSE-DOS', 'eliminar'))->not->toBeNull();
+});
+
+it('la consola genera la clave de firma del webhook de cada OSE, la rota con 24 h de gracia, no la vuelve a mostrar y la borra con el OSE', function () {
+    finanzasOseCatalog();
+
+    $first = $this->postJson('/api/v1/platform/ose-providers/OSE-REST/webhook-secret')->assertOk()->json('data');
+    expect($first['secret'])->toStartWith('kipu_ose_')
+        ->and($first['rotated'])->toBeFalse()
+        ->and($first['secret_hint'])->toBe('••••'.substr($first['secret'], -4))
+        ->and($first['callback_url'])->toEndWith('/api/v1/integrations/fiscal/ose-rest/webhook')
+        ->and($first['signature_header'])->toBe(FakeFiscalGateway::SIGNATURE_HEADER)
+        ->and(app(FiscalWebhookSecret::class)->secrets('OSE-REST'))->toBe(['actual' => $first['secret']])
+        ->and(app(FiscalWebhookSecret::class)->secrets('OSE-DOS'))->toBe([])
+        ->and(DB::connection('pgsql_platform')->table('platform_settings')->where('key', FiscalWebhookSecret::KEY)->value('value'))->not->toContain($first['secret'])
+        ->and(finanzasOseAudit('OSE · OSE-REST', 'generar_clave_webhook')?->after_value)->toBe('generada');
+
+    $listed = collect($this->getJson('/api/v1/platform/ose-providers')->assertOk()->json('data.providers'))->keyBy('code');
+    expect($listed['OSE-REST']['webhook']['secret_set'])->toBeTrue()
+        ->and($listed['OSE-DOS']['webhook']['secret_set'])->toBeFalse()
+        ->and(json_encode($listed->all()))->not->toContain($first['secret']);
+
+    $second = $this->postJson('/api/v1/platform/ose-providers/OSE-REST/webhook-secret')->assertOk()->json('data');
+    expect($second['rotated'])->toBeTrue()
+        ->and($second['secret'])->not->toBe($first['secret'])
+        ->and($second['previous_secret_valid'])->toBeTrue()
+        ->and($second['still_previous'])->toBeTrue()
+        ->and(app(FiscalWebhookSecret::class)->secrets('OSE-REST'))->toBe(['actual' => $second['secret'], 'anterior' => $first['secret']])
+        ->and(finanzasOseAudit('OSE · OSE-REST', 'rotar_clave_webhook')?->after_value)->toBe('rotada · la anterior vale 24 h');
+
+    $this->postJson('/api/v1/platform/ose-providers/NO-EXISTE/webhook-secret')->assertNotFound();
+
+    $this->travel(25)->hours();
+    expect(app(FiscalWebhookSecret::class)->secrets('OSE-REST'))->toBe(['actual' => $second['secret']]);
+
+    actingAsPlatform();
+    $this->deleteJson('/api/v1/platform/ose-providers/OSE-REST')->assertOk();
+    expect(app(FiscalWebhookSecret::class)->secrets('OSE-REST'))->toBe([]);
+
+    actingAsSeed('U01');
+    expect($this->postJson('/api/v1/platform/ose-providers/OSE-DOS/webhook-secret')->status())->toBeIn([401, 403]);
 });
 
 it('sin OSE elegido la agencia emite en modo simulado y solo elige entre los homologados', function () {
