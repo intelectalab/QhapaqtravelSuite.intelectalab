@@ -62,11 +62,8 @@ Actualización/
 # Prototipo navegable del kit: referencia solo local
 docs/prototipo/
 
-# Documentación interna (avances, pendientes): solo local. Se sube únicamente el manual de uso.
-Documentación/*
-!Documentación/Manual de uso/
-Documentación/Manual de uso/*
-!Documentación/Manual de uso/Manual de uso.docx
+# Documentación interna (avances, pendientes, manual de uso): solo local
+Documentación/
 
 # Varios
 *.log
@@ -80,3 +77,6 @@ docs/kit/tests/e2e/.auth/
 docs/kit/tests/e2e/playwright-report/
 docs/kit/tests/e2e/test-results/
 docs/kit/tests/e2e/results/
+
+# Videos de avance: se entregan por otro medio, nunca a GitHub
+Videos de avance/
